@@ -3,6 +3,8 @@ import assert from 'node:assert/strict';
 import { HackRuntime } from '../src/hackIntegration/hackRuntime.js';
 import { createPlayerStats } from '../src/hackloop/playerStats.js';
 import { ByteLedger } from '../src/hackloop/byteLedger.js';
+import { EnergyMeter } from '../src/hackloop/energy.js';
+import { ENERGY_COST_PER_TIER } from '../src/hackIntegration/energyCosts.js';
 
 function makeFakeMapManager({ mapId = 'district_07', col = 0, row = 1 } = {}) {
   return { currentMap: { id: mapId }, playerCol: col, playerRow: row };
@@ -128,6 +130,44 @@ test('sem ledger, byteBalance e null (o runtime nao inventa um saldo)', () => {
   const runtime = new HackRuntime({ mapManager, controller, playerStats: createPlayerStats(1) });
 
   assert.equal(runtime.byteBalance, null);
+});
+
+test('energyValue/energyMax ficam disponiveis e caem depois de um hack', async () => {
+  const mapManager = makeFakeMapManager({ col: 0, row: 1 });
+  const controller = makeFakeController();
+  const energyMeter = new EnergyMeter({ regenPerSecond: 0 });
+  const runtime = new HackRuntime({ mapManager, controller, playerStats: createPlayerStats(1), energyMeter, rng: () => 0 });
+
+  assert.equal(runtime.energyValue, energyMeter.max);
+  assert.equal(runtime.energyMax, energyMeter.max);
+
+  await runtime.triggerHack();
+
+  // (0,1) e adjacente ao gridcorp_tower, tier raro
+  assert.equal(runtime.energyValue, energyMeter.max - ENERGY_COST_PER_TIER.raro);
+});
+
+test('sem energyMeter, energyValue/energyMax sao null', () => {
+  const mapManager = makeFakeMapManager({ col: 0, row: 1 });
+  const controller = makeFakeController();
+  const runtime = new HackRuntime({ mapManager, controller, playerStats: createPlayerStats(1) });
+
+  assert.equal(runtime.energyValue, null);
+  assert.equal(runtime.energyMax, null);
+});
+
+test('sem energia suficiente, o hack roda mas nao tenta o breach (energyBlocked)', async () => {
+  const mapManager = makeFakeMapManager({ col: 0, row: 1 });
+  const controller = makeFakeController();
+  const energyMeter = new EnergyMeter({ regenPerSecond: 0 });
+  energyMeter.spend(energyMeter.max - 5); // so 5, menos que o custo do gridcorp_tower (raro, 30)
+  const runtime = new HackRuntime({ mapManager, controller, playerStats: createPlayerStats(1), energyMeter, rng: () => 0 });
+
+  const result = await runtime.triggerHack();
+
+  assert.equal(result.energyBlocked, true);
+  assert.equal(result.breach, null);
+  assert.equal(runtime.isMovementBlocked, false, 'movimento libera normalmente mesmo bloqueado por energia');
 });
 
 test('nao da pra disparar um segundo hack enquanto o primeiro ainda esta rodando', async () => {

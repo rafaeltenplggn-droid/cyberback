@@ -9,11 +9,11 @@ import { HackSession } from './hackSession.js';
 import { findHackableBuildingAt } from './hackableBuildings.js';
 
 export class HackRuntime {
-  constructor({ mapManager, controller, playerStats, traceMeter, ledger, rng } = {}) {
+  constructor({ mapManager, controller, playerStats, traceMeter, energyMeter, ledger, rng } = {}) {
     this.mapManager = mapManager;
     this.controller = controller;
     this.ledger = ledger;
-    this.hackSession = new HackSession({ playerStats, traceMeter, ledger, rng });
+    this.hackSession = new HackSession({ playerStats, traceMeter, energyMeter, ledger, rng });
   }
 
   /** Stats atuais do jogador, sempre atualizados apos cada hack bem sucedido (XP/nivel). */
@@ -24,6 +24,16 @@ export class HackRuntime {
   /** Saldo atual de BYTE, direto do ledger (append-only, ver src/hackloop/byteLedger.js). */
   get byteBalance() {
     return this.ledger ? this.ledger.balance : null;
+  }
+
+  /** Energia atual do jogador, ou null se nenhum energyMeter foi passado. */
+  get energyValue() {
+    return this.hackSession.energyMeter ? this.hackSession.energyMeter.value : null;
+  }
+
+  /** Energia maxima, ou null se nenhum energyMeter foi passado. */
+  get energyMax() {
+    return this.hackSession.energyMeter ? this.hackSession.energyMeter.max : null;
   }
 
   /** Enquanto um hack estiver em andamento, o personagem nao pode andar. */

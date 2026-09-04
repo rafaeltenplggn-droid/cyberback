@@ -4,6 +4,7 @@ import { MovementController } from './character/movementController.js';
 import { CharacterRenderer } from './character/characterRenderer.js';
 import { createPlayerStats, xpRequiredForLevel } from './hackloop/playerStats.js';
 import { TraceMeter } from './hackloop/trace.js';
+import { EnergyMeter } from './hackloop/energy.js';
 import { ByteLedger } from './hackloop/byteLedger.js';
 import { HackRuntime } from './hackIntegration/hackRuntime.js';
 
@@ -26,8 +27,9 @@ const controller = new MovementController(mapManager, {
 
 const playerStats = createPlayerStats(1);
 const traceMeter = new TraceMeter();
+const energyMeter = new EnergyMeter();
 const ledger = new ByteLedger();
-const hackRuntime = new HackRuntime({ mapManager, controller, playerStats, traceMeter, ledger });
+const hackRuntime = new HackRuntime({ mapManager, controller, playerStats, traceMeter, energyMeter, ledger });
 
 const statusEl = document.getElementById('status');
 const playerStatusEl = document.getElementById('player-status');
@@ -39,7 +41,7 @@ function updateStatus() {
   const stats = hackRuntime.playerStats;
   const xpNeeded = xpRequiredForLevel(stats.level);
   playerStatusEl.textContent =
-    `nivel ${stats.level} | xp ${stats.xp}/${xpNeeded} | BYTE: ${hackRuntime.byteBalance} | ` +
+    `nivel ${stats.level} | xp ${stats.xp}/${xpNeeded} | energia: ${hackRuntime.energyValue.toFixed(0)}/${hackRuntime.energyMax} | BYTE: ${hackRuntime.byteBalance} | ` +
     `breachSpeed ${stats.breachSpeed} | stealth ${stats.stealth} | lootYield ${stats.lootYield} | traceResistance ${stats.traceResistance}`;
 }
 
@@ -52,15 +54,19 @@ function updateHackStatus() {
     return;
   }
   if (lastHackResult) {
-    const { target, recon, breach, exfiltrate, fence } = lastHackResult;
+    const { target, recon, breach, exfiltrate, fence, energyBlocked, energySpent } = lastHackResult;
+    if (energyBlocked) {
+      hackStatusEl.textContent = `ultimo hack (${target.id}, tier ${target.tier}): SEM ENERGIA (atual: ${hackRuntime.energyValue.toFixed(0)}/${hackRuntime.energyMax}) | espera recarregar | estimativa que o recon deu: ${recon.estimatedLoot.min}-${recon.estimatedLoot.max}`;
+      return;
+    }
     if (!breach.success) {
-      hackStatusEl.textContent = `ultimo hack (${target.id}, tier ${target.tier}): FALHA no breach (chance ${(breach.chance * 100).toFixed(0)}%) | trace: ${traceMeter.value.toFixed(1)} | estimativa que o recon deu: ${recon.estimatedLoot.min}-${recon.estimatedLoot.max}`;
+      hackStatusEl.textContent = `ultimo hack (${target.id}, tier ${target.tier}): FALHA no breach (chance ${(breach.chance * 100).toFixed(0)}%) | energia gasta: ${energySpent} | trace: ${traceMeter.value.toFixed(1)} | estimativa que o recon deu: ${recon.estimatedLoot.min}-${recon.estimatedLoot.max}`;
       return;
     }
     hackStatusEl.textContent =
       `ultimo hack (${target.id}, tier ${target.tier}): SUCESSO | loot bruto: ${exfiltrate.rawAmount} | loot final: ${exfiltrate.loot.amount}` +
       `${exfiltrate.overTime ? ' (estourou o tempo)' : ''} | BYTE ganho: ${fence.byteAmount} | XP ganho: ${lastHackResult.xpGained}` +
-      `${lastHackResult.leveledUp ? ' | SUBIU DE NIVEL!' : ''} | trace: ${traceMeter.value.toFixed(1)}`;
+      `${lastHackResult.leveledUp ? ' | SUBIU DE NIVEL!' : ''} | energia gasta: ${energySpent} | trace: ${traceMeter.value.toFixed(1)}`;
     return;
   }
   const nearby = hackRuntime.nearbyHackableBuilding();

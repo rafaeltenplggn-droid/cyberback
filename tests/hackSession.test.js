@@ -5,7 +5,19 @@ import { HACKABLE_BUILDINGS } from '../src/hackIntegration/hackableBuildings.js'
 import { XP_REWARD_PER_TIER } from '../src/hackIntegration/xpRewards.js';
 import { createPlayerStats, xpRequiredForLevel } from '../src/hackloop/playerStats.js';
 import { TraceMeter } from '../src/hackloop/trace.js';
+import { EnergyMeter } from '../src/hackloop/energy.js';
 import { ByteLedger } from '../src/hackloop/byteLedger.js';
+import { ENERGY_COST_PER_TIER } from '../src/hackIntegration/energyCosts.js';
+
+function makeClock(start = 0) {
+  let time = start;
+  return {
+    now: () => time,
+    advance(ms) {
+      time += ms;
+    },
+  };
+}
 
 const GRIDCORP_TARGET = HACKABLE_BUILDINGS.find((b) => b.id === 'gridcorp_tower').target;
 
@@ -128,6 +140,69 @@ test('level up tambem sobe os stats do jogador (breachSpeed etc), reaproveitando
   } while (!result.leveledUp);
 
   assert.ok(result.playerStats.breachSpeed > breachSpeedBefore);
+});
+
+test('hack bem sucedido gasta energia proporcional ao tier', async () => {
+  const playerStats = createPlayerStats(5);
+  const energyMeter = new EnergyMeter({ regenPerSecond: 0 });
+  const session = new HackSession({ playerStats, energyMeter, rng: () => 0 });
+
+  const result = await session.run(GRIDCORP_TARGET);
+
+  assert.equal(result.energyBlocked, false);
+  assert.equal(result.energySpent, ENERGY_COST_PER_TIER.raro);
+  assert.equal(energyMeter.value, energyMeter.max - ENERGY_COST_PER_TIER.raro);
+  assert.equal(result.energyValue, energyMeter.value);
+});
+
+test('hack que falha no breach tambem gasta energia (a tentativa aconteceu)', async () => {
+  const playerStats = createPlayerStats(1);
+  const energyMeter = new EnergyMeter({ regenPerSecond: 0 });
+  const session = new HackSession({ playerStats, energyMeter, rng: () => 0.999999 });
+
+  const result = await session.run(GRIDCORP_TARGET);
+
+  assert.equal(result.breach.success, false);
+  assert.equal(result.energySpent, ENERGY_COST_PER_TIER.raro);
+  assert.equal(energyMeter.value, energyMeter.max - ENERGY_COST_PER_TIER.raro);
+});
+
+test('sem energia suficiente, o hack nem tenta o breach: nao gasta xp, nem trace, nem energia', async () => {
+  const playerStats = createPlayerStats(1);
+  const traceMeter = new TraceMeter();
+  const energyMeter = new EnergyMeter({ regenPerSecond: 0 });
+  energyMeter.spend(energyMeter.max - 5); // deixa so 5, menos que o custo do raro
+
+  const session = new HackSession({ playerStats, traceMeter, energyMeter, rng: () => 0.999999 });
+  const result = await session.run(GRIDCORP_TARGET);
+
+  assert.equal(result.energyBlocked, true);
+  assert.equal(result.breach, null);
+  assert.equal(result.exfiltrate, null);
+  assert.equal(result.fence, null);
+  assert.equal(result.xpGained, 0);
+  assert.equal(result.energySpent, 0);
+  assert.equal(energyMeter.value, 5, 'nada foi descontado numa tentativa bloqueada');
+  assert.equal(traceMeter.value, 0, 'sem tentativa de breach, trace nao sobe');
+  assert.ok(result.recon, 'recon e gratis, roda mesmo bloqueado por energia');
+});
+
+test('depois de recarregar energia suficiente, o proximo hack ja funciona normalmente', async () => {
+  const clock = makeClock();
+  const playerStats = createPlayerStats(5);
+  const energyMeter = new EnergyMeter({ now: clock.now, regenPerSecond: 10 });
+  energyMeter.spend(energyMeter.max - 5); // so 5 de energia, insuficiente pro raro (30)
+
+  const session = new HackSession({ playerStats, energyMeter, rng: () => 0 });
+
+  const blockedResult = await session.run(GRIDCORP_TARGET);
+  assert.equal(blockedResult.energyBlocked, true);
+  session.reset();
+
+  clock.advance(5000); // +50 de energia
+  const okResult = await session.run(GRIDCORP_TARGET);
+  assert.equal(okResult.energyBlocked, false);
+  assert.equal(okResult.breach.success, true);
 });
 
 test('reset() so funciona depois que o hack termina', async () => {
