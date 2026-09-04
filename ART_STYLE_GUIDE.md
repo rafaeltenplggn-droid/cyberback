@@ -271,13 +271,118 @@ This character should immediately communicate:
 silent infiltration, extraction, disappearing into the network.
 ```
 
-Essa imagem (chest-up, retrato) e a identidade oficial do Shadow Hacker. Ainda
-faltam, nesse mesmo estilo/MASTER STYLE LOCK:
+Essa imagem (chest-up, retrato) e a identidade oficial do Shadow Hacker.
 
-- Sprite de corpo inteiro nas 3 direcoes de jogo (frente, costas, lado - a
-  direita e sempre a de lado espelhada, ver CYBER_SPEC.md) em vez do
-  retrato chest-up, pra virar o personagem que anda no mapa.
-- Poses de caminhada (passo 1 e passo 2) pra cada direcao.
+Corpo inteiro de frente (idle) tambem ja aprovado, gerado com esse prompt
+adicional (mesmo Master Style Lock + a identidade acima + pose):
+
+```
+Create CHARACTER 01 — SHADOW HACKER, full body reference sheet pose.
+
+Pose:
+Full body, standing straight, facing directly forward toward the camera, arms relaxed at the sides, feet shoulder-width apart. Plain dark background, no scenery, no other objects, single isolated character reference pose.
+```
+
+## CHARACTER POSE CONSISTENCY LOCK
+
+Pra gerar as outras poses (costas, lado) sem o personagem "mudar de
+pessoa", usar esse segundo bloco junto do Master Style Lock, **e anexar a
+imagem de frente ja aprovada como referencia real no Gemini** (nao so
+descrever ela de novo em texto - esse bloco assume que a imagem foi
+anexada):
+
+```
+CHARACTER POSE CONSISTENCY LOCK — CRITICAL
+
+The supplied character reference is the canonical identity reference.
+
+Do NOT redesign the character when changing poses.
+
+Preserve exactly:
+
+- same apparent age
+- same gender presentation
+- same skin tone
+- same head proportions
+- same face shape
+- same hairstyle
+- same hair color
+- same eye color
+- same clothing
+- same accessories
+- same equipment
+- same accent colors
+- same pixel density
+- same outline thickness
+- same shading complexity
+
+Only the camera-facing direction and body pose may change.
+
+The character must remain immediately recognizable as the same individual in every pose.
+
+Keep the same body proportions and sprite scale across all views.
+
+Do not add accessories that are not visible in the canonical design.
+Do not remove permanent design elements.
+Do not randomly change clothing details.
+Do not change hairstyle length or shape.
+Do not change colors between poses.
+
+When an object becomes hidden because of perspective, place it naturally on the correct side of the body rather than deleting or redesigning it.
+
+All poses must align as part of one professional game sprite sheet.
+```
+
+E fecha pedindo a pose especifica, um bloco por vez:
+
+```
+POSE REQUEST:
+
+Create the FRONT VIEW.
+
+Character standing upright.
+Neutral idle stance.
+Arms relaxed naturally.
+Head facing directly forward.
+Both feet aligned.
+No action pose.
+```
+
+```
+POSE REQUEST:
+
+Create the BACK VIEW.
+
+Exact same character.
+Exact same proportions and equipment.
+Camera directly behind the character.
+Show the rear construction of the hairstyle, jacket, hood and equipment correctly.
+Neutral idle stance.
+```
+
+```
+POSE REQUEST:
+
+Create the LEFT SIDE VIEW.
+
+Exact 90-degree left-facing profile.
+Same character scale.
+Same clothing and equipment.
+Neutral idle stance.
+```
+
+Nota: o jogo so precisa de frente, costas e **um** lado - a direcao
+"right" e sempre a de "left" espelhada em tempo de render (ver
+CYBER_SPEC.md e src/character/spriteSheet.js), nunca um asset separado.
+Gerar a "RIGHT SIDE VIEW" tambem nao atrapalha, so nao e necessaria pro
+jogo.
+
+Ainda faltam, nesse mesmo estilo:
+
+- Costas e lado do personagem 1 (prompts acima prontos, faltando gerar).
+- Poses de caminhada (passo 1 e passo 2) pra cada direcao - mesmo
+  esquema de Pose Consistency Lock, pedindo "walking pose, mid-stride"
+  em vez de "neutral idle stance".
 - Personagens 2, 3 e 4 (outras classes/NFTs escolhiveis), cada um com sua
   propria cor de destaque, silhueta e acessorio de assinatura, seguindo o
   mesmo MASTER STYLE LOCK.
