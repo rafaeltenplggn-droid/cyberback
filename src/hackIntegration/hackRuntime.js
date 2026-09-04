@@ -12,7 +12,18 @@ export class HackRuntime {
   constructor({ mapManager, controller, playerStats, traceMeter, ledger, rng } = {}) {
     this.mapManager = mapManager;
     this.controller = controller;
+    this.ledger = ledger;
     this.hackSession = new HackSession({ playerStats, traceMeter, ledger, rng });
+  }
+
+  /** Stats atuais do jogador, sempre atualizados apos cada hack bem sucedido (XP/nivel). */
+  get playerStats() {
+    return this.hackSession.playerStats;
+  }
+
+  /** Saldo atual de BYTE, direto do ledger (append-only, ver src/hackloop/byteLedger.js). */
+  get byteBalance() {
+    return this.ledger ? this.ledger.balance : null;
   }
 
   /** Enquanto um hack estiver em andamento, o personagem nao pode andar. */
