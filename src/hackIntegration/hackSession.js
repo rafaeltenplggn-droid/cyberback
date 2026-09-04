@@ -9,6 +9,7 @@ import { fence as fenceStage } from '../hackloop/fence.js';
 import { getTier } from '../hackloop/tiers.js';
 import { addXp } from '../hackloop/playerStats.js';
 import { xpRewardForTier } from './xpRewards.js';
+import { energyCostForTier } from './energyCosts.js';
 
 const STAGE_IDLE = 'idle';
 const STAGE_RECON = 'recon';
@@ -27,9 +28,10 @@ export const HACK_STAGES = {
 };
 
 export class HackSession {
-  constructor({ playerStats, traceMeter, ledger, rng } = {}) {
+  constructor({ playerStats, traceMeter, energyMeter, ledger, rng } = {}) {
     this.playerStats = playerStats;
     this.traceMeter = traceMeter;
+    this.energyMeter = energyMeter;
     this.ledger = ledger;
     this.rng = rng;
     this.status = STAGE_IDLE;
@@ -50,7 +52,31 @@ export class HackSession {
 
     this.result = null;
     this.status = STAGE_RECON;
+    // recon e so consulta, nunca gasta energia (nem nenhum outro recurso).
     const reconResult = reconStage(target);
+
+    const energyCost = this.energyMeter ? energyCostForTier(target.tier) : 0;
+    if (this.energyMeter && !this.energyMeter.spend(energyCost)) {
+      // Sem energia suficiente: o hack nem tenta o breach, ninguem rola
+      // risco (falha/trace) por uma tentativa que nunca aconteceu de
+      // verdade.
+      this.status = STAGE_DONE;
+      this.result = {
+        target,
+        recon: reconResult,
+        breach: null,
+        exfiltrate: null,
+        fence: null,
+        traceValue: this.traceMeter ? this.traceMeter.value : null,
+        xpGained: 0,
+        leveledUp: false,
+        playerStats: this.playerStats,
+        energyBlocked: true,
+        energySpent: 0,
+        energyValue: this.energyMeter.value,
+      };
+      return this.result;
+    }
 
     this.status = STAGE_BREACHING;
     const breachResult = await breachStage(target, this.playerStats, { rng: this.rng });
@@ -98,6 +124,9 @@ export class HackSession {
       xpGained,
       leveledUp: levelBefore !== null && this.playerStats.level > levelBefore,
       playerStats: this.playerStats,
+      energyBlocked: false,
+      energySpent: energyCost,
+      energyValue: this.energyMeter ? this.energyMeter.value : null,
     };
     return this.result;
   }
