@@ -1,7 +1,12 @@
 // Cola entre o mundo navegavel (MapManager + MovementController, ambos
 // consumidos so pela interface publica ja existente) e o HackSession do
 // hack-loop. Fica isolado de DOM/render pra ser testavel em Node puro.
-import { HackSession, GRIDCORP_TOWER_TARGET, GRIDCORP_TOWER_BUILDING, GRIDCORP_TOWER_MAP_ID, isAdjacentToBuilding } from './gridcorpHack.js';
+//
+// Qualquer predio listado em hackableBuildings.js e hackavel - nao ha mais
+// nada especifico do gridcorp_tower aqui, o runtime so pergunta "tem algum
+// predio hackavel adjacente a posicao atual?" e dispara o hack pra ele.
+import { HackSession } from './hackSession.js';
+import { findHackableBuildingAt } from './hackableBuildings.js';
 
 export class HackRuntime {
   constructor({ mapManager, controller, playerStats, traceMeter, ledger, rng } = {}) {
@@ -21,18 +26,25 @@ export class HackRuntime {
     this.controller.tick(deltaMs);
   }
 
-  /** So pode disparar hack parado, ao alcance do gridcorp_tower, em district_07, e sem outro hack em andamento. */
-  canTriggerHack() {
-    if (this.isMovementBlocked) return false;
-    if (this.controller.isMoving) return false;
-    if (this.mapManager.currentMap?.id !== GRIDCORP_TOWER_MAP_ID) return false;
-    return isAdjacentToBuilding(this.mapManager.playerCol, this.mapManager.playerRow, GRIDCORP_TOWER_BUILDING);
+  /** Predio hackavel adjacente a posicao atual, ou null se nao houver nenhum. */
+  nearbyHackableBuilding() {
+    if (this.isMovementBlocked) return null;
+    if (this.controller.isMoving) return null;
+    const mapId = this.mapManager.currentMap?.id;
+    if (!mapId) return null;
+    return findHackableBuildingAt(mapId, this.mapManager.playerCol, this.mapManager.playerRow);
   }
 
-  /** Dispara o hack se possivel. Retorna a Promise do resultado, ou null se fora de alcance/bloqueado. */
+  /** So pode disparar hack parado, adjacente a um predio hackavel, e sem outro hack em andamento. */
+  canTriggerHack() {
+    return this.nearbyHackableBuilding() !== null;
+  }
+
+  /** Dispara o hack contra o predio adjacente, se houver. Retorna a Promise do resultado, ou null se fora de alcance/bloqueado. */
   triggerHack() {
-    if (!this.canTriggerHack()) return null;
-    return this.hackSession.run(GRIDCORP_TOWER_TARGET).then((result) => {
+    const entry = this.nearbyHackableBuilding();
+    if (!entry) return null;
+    return this.hackSession.run(entry.target).then((result) => {
       this.hackSession.reset();
       return result;
     });

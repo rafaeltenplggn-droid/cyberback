@@ -36,37 +36,37 @@ function updateStatus() {
   statusEl.textContent = `mapa: ${mapManager.currentMap.id} | posicao: (${mapManager.playerCol}, ${mapManager.playerRow}) | direcao: ${controller.direction} | pose: ${controller.pose} | trace: ${traceMeter.value.toFixed(1)}`;
 }
 
-let hacking = false;
+let hackingBuildingId = null;
 let lastHackResult = null;
 
 function updateHackStatus() {
-  if (hacking) {
-    hackStatusEl.textContent = `hackeando gridcorp_tower... (status: ${hackRuntime.hackSession.status})`;
+  if (hackingBuildingId) {
+    hackStatusEl.textContent = `hackeando ${hackingBuildingId}... (status: ${hackRuntime.hackSession.status})`;
     return;
   }
   if (lastHackResult) {
-    const { recon, breach, exfiltrate, fence } = lastHackResult;
+    const { target, recon, breach, exfiltrate, fence } = lastHackResult;
     if (!breach.success) {
-      hackStatusEl.textContent = `ultimo hack: FALHA no breach (chance ${(breach.chance * 100).toFixed(0)}%) | trace: ${traceMeter.value.toFixed(1)} | estimativa que o recon deu: ${recon.estimatedLoot.min}-${recon.estimatedLoot.max}`;
+      hackStatusEl.textContent = `ultimo hack (${target.id}, tier ${target.tier}): FALHA no breach (chance ${(breach.chance * 100).toFixed(0)}%) | trace: ${traceMeter.value.toFixed(1)} | estimativa que o recon deu: ${recon.estimatedLoot.min}-${recon.estimatedLoot.max}`;
       return;
     }
     hackStatusEl.textContent =
-      `ultimo hack: SUCESSO | loot bruto: ${exfiltrate.rawAmount} | loot final: ${exfiltrate.loot.amount}` +
+      `ultimo hack (${target.id}, tier ${target.tier}): SUCESSO | loot bruto: ${exfiltrate.rawAmount} | loot final: ${exfiltrate.loot.amount}` +
       `${exfiltrate.overTime ? ' (estourou o tempo)' : ''} | BYTE ganho: ${fence.byteAmount} | trace: ${traceMeter.value.toFixed(1)}`;
     return;
   }
-  hackStatusEl.textContent = hackRuntime.canTriggerHack()
-    ? '[ESPACO/ENTER] hackear gridcorp_tower'
-    : 'gridcorp_tower fora de alcance';
+  const nearby = hackRuntime.nearbyHackableBuilding();
+  hackStatusEl.textContent = nearby ? `[ESPACO/ENTER] hackear ${nearby.id}` : 'nenhum predio hackavel por perto';
 }
 
 async function handleAction() {
-  if (!hackRuntime.canTriggerHack()) return;
-  hacking = true;
+  const nearby = hackRuntime.nearbyHackableBuilding();
+  if (!nearby) return;
+  hackingBuildingId = nearby.id;
   updateHackStatus();
   const result = await hackRuntime.triggerHack();
   lastHackResult = result;
-  hacking = false;
+  hackingBuildingId = null;
   updateHackStatus();
 }
 
