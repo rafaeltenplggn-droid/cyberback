@@ -16,7 +16,30 @@ const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
 const origin = { originX: canvas.width / 2, originY: 80 };
 const mapRenderer = new Renderer(ctx, origin);
-const characterRenderer = new CharacterRenderer(ctx, origin);
+
+// Sprite real do personagem 1 (Shadow Hacker, ver ART_STYLE_GUIDE.md).
+// Carrega de forma assincrona - ate a imagem terminar de carregar,
+// CharacterRenderer cai de volta no placeholder sozinho (ver isImageReady
+// em characterRenderer.js). So ha pose de frente distinta pra passo 1/2;
+// costas e lado ainda usam a mesma imagem parada nas 3 poses.
+function loadCharacterImage(fileName) {
+  const img = new Image();
+  img.src = `../assets/character1/${fileName}`;
+  return img;
+}
+
+const character1FrontStep1 = loadCharacterImage('front_walk1.png');
+const character1FrontStep2 = loadCharacterImage('front_walk2.png');
+const character1Side = loadCharacterImage('side_idle.png');
+const character1Back = loadCharacterImage('back_idle.png');
+
+const character1Assets = {
+  down: { idle: character1FrontStep1, step1: character1FrontStep1, step2: character1FrontStep2 },
+  up: { idle: character1Back, step1: character1Back, step2: character1Back },
+  left: { idle: character1Side, step1: character1Side, step2: character1Side },
+};
+
+const characterRenderer = new CharacterRenderer(ctx, origin, { assets: character1Assets });
 
 async function loadMapJson(mapId) {
   const response = await fetch(`../maps/${mapId}.json`);
