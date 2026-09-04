@@ -170,6 +170,49 @@ test('sem energia suficiente, o hack roda mas nao tenta o breach (energyBlocked)
   assert.equal(runtime.isMovementBlocked, false, 'movimento libera normalmente mesmo bloqueado por energia');
 });
 
+test('buyEnergyRefill compra a recarga usando o ledger e o energyMeter do runtime', async () => {
+  const mapManager = makeFakeMapManager({ col: 0, row: 1 });
+  const controller = makeFakeController();
+  const energyMeter = new EnergyMeter({ regenPerSecond: 0 });
+  const ledger = new ByteLedger();
+  ledger.record({ type: 'gain', amount: 100 });
+  const runtime = new HackRuntime({ mapManager, controller, playerStats: createPlayerStats(1), energyMeter, ledger });
+
+  energyMeter.spend(50); // 50/100
+  const result = runtime.buyEnergyRefill();
+
+  assert.equal(result.success, true);
+  assert.equal(runtime.energyValue, energyMeter.max);
+  assert.ok(runtime.byteBalance < 100, 'BYTE foi descontado');
+});
+
+test('buyEnergyRefill e recusado enquanto um hack esta em andamento', async () => {
+  const mapManager = makeFakeMapManager({ col: 0, row: 1 });
+  const controller = makeFakeController();
+  const energyMeter = new EnergyMeter({ regenPerSecond: 0 });
+  const ledger = new ByteLedger();
+  ledger.record({ type: 'gain', amount: 100 });
+  const runtime = new HackRuntime({
+    mapManager,
+    controller,
+    playerStats: createPlayerStats(1),
+    energyMeter,
+    ledger,
+    rng: () => 0.999999,
+  });
+
+  // energia cheia o suficiente pra o hack realmente tentar o breach (e so
+  // entao ficar "em andamento" ate a Promise resolver)
+  const resultPromise = runtime.triggerHack();
+  assert.equal(runtime.isMovementBlocked, true);
+
+  const shopResult = runtime.buyEnergyRefill();
+  assert.equal(shopResult.success, false);
+  assert.equal(shopResult.reason, 'hack_em_andamento');
+
+  await resultPromise;
+});
+
 test('nao da pra disparar um segundo hack enquanto o primeiro ainda esta rodando', async () => {
   const mapManager = makeFakeMapManager({ col: 0, row: 1 });
   const controller = makeFakeController();

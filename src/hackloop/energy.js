@@ -38,6 +38,14 @@ export class EnergyMeter {
     return true;
   }
 
+  /** Adiciona energia diretamente (ex: item/compra da loja), sem passar do maximo. */
+  refill(amount) {
+    this._settle();
+    if (amount <= 0) return this._value;
+    this._value = Math.min(this._max, this._value + amount);
+    return this._value;
+  }
+
   _settle() {
     const now = this._now();
     const elapsedMs = now - this._lastUpdateAt;

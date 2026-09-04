@@ -7,6 +7,7 @@
 // predio hackavel adjacente a posicao atual?" e dispara o hack pra ele.
 import { HackSession } from './hackSession.js';
 import { findHackableBuildingAt } from './hackableBuildings.js';
+import { buyEnergyRefill as buyEnergyRefillAction } from './energyShop.js';
 
 export class HackRuntime {
   constructor({ mapManager, controller, playerStats, traceMeter, energyMeter, ledger, rng } = {}) {
@@ -69,5 +70,17 @@ export class HackRuntime {
       this.hackSession.reset();
       return result;
     });
+  }
+
+  /** Compra uma recarga de energia com BYTE. Recusa durante um hack em andamento, ou sem energyMeter/ledger. */
+  buyEnergyRefill() {
+    if (this.isMovementBlocked) {
+      return { success: false, reason: 'hack_em_andamento', byteSpent: 0 };
+    }
+    const energyMeter = this.hackSession.energyMeter;
+    if (!energyMeter || !this.ledger) {
+      return { success: false, reason: 'loja_indisponivel', byteSpent: 0 };
+    }
+    return buyEnergyRefillAction({ energyMeter, ledger: this.ledger });
   }
 }
