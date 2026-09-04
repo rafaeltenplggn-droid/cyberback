@@ -2,7 +2,10 @@ import { MapManager } from './maps/mapManager.js';
 import { Renderer } from './render/renderer.js';
 import { MovementController } from './character/movementController.js';
 import { CharacterRenderer } from './character/characterRenderer.js';
-import { bindKeyboardInput } from './character/keyboardInput.js';
+import { createPlayerStats } from './hackloop/playerStats.js';
+import { TraceMeter } from './hackloop/trace.js';
+import { ByteLedger } from './hackloop/byteLedger.js';
+import { HackRuntime } from './hackIntegration/hackRuntime.js';
 
 const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
@@ -17,17 +20,72 @@ async function loadMapJson(mapId) {
 }
 
 const mapManager = new MapManager({ loadMapJson });
-
-const statusEl = document.getElementById('status');
-function updateStatus() {
-  statusEl.textContent = `mapa: ${mapManager.currentMap.id} | posicao: (${mapManager.playerCol}, ${mapManager.playerRow}) | direcao: ${controller.direction} | pose: ${controller.pose}`;
-}
-
 const controller = new MovementController(mapManager, {
   onMapChanged: () => updateStatus(),
 });
 
-bindKeyboardInput(window, controller);
+const playerStats = createPlayerStats(1);
+const traceMeter = new TraceMeter();
+const ledger = new ByteLedger();
+const hackRuntime = new HackRuntime({ mapManager, controller, playerStats, traceMeter, ledger });
+
+const statusEl = document.getElementById('status');
+const hackStatusEl = document.getElementById('hack-status');
+
+function updateStatus() {
+  statusEl.textContent = `mapa: ${mapManager.currentMap.id} | posicao: (${mapManager.playerCol}, ${mapManager.playerRow}) | direcao: ${controller.direction} | pose: ${controller.pose} | trace: ${traceMeter.value.toFixed(1)}`;
+}
+
+let hacking = false;
+let lastHackResult = null;
+
+function updateHackStatus() {
+  if (hacking) {
+    hackStatusEl.textContent = `hackeando gridcorp_tower... (status: ${hackRuntime.hackSession.status})`;
+    return;
+  }
+  if (lastHackResult) {
+    const { recon, breach, exfiltrate, fence } = lastHackResult;
+    if (!breach.success) {
+      hackStatusEl.textContent = `ultimo hack: FALHA no breach (chance ${(breach.chance * 100).toFixed(0)}%) | trace: ${traceMeter.value.toFixed(1)} | estimativa que o recon deu: ${recon.estimatedLoot.min}-${recon.estimatedLoot.max}`;
+      return;
+    }
+    hackStatusEl.textContent =
+      `ultimo hack: SUCESSO | loot bruto: ${exfiltrate.rawAmount} | loot final: ${exfiltrate.loot.amount}` +
+      `${exfiltrate.overTime ? ' (estourou o tempo)' : ''} | BYTE ganho: ${fence.byteAmount} | trace: ${traceMeter.value.toFixed(1)}`;
+    return;
+  }
+  hackStatusEl.textContent = hackRuntime.canTriggerHack()
+    ? '[ESPACO/ENTER] hackear gridcorp_tower'
+    : 'gridcorp_tower fora de alcance';
+}
+
+async function handleAction() {
+  if (!hackRuntime.canTriggerHack()) return;
+  hacking = true;
+  updateHackStatus();
+  const result = await hackRuntime.triggerHack();
+  lastHackResult = result;
+  hacking = false;
+  updateHackStatus();
+}
+
+const MOVE_KEYS = { ArrowUp: 'up', ArrowDown: 'down', ArrowLeft: 'left', ArrowRight: 'right' };
+
+window.addEventListener('keydown', (event) => {
+  const direction = MOVE_KEYS[event.key];
+  if (direction) {
+    event.preventDefault();
+    if (!hackRuntime.isMovementBlocked) {
+      controller.enqueueInput(direction);
+    }
+    return;
+  }
+  if (event.key === ' ' || event.key === 'Enter') {
+    event.preventDefault();
+    handleAction();
+  }
+});
 
 function render() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -35,13 +93,14 @@ function render() {
   const { col, row } = controller.visualPosition;
   characterRenderer.draw({ col, row, direction: controller.direction, pose: controller.pose });
   updateStatus();
+  updateHackStatus();
 }
 
 let lastTime = performance.now();
 function loop(now) {
   const deltaMs = now - lastTime;
   lastTime = now;
-  controller.tick(deltaMs);
+  hackRuntime.tick(deltaMs);
   render();
   requestAnimationFrame(loop);
 }
