@@ -10,13 +10,17 @@ import { findHackableBuildingAt } from './hackableBuildings.js';
 import { buyEnergyRefill as buyEnergyRefillAction } from './energyShop.js';
 import { nearbyHomeInteractable as nearbyHomeInteractableAt } from './homeLocations.js';
 import { SleepTracker } from './sleepAction.js';
+import { nearbyBarInteractable as nearbyBarInteractableAt } from './barLocations.js';
+import { DrinkBuffTracker } from './drinkBuff.js';
+import { buyDrink as buyDrinkAction } from './drinkShop.js';
 
 export class HackRuntime {
   constructor({ mapManager, controller, playerStats, traceMeter, energyMeter, ledger, rng, now } = {}) {
     this.mapManager = mapManager;
     this.controller = controller;
     this.ledger = ledger;
-    this.hackSession = new HackSession({ playerStats, traceMeter, energyMeter, ledger, rng });
+    const drinkBuffTracker = new DrinkBuffTracker(now ? { now } : undefined);
+    this.hackSession = new HackSession({ playerStats, traceMeter, energyMeter, drinkBuffTracker, ledger, rng });
     this.sleepTracker = new SleepTracker(now ? { now } : undefined);
   }
 
@@ -104,5 +108,27 @@ export class HackRuntime {
       return { success: false, reason: 'sem_energyMeter' };
     }
     return this.sleepTracker.sleep(energyMeter);
+  }
+
+  /** 'counter' ou null - se o personagem esta parado do lado do balcao do bar (nullpoint_interior). */
+  nearbyBarInteractable() {
+    if (this.isMovementBlocked) return null;
+    if (this.controller.isMoving) return null;
+    return nearbyBarInteractableAt(this.mapManager);
+  }
+
+  get drinkBuffTracker() {
+    return this.hackSession.drinkBuffTracker;
+  }
+
+  /** Compra um drink no balcao: da um bonus temporario de breachSpeed. So funciona parado ao lado do balcao. */
+  buyDrink() {
+    if (this.nearbyBarInteractable() !== 'counter') {
+      return { success: false, reason: 'fora_do_balcao', byteSpent: 0 };
+    }
+    if (!this.ledger) {
+      return { success: false, reason: 'loja_indisponivel', byteSpent: 0 };
+    }
+    return buyDrinkAction({ buffTracker: this.drinkBuffTracker, ledger: this.ledger });
   }
 }

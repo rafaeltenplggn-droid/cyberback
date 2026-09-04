@@ -6,6 +6,7 @@ import { ByteLedger } from '../src/hackloop/byteLedger.js';
 import { EnergyMeter } from '../src/hackloop/energy.js';
 import { ENERGY_COST_PER_TIER } from '../src/hackIntegration/energyCosts.js';
 import { SLEEP_COOLDOWN_MS } from '../src/hackIntegration/sleepAction.js';
+import { DRINK_COST_BYTE } from '../src/hackIntegration/drinkShop.js';
 
 function makeFakeMapManager({ mapId = 'district_07', col = 0, row = 1 } = {}) {
   return { currentMap: { id: mapId }, playerCol: col, playerRow: row };
@@ -249,6 +250,47 @@ test('sleep e recusado fora da cama', () => {
   const result = runtime.sleep();
   assert.equal(result.success, false);
   assert.equal(result.reason, 'fora_da_cama');
+});
+
+test('buyDrink compra o drink e ativa o buff quando parado perto do balcao do bar', () => {
+  const mapManager = makeFakeMapManager({ mapId: 'nullpoint_interior', col: 2, row: 3 }); // oeste do balcao (origem 3,3)
+  const controller = makeFakeController();
+  const ledger = new ByteLedger();
+  ledger.record({ type: 'gain', amount: 100 });
+  const runtime = new HackRuntime({ mapManager, controller, playerStats: createPlayerStats(1), ledger });
+
+  assert.equal(runtime.nearbyBarInteractable(), 'counter');
+  assert.equal(runtime.drinkBuffTracker.isActive(), false);
+
+  const result = runtime.buyDrink();
+
+  assert.equal(result.success, true);
+  assert.equal(result.byteSpent, DRINK_COST_BYTE);
+  assert.equal(runtime.drinkBuffTracker.isActive(), true);
+  assert.equal(runtime.byteBalance, 100 - DRINK_COST_BYTE);
+});
+
+test('buyDrink e recusado fora do balcao (outro mapa, ou longe dele dentro do bar)', () => {
+  const ledger = new ByteLedger();
+  ledger.record({ type: 'gain', amount: 100 });
+
+  const inDistrict = new HackRuntime({
+    mapManager: makeFakeMapManager({ mapId: 'district_07', col: 9, row: 4 }),
+    controller: makeFakeController(),
+    playerStats: createPlayerStats(1),
+    ledger,
+  });
+  assert.equal(inDistrict.buyDrink().reason, 'fora_do_balcao');
+
+  const farFromCounter = new HackRuntime({
+    mapManager: makeFakeMapManager({ mapId: 'nullpoint_interior', col: 8, row: 8 }),
+    controller: makeFakeController(),
+    playerStats: createPlayerStats(1),
+    ledger,
+  });
+  assert.equal(farFromCounter.buyDrink().reason, 'fora_do_balcao');
+
+  assert.equal(ledger.balance, 100, 'nenhuma tentativa recusada cobrou nada');
 });
 
 test('nao da pra disparar um segundo hack enquanto o primeiro ainda esta rodando', async () => {

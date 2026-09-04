@@ -28,10 +28,11 @@ export const HACK_STAGES = {
 };
 
 export class HackSession {
-  constructor({ playerStats, traceMeter, energyMeter, ledger, rng } = {}) {
+  constructor({ playerStats, traceMeter, energyMeter, drinkBuffTracker, ledger, rng } = {}) {
     this.playerStats = playerStats;
     this.traceMeter = traceMeter;
     this.energyMeter = energyMeter;
+    this.drinkBuffTracker = drinkBuffTracker;
     this.ledger = ledger;
     this.rng = rng;
     this.status = STAGE_IDLE;
@@ -74,12 +75,17 @@ export class HackSession {
         energyBlocked: true,
         energySpent: 0,
         energyValue: this.energyMeter.value,
+        drinkBuffActive: Boolean(this.drinkBuffTracker?.isActive()),
       };
       return this.result;
     }
 
     this.status = STAGE_BREACHING;
-    const breachResult = await breachStage(target, this.playerStats, { rng: this.rng });
+    // O drink so afeta a CHANCE de sucesso do breach (visao temporaria dos
+    // stats, nunca muda this.playerStats de verdade); exfiltrate/fence
+    // continuam usando os stats permanentes, sem bonus.
+    const statsForBreach = this.drinkBuffTracker ? this.drinkBuffTracker.applyTo(this.playerStats) : this.playerStats;
+    const breachResult = await breachStage(target, statsForBreach, { rng: this.rng });
 
     let exfiltrateResult = null;
     let fenceResult = null;
@@ -127,6 +133,7 @@ export class HackSession {
       energyBlocked: false,
       energySpent: energyCost,
       energyValue: this.energyMeter ? this.energyMeter.value : null,
+      drinkBuffActive: Boolean(this.drinkBuffTracker?.isActive()),
     };
     return this.result;
   }
