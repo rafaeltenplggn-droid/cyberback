@@ -41,7 +41,8 @@ const hackStatusEl = document.getElementById('hack-status');
 const shopStatusEl = document.getElementById('shop-status');
 
 function updateStatus() {
-  statusEl.textContent = `mapa: ${mapManager.currentMap.id} | posicao: (${mapManager.playerCol}, ${mapManager.playerRow}) | direcao: ${controller.direction} | pose: ${controller.pose} | trace: ${traceMeter.value.toFixed(1)}`;
+  const sittingText = hackRuntime.isSitting ? ' | sentado no banco' : '';
+  statusEl.textContent = `mapa: ${mapManager.currentMap.id} | posicao: (${mapManager.playerCol}, ${mapManager.playerRow}) | direcao: ${controller.direction} | pose: ${controller.pose} | trace: ${traceMeter.value.toFixed(1)}${sittingText}`;
 
   const stats = hackRuntime.playerStats;
   const xpNeeded = xpRequiredForLevel(stats.level);
@@ -103,6 +104,11 @@ function updateShopStatus() {
   if (nearbyBar !== lastNearbyBar) {
     lastDrinkResult = null;
     lastNearbyBar = nearbyBar;
+  }
+
+  if (nearbyBar === 'stool') {
+    shopStatusEl.textContent = hackRuntime.isSitting ? '[C] levantar do banco' : '[C] sentar no banco (so cosmetico)';
+    return;
   }
 
   if (nearbyBar === 'counter') {
@@ -169,6 +175,12 @@ function handleBuyDrink() {
   updateShopStatus();
 }
 
+function handleToggleSit() {
+  hackRuntime.toggleSit();
+  updateStatus();
+  updateShopStatus();
+}
+
 async function handleAction() {
   const nearby = hackRuntime.nearbyHackableBuilding();
   if (!nearby) return;
@@ -209,6 +221,11 @@ window.addEventListener('keydown', (event) => {
   if (event.key === 'd' || event.key === 'D') {
     event.preventDefault();
     handleBuyDrink();
+    return;
+  }
+  if (event.key === 'c' || event.key === 'C') {
+    event.preventDefault();
+    handleToggleSit();
   }
 });
 

@@ -293,6 +293,72 @@ test('buyDrink e recusado fora do balcao (outro mapa, ou longe dele dentro do ba
   assert.equal(ledger.balance, 100, 'nenhuma tentativa recusada cobrou nada');
 });
 
+test('parado no laptop dentro do nullpoint_interior, nearbyHackableBuilding aponta pro nullpoint_bar', async () => {
+  const mapManager = makeFakeMapManager({ mapId: 'nullpoint_interior', col: 5, row: 3 }); // oeste do laptop (origem 6,3)
+  const controller = makeFakeController();
+  const runtime = new HackRuntime({ mapManager, controller, playerStats: createPlayerStats(1), rng: () => 0 });
+
+  const entry = runtime.nearbyHackableBuilding();
+  assert.equal(entry?.id, 'nullpoint_bar');
+  assert.equal(runtime.canTriggerHack(), true);
+
+  const result = await runtime.triggerHack();
+  assert.equal(result.target.id, 'nullpoint_bar_test');
+  assert.equal(result.target.tier, 'incomum');
+});
+
+test('longe do laptop, dentro do nullpoint_interior, nao disparava hack nenhum', () => {
+  const mapManager = makeFakeMapManager({ mapId: 'nullpoint_interior', col: 1, row: 8 });
+  const controller = makeFakeController();
+  const runtime = new HackRuntime({ mapManager, controller, playerStats: createPlayerStats(1) });
+
+  assert.equal(runtime.nearbyHackableBuilding(), null);
+  assert.equal(runtime.canTriggerHack(), false);
+});
+
+test('toggleSit senta parado perto do banco, levanta de qualquer lugar, e levanta sozinho ao se afastar', () => {
+  const mapManager = makeFakeMapManager({ mapId: 'nullpoint_interior', col: 2, row: 6 }); // oeste do banco (origem 3,6)
+  const controller = makeFakeController();
+  const runtime = new HackRuntime({ mapManager, controller, playerStats: createPlayerStats(1) });
+
+  assert.equal(runtime.isSitting, false);
+
+  const sitResult = runtime.toggleSit();
+  assert.equal(sitResult.success, true);
+  assert.equal(sitResult.sitting, true);
+  assert.equal(runtime.isSitting, true);
+
+  const standResult = runtime.toggleSit();
+  assert.equal(standResult.sitting, false);
+  assert.equal(runtime.isSitting, false);
+});
+
+test('toggleSit e recusado longe do banco', () => {
+  const mapManager = makeFakeMapManager({ mapId: 'nullpoint_interior', col: 1, row: 8 });
+  const controller = makeFakeController();
+  const runtime = new HackRuntime({ mapManager, controller, playerStats: createPlayerStats(1) });
+
+  const result = runtime.toggleSit();
+  assert.equal(result.success, false);
+  assert.equal(result.reason, 'fora_do_banco');
+  assert.equal(runtime.isSitting, false);
+});
+
+test('sentado, o personagem levanta sozinho quando o jogo detecta que ele se afastou do banco', () => {
+  const mapManager = makeFakeMapManager({ mapId: 'nullpoint_interior', col: 2, row: 6 });
+  const controller = makeFakeController();
+  const runtime = new HackRuntime({ mapManager, controller, playerStats: createPlayerStats(1) });
+
+  runtime.toggleSit();
+  assert.equal(runtime.isSitting, true);
+
+  mapManager.playerCol = 1; // simula ter andado embora do banco
+  mapManager.playerRow = 8;
+  runtime.tick(16);
+
+  assert.equal(runtime.isSitting, false, 'tick() detecta que saiu de perto do banco e levanta sozinho');
+});
+
 test('nao da pra disparar um segundo hack enquanto o primeiro ainda esta rodando', async () => {
   const mapManager = makeFakeMapManager({ col: 0, row: 1 });
   const controller = makeFakeController();

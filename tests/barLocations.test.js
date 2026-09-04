@@ -1,6 +1,12 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { nearbyBarInteractable, BAR_MAP_ID, BAR_COUNTER_LOCATION } from '../src/hackIntegration/barLocations.js';
+import {
+  nearbyBarInteractable,
+  BAR_MAP_ID,
+  BAR_COUNTER_LOCATION,
+  BAR_STOOL_LOCATION,
+  BAR_LAPTOP_LOCATION,
+} from '../src/hackIntegration/barLocations.js';
 
 function makeFakeMapManager({ mapId = BAR_MAP_ID, col, row }) {
   return { currentMap: { id: mapId }, playerCol: col, playerRow: row };
@@ -16,7 +22,17 @@ test('adjacente ao balcao dentro do nullpoint_interior retorna "counter"', () =>
   assert.equal(nearbyBarInteractable(mapManager), 'counter');
 });
 
-test('longe do balcao, dentro do bar, retorna null', () => {
+test('adjacente ao banco dentro do nullpoint_interior retorna "stool"', () => {
+  const mapManager = makeFakeMapManager({ col: BAR_STOOL_LOCATION.originX - 1, row: BAR_STOOL_LOCATION.originY });
+  assert.equal(nearbyBarInteractable(mapManager), 'stool');
+});
+
+test('adjacente ao laptop dentro do nullpoint_interior retorna "laptop"', () => {
+  const mapManager = makeFakeMapManager({ col: BAR_LAPTOP_LOCATION.originX - 1, row: BAR_LAPTOP_LOCATION.originY });
+  assert.equal(nearbyBarInteractable(mapManager), 'laptop');
+});
+
+test('longe de tudo, dentro do bar, retorna null', () => {
   const mapManager = makeFakeMapManager({ col: 1, row: 8 });
   assert.equal(nearbyBarInteractable(mapManager), null);
 });
