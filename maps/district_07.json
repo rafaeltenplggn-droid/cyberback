@@ -1,0 +1,47 @@
+{
+  "id": "district_07",
+  "tileset": "district_07",
+  "width": 16,
+  "height": 12,
+  "tiles": [
+    [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+    [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+    [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+    [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+    [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+    [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+    [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+    [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+    [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+    [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+    [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+    [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+  ],
+  "collision": [
+    [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+    [0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0],
+    [0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0],
+    [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+    [0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0],
+    [0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0],
+    [0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0],
+    [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+    [0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0],
+    [0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0],
+    [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+    [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+  ],
+  "doors": [
+    { "x": 1, "y": 3, "target_map": "gridcorp_interior", "spawn_x": 5, "spawn_y": 7 },
+    { "x": 10, "y": 6, "target_map": "nullpoint_interior", "spawn_x": 5, "spawn_y": 7 },
+    { "x": 1, "y": 10, "target_map": "ghost_row_interior", "spawn_x": 5, "spawn_y": 7 }
+  ],
+  "props": [
+    { "id": "gridcorp_tower", "asset": "gridcorp_tower.png", "origin_x": 1, "origin_y": 1, "footprint_w": 2, "footprint_h": 2, "collision_footprint": true },
+    { "id": "nullpoint_bar", "asset": "shop_mid.png", "origin_x": 10, "origin_y": 4, "footprint_w": 2, "footprint_h": 2, "collision_footprint": true },
+    { "id": "ghost_row_market", "asset": "shop_mid.png", "origin_x": 1, "origin_y": 8, "footprint_w": 2, "footprint_h": 2, "collision_footprint": true },
+    { "id": "streetlamp_cyan", "asset": "streetlamp_cyan.png", "origin_x": 0, "origin_y": 5, "footprint_w": 1, "footprint_h": 1, "collision_footprint": false },
+    { "id": "planter_green", "asset": "planter_green.png", "origin_x": 8, "origin_y": 8, "footprint_w": 1, "footprint_h": 1, "collision_footprint": false },
+    { "id": "crate_stack_magenta", "asset": "crate_stack_magenta.png", "origin_x": 13, "origin_y": 6, "footprint_w": 1, "footprint_h": 1, "collision_footprint": true }
+  ]
+}

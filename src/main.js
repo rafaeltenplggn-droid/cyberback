@@ -24,4 +24,9 @@ function render() {
 
 bindDebugAvatarControls(window, mapManager, () => render());
 
-mapManager.loadMap('test_map_a', 1, 2).then(render);
+const params = new URLSearchParams(window.location.search);
+const startMap = params.get('map') || 'test_map_a';
+const startCol = Number(params.get('x') ?? 1);
+const startRow = Number(params.get('y') ?? 2);
+
+mapManager.loadMap(startMap, startCol, startRow).then(render);

@@ -37,3 +37,34 @@ streetlamp_cyan, footprint 1x1, sem colisao. planter_green, footprint 1x1, sem c
 
 ## Divisao de responsabilidade
 O codigo de mapas, salas e props e desta branch, feat/maps-rooms. O codigo de personagem, camera e input e de outra branch, feat/character-controller, e nao deve ser tocado aqui. Este arquivo so muda se as duas partes combinarem antes.
+
+## Nucleo compartilhado
+src/core/isometric.js e src/render/renderer.js sao utilitarios compartilhados. A branch feat/character-controller vai importar e reaproveitar esses dois arquivos, nunca reimplementar a logica de projecao isometrica ou o loop de render por conta propria.
+
+## Mapa district_07
+Grid de 16 colunas por 12 linhas (x de 0 a 15, y de 0 a 11). Layout abaixo, onde ponto e chao (tile_plain), cerquilha e footprint de predio bloqueado, D e porta, L e streetlamp_cyan sem colisao, P e planter_green sem colisao, C e crate_stack_magenta com colisao:
+
+```
+. . . . . . . . . . . . . . . .
+. # # . . . . . . . . . . . . .
+. # # . . . . . . . . . . . . .
+. D . . . . . . . . . . . . . .
+. . . . . . . . . . # # . . . .
+L . . . . . . . . . # # . . . .
+. . . . . . . . . . D . . C . .
+. . . . . . . . . . . . . . . .
+. # # . . . . . P . . . . . . .
+. # # . . . . . . . . . . . . .
+. D . . . . . . . . . . . . . .
+. . . . . . . . . . . . . . . .
+```
+
+Props com footprint 2x2 e collision_footprint true, ancorados no canto superior esquerdo de cada cerquilha:
+- gridcorp_tower, origem x1 y1
+- nullpoint_bar (asset shop_mid), origem x10 y4
+- ghost_row_market (asset shop_mid), origem x1 y8
+
+Portas do district_07:
+- x1 y3, target_map gridcorp_interior, spawn_x 5, spawn_y 7
+- x10 y6, target_map nullpoint_interior, spawn_x 5, spawn_y 7
+- x1 y10, target_map ghost_row_interior, spawn_x 5, spawn_y 7
