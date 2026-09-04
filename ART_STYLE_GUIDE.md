@@ -7,6 +7,18 @@ Enquanto os arquivos de imagem reais nao chegam (upload direto no repo,
 formato png), o jogo continua usando os retangulos placeholder de
 src/render/renderer.js e src/character/characterRenderer.js.
 
+**IMPORTANTE - direcao atual (ver secao "SPRITE SIMPLES" abaixo):** as
+primeiras rodadas (Master Style Lock + Pose Consistency Lock, mais abaixo)
+geraram uma ilustracao detalhada de corpo inteiro em alta resolucao - boa
+como retrato/arte promocional, mas grande e detalhada demais pra virar o
+sprite que anda no mapa (perde legibilidade reduzida ao tamanho de jogo).
+A versao que realmente vai ser usada no personagem que anda pelo mapa e o
+"SIMPLE 2D STYLE LOCK", que gera um sprite pequeno e simples direto,
+mesma identidade (Shadow Hacker: capuz escuro, mascara, cabelo azul-escuro
+desgrenhado, olhos azuis, roupa preta/azul-marinho/roxo com detalhes ciano).
+O Master Style Lock original continua valendo pra arte de retrato (tela de
+selecao de personagem), se decidirmos ter as duas versoes.
+
 ## MASTER STYLE LOCK
 
 Repete isso (verbatim) em toda geracao de personagem novo, pra manter a
@@ -387,9 +399,111 @@ Ainda faltam, nesse mesmo estilo:
   propria cor de destaque, silhueta e acessorio de assinatura, seguindo o
   mesmo MASTER STYLE LOCK.
 
+## SPRITE SIMPLES (versao oficial pro personagem do mapa)
+
+Prompt que gera direto um sprite pequeno e simples (nao uma ilustracao
+grande), aprovado como o visual definitivo do personagem que anda no
+mapa. Cola isso sozinho, sem precisar do Master Style Lock grande:
+
+```
+Do NOT create a detailed pixel-art full-body illustration.
+Create a SMALL, SIMPLE, GAME-READY 2D RPG SPRITE in the exact style of the "SPRITES" section from the provided NEON PROTOCOL image.
+MASTER SIMPLE 2D STYLE LOCK — DO NOT IGNORE
+
+Use the provided NEON PROTOCOL character select image as the PRIMARY STYLE REFERENCE.
+
+The goal is NOT detailed full-body pixel illustration.
+The goal is a SIMPLE 2D GAME SPRITE in the exact same style as the sprites shown in the NEON PROTOCOL sheet.
+
+Create a clean, readable, simplified 2D pixel-art character sprite for a cyberpunk RPG.
+
+Style requirements:
+- simple 2D sprite style
+- same visual style as the sprites in the NEON PROTOCOL sheet
+- same pixel density
+- same sprite complexity
+- same body proportions
+- same outline thickness
+- same shading style
+- same color depth
+- same retro pixel-art quality
+- same readability at small size
+
+Very important:
+This must look like a PLAYABLE GAME SPRITE, not like a detailed standalone character illustration.
+
+The character must feel like one of the small "SPRITES" shown in the character select screen.
+
+Use:
+- compact RPG sprite proportions
+- slightly oversized head
+- simple readable body
+- limited animation-friendly detail
+- visible square pixels
+- strong outline
+- simple block shading
+- controlled highlights
+- minimal rendering noise
+
+Do NOT create:
+- highly detailed full-body illustration
+- semi-realistic proportions
+- painterly pixel art
+- large empty background
+- dramatic pose
+- soft gradients
+- anti-aliasing
+- 3D render
+- polished concept-art look
+
+Character:
+Shadow Hacker
+
+Identity:
+A young slim cyberpunk hacker with messy dark navy-black hair, blue eyes, a black tactical face mask, and a dark hooded stealth-tech outfit.
+
+Visual traits:
+- messy dark blue-black hair
+- blue eyes
+- black face mask
+- dark hood
+- black / deep navy / muted purple clothing
+- subtle cyan tech accents
+
+Pose:
+Neutral idle pose.
+Standing upright.
+Simple front-facing sprite pose.
+Arms resting naturally.
+No dramatic action pose.
+
+Output goal:
+Create the character as a SIMPLE FRONT VIEW GAME SPRITE in the same style as the NEON PROTOCOL sprite sheet.
+
+Framing:
+Show only the character, centered.
+No environment scene.
+No UI.
+No text.
+No logo.
+
+The result must look like a clean sprite that belongs directly in the "SPRITES" section of the NEON PROTOCOL character select screen.
+Pose requirement:
+front-facing neutral idle sprite.
+```
+
+Aprovado (frente, idle). Ainda faltam, nesse mesmo esquema de sprite
+simples: costas, lado, e as poses de caminhada (passo 1 e passo 2) - trocar
+"front-facing neutral idle sprite" por "back view" / "left side view" /
+"walking pose, mid-stride" mantendo o resto do texto igual, e anexando a
+imagem de frente ja aprovada como referencia (mesma logica do Pose
+Consistency Lock).
+
 ## Pendencia
 
-Nenhum arquivo de imagem real foi commitado ainda - as imagens geradas ate
-agora foram coladas no chat, sem virar arquivo de verdade. Pra integrar de
-verdade no jogo, subir os PNGs em `art_wip/` (upload direto pelo GitHub,
-"Add file -> Upload files") pra virarem arquivos git de verdade.
+Nenhum arquivo de imagem real do personagem final foi commitado ainda -
+as imagens aprovadas ate agora foram coladas no chat, sem virar arquivo
+de verdade (exceto um `teste.png` de teste do processo de upload, ja
+removido). Pra integrar de verdade no jogo, subir os PNGs em `art_wip/`
+(upload direto pelo GitHub, "Add file -> Upload files") pra virarem
+arquivos git de verdade.
