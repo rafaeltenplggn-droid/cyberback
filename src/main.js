@@ -78,9 +78,18 @@ function updateHackStatus() {
 
 let lastShopResult = null;
 let lastSleepResult = null;
+let lastNearbyHome = null;
 
 function updateShopStatus() {
   const nearby = hackRuntime.nearbyHomeInteractable();
+  if (nearby !== lastNearbyHome) {
+    // saiu/entrou de perto do PC ou da cama: o resultado anterior nao vale
+    // mais como "recem-aconteceu", senao ele fica preso na tela pra sempre
+    // (o jogador ve uma compra/sono de minutos atras como se fosse agora).
+    lastShopResult = null;
+    lastSleepResult = null;
+    lastNearbyHome = nearby;
+  }
 
   if (nearby === 'pc') {
     if (!lastShopResult) {
@@ -98,13 +107,17 @@ function updateShopStatus() {
   }
 
   if (nearby === 'bed') {
-    if (!lastSleepResult) {
-      shopStatusEl.textContent = `[S] dormir (+${SLEEP_ENERGY_RESTORE} energia, uma vez por minuto)`;
-    } else if (lastSleepResult.success) {
+    // O cooldown e recalculado a cada frame direto do sleepTracker (fonte
+    // viva), nao do cooldownRemainingMs congelado de um resultado antigo -
+    // senao a contagem regressiva fica presa mesmo depois do tempo passar.
+    const remainingMs = hackRuntime.sleepTracker.cooldownRemainingMs();
+    if (lastSleepResult?.success) {
       shopStatusEl.textContent = `[S] dormiu: +${SLEEP_ENERGY_RESTORE} energia`;
-    } else {
-      const secs = Math.ceil(lastSleepResult.cooldownRemainingMs / 1000);
+    } else if (remainingMs > 0) {
+      const secs = Math.ceil(remainingMs / 1000);
       shopStatusEl.textContent = `[S] ainda cansado, espera mais ${secs}s pra dormir de novo`;
+    } else {
+      shopStatusEl.textContent = `[S] dormir (+${SLEEP_ENERGY_RESTORE} energia, uma vez por minuto)`;
     }
     return;
   }
