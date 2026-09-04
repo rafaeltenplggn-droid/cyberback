@@ -117,7 +117,7 @@ function updateShopStatus() {
       const secs = Math.ceil(remainingMs / 1000);
       shopStatusEl.textContent = `[S] ainda cansado, espera mais ${secs}s pra dormir de novo`;
     } else {
-      shopStatusEl.textContent = `[S] dormir (+${SLEEP_ENERGY_RESTORE} energia, uma vez por minuto)`;
+      shopStatusEl.textContent = `[S] dormir (+${SLEEP_ENERGY_RESTORE} energia, uma vez a cada 2 minutos)`;
     }
     return;
   }

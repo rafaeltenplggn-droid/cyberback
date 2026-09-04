@@ -5,6 +5,7 @@ import { createPlayerStats } from '../src/hackloop/playerStats.js';
 import { ByteLedger } from '../src/hackloop/byteLedger.js';
 import { EnergyMeter } from '../src/hackloop/energy.js';
 import { ENERGY_COST_PER_TIER } from '../src/hackIntegration/energyCosts.js';
+import { SLEEP_COOLDOWN_MS } from '../src/hackIntegration/sleepAction.js';
 
 function makeFakeMapManager({ mapId = 'district_07', col = 0, row = 1 } = {}) {
   return { currentMap: { id: mapId }, playerCol: col, playerRow: row };
@@ -233,7 +234,7 @@ test('sleep recupera energia parado perto da cama, mas so fora do cooldown', () 
   assert.equal(second.reason, 'cooldown');
   assert.equal(energyMeter.value, 65, 'tentativa em cooldown nao muda a energia');
 
-  now += 60000; // passa o minuto inteiro de cooldown
+  now += SLEEP_COOLDOWN_MS; // passa o cooldown inteiro
   const third = runtime.sleep();
   assert.equal(third.success, true);
   assert.equal(energyMeter.value, 90); // 65 + 25

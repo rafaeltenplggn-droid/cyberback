@@ -2,7 +2,7 @@
 // vez a cada tanto tempo - senao vira um jeito gratis de furar o limite de
 // energia. Relogio injetavel (`now`), mesmo padrao do TraceMeter/EnergyMeter.
 export const SLEEP_ENERGY_RESTORE = 25;
-export const SLEEP_COOLDOWN_MS = 60000;
+export const SLEEP_COOLDOWN_MS = 120000;
 
 export class SleepTracker {
   constructor({ now = () => Date.now() } = {}) {
