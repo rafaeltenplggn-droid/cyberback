@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8" />
+  <title>CYBER - teste de mapas e salas</title>
+  <style>
+    body { background: #0d0f14; color: #e5e5e5; font-family: monospace; margin: 0; padding: 16px; }
+    #status { margin-bottom: 8px; }
+    canvas { background: #05060a; border: 1px solid #333; display: block; }
+    p { max-width: 640px; opacity: 0.8; }
+  </style>
+</head>
+<body>
+  <div id="status">carregando...</div>
+  <canvas id="game" width="640" height="480"></canvas>
+  <p>Setas do teclado movem o marcador de debug (rosa). Retangulos cinza sao props/predios de teste. Ponto ciano e uma door: ao pisar nela o mapa inteiro troca.</p>
+  <script type="module" src="src/main.js"></script>
+</body>
+</html>
