@@ -2,7 +2,7 @@
 <html lang="pt-br">
 <head>
   <meta charset="utf-8" />
-  <title>CYBER - teste de mapas e salas</title>
+  <title>CYBER - character controller</title>
   <style>
     body { background: #0d0f14; color: #e5e5e5; font-family: monospace; margin: 0; padding: 16px; }
     #status { margin-bottom: 8px; }
@@ -12,8 +12,8 @@
 </head>
 <body>
   <div id="status">carregando...</div>
-  <canvas id="game" width="640" height="480"></canvas>
-  <p>Setas do teclado movem o marcador de debug (rosa). Retangulos cinza sao props/predios de teste. Ponto ciano e uma door: ao pisar nela o mapa inteiro troca.</p>
+  <canvas id="game" width="900" height="560"></canvas>
+  <p>Setas do teclado movem o personagem (grid, 4 direcoes, sem diagonal). Retangulos cinza sao props/predios ainda sem arte final. Ponto ciano e uma porta: ao pisar nela o mapa inteiro troca e o personagem reaparece no spawn do destino.</p>
   <script type="module" src="src/main.js"></script>
 </body>
 </html>
