@@ -34,6 +34,10 @@ test('district_07.json tem 16x12 e as 3 portas para os interiores', async () => 
   const ghostRowDoor = map.getDoorAt(1, 10);
   assert.equal(ghostRowDoor.target_map, 'ghost_row_interior');
   assert.deepEqual([ghostRowDoor.spawn_x, ghostRowDoor.spawn_y], [5, 7]);
+
+  const homeDoor = map.getDoorAt(14, 2);
+  assert.equal(homeDoor.target_map, 'player_home');
+  assert.deepEqual([homeDoor.spawn_x, homeDoor.spawn_y], [5, 7]);
 });
 
 test('predios do district_07 bloqueiam o footprint inteiro, streetlamp e planter nao bloqueiam', async () => {
@@ -59,6 +63,7 @@ for (const [interiorId, exteriorDoor] of [
   ['gridcorp_interior', { x: 1, y: 3 }],
   ['nullpoint_interior', { x: 10, y: 6 }],
   ['ghost_row_interior', { x: 1, y: 10 }],
+  ['player_home', { x: 14, y: 2 }],
 ]) {
   test(`district_07 -> ${interiorId} -> district_07 sem travar em nenhum ponto`, async () => {
     const manager = makeManager();
@@ -86,8 +91,8 @@ for (const [interiorId, exteriorDoor] of [
   });
 }
 
-test('os tres interiores sao salas 10x10 com borda solida e a porta de saida aberta', async () => {
-  for (const id of ['gridcorp_interior', 'nullpoint_interior', 'ghost_row_interior']) {
+test('os quatro interiores sao salas 10x10 com borda solida e a porta de saida aberta', async () => {
+  for (const id of ['gridcorp_interior', 'nullpoint_interior', 'ghost_row_interior', 'player_home']) {
     const map = parseMap(await loadMapJson(id));
     assert.equal(map.width, 10);
     assert.equal(map.height, 10);
@@ -106,4 +111,18 @@ test('os tres interiores sao salas 10x10 com borda solida e a porta de saida abe
     assert.ok(door, `${id} deve ter porta na parede sul (5,9)`);
     assert.equal(map.isBlocked(5, 9), false, `${id} celula da porta nao pode bloquear`);
   }
+});
+
+test('player_home tem o PC e a cama bloqueados, no lugar certo, e o spawn de volta pro district_07 nao e a propria porta', async () => {
+  const map = parseMap(await loadMapJson('player_home'));
+  assert.equal(map.isBlocked(3, 3), true, 'PC bloqueia a celula dele');
+  assert.equal(map.isBlocked(6, 3), true, 'cama bloqueia a celula dela');
+
+  const door = map.getDoorAt(5, 9);
+  assert.equal(door.spawn_x, 14);
+  assert.equal(door.spawn_y, 3);
+
+  const districtMap = parseMap(await loadMapJson('district_07'));
+  assert.equal(districtMap.isBlocked(14, 3), false, 'spawn de volta e chao livre, nao a propria porta');
+  assert.equal(districtMap.getDoorAt(14, 3), null, 'spawn de volta nao e, ele mesmo, outra porta');
 });

@@ -8,13 +8,16 @@
 import { HackSession } from './hackSession.js';
 import { findHackableBuildingAt } from './hackableBuildings.js';
 import { buyEnergyRefill as buyEnergyRefillAction } from './energyShop.js';
+import { nearbyHomeInteractable as nearbyHomeInteractableAt } from './homeLocations.js';
+import { SleepTracker } from './sleepAction.js';
 
 export class HackRuntime {
-  constructor({ mapManager, controller, playerStats, traceMeter, energyMeter, ledger, rng } = {}) {
+  constructor({ mapManager, controller, playerStats, traceMeter, energyMeter, ledger, rng, now } = {}) {
     this.mapManager = mapManager;
     this.controller = controller;
     this.ledger = ledger;
     this.hackSession = new HackSession({ playerStats, traceMeter, energyMeter, ledger, rng });
+    this.sleepTracker = new SleepTracker(now ? { now } : undefined);
   }
 
   /** Stats atuais do jogador, sempre atualizados apos cada hack bem sucedido (XP/nivel). */
@@ -72,15 +75,34 @@ export class HackRuntime {
     });
   }
 
-  /** Compra uma recarga de energia com BYTE. Recusa durante um hack em andamento, ou sem energyMeter/ledger. */
+  /** 'pc', 'bed' ou null - onde o personagem esta parado dentro do player_home. */
+  nearbyHomeInteractable() {
+    if (this.isMovementBlocked) return null;
+    if (this.controller.isMoving) return null;
+    return nearbyHomeInteractableAt(this.mapManager);
+  }
+
+  /** Compra uma recarga de energia com BYTE. So funciona parado ao lado do PC, no player_home. */
   buyEnergyRefill() {
-    if (this.isMovementBlocked) {
-      return { success: false, reason: 'hack_em_andamento', byteSpent: 0 };
+    if (this.nearbyHomeInteractable() !== 'pc') {
+      return { success: false, reason: 'fora_do_pc', byteSpent: 0 };
     }
     const energyMeter = this.hackSession.energyMeter;
     if (!energyMeter || !this.ledger) {
       return { success: false, reason: 'loja_indisponivel', byteSpent: 0 };
     }
     return buyEnergyRefillAction({ energyMeter, ledger: this.ledger });
+  }
+
+  /** Dorme na cama: recupera energia de graca, mas so fora do cooldown. So funciona parado ao lado da cama. */
+  sleep() {
+    if (this.nearbyHomeInteractable() !== 'bed') {
+      return { success: false, reason: 'fora_da_cama' };
+    }
+    const energyMeter = this.hackSession.energyMeter;
+    if (!energyMeter) {
+      return { success: false, reason: 'sem_energyMeter' };
+    }
+    return this.sleepTracker.sleep(energyMeter);
   }
 }

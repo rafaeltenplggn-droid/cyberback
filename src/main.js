@@ -8,6 +8,7 @@ import { EnergyMeter } from './hackloop/energy.js';
 import { ByteLedger } from './hackloop/byteLedger.js';
 import { HackRuntime } from './hackIntegration/hackRuntime.js';
 import { ENERGY_REFILL_COST_BYTE } from './hackIntegration/energyShop.js';
+import { SLEEP_ENERGY_RESTORE } from './hackIntegration/sleepAction.js';
 
 const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
@@ -76,25 +77,48 @@ function updateHackStatus() {
 }
 
 let lastShopResult = null;
+let lastSleepResult = null;
 
 function updateShopStatus() {
-  if (lastShopResult) {
-    if (lastShopResult.success) {
-      shopStatusEl.textContent = `[B] loja: recarga de energia comprada por ${lastShopResult.byteSpent} BYTE`;
+  const nearby = hackRuntime.nearbyHomeInteractable();
+
+  if (nearby === 'pc') {
+    if (!lastShopResult) {
+      shopStatusEl.textContent = `[B] Mercado Negro: recarregar energia por ${ENERGY_REFILL_COST_BYTE} BYTE`;
+    } else if (lastShopResult.success) {
+      shopStatusEl.textContent = `[B] Mercado Negro: recarga comprada por ${lastShopResult.byteSpent} BYTE`;
     } else if (lastShopResult.reason === 'energia_cheia') {
-      shopStatusEl.textContent = '[B] loja: energia ja esta cheia';
+      shopStatusEl.textContent = '[B] Mercado Negro: energia ja esta cheia';
     } else if (lastShopResult.reason === 'byte_insuficiente') {
-      shopStatusEl.textContent = `[B] loja: BYTE insuficiente (precisa de ${ENERGY_REFILL_COST_BYTE}, tem ${hackRuntime.byteBalance})`;
+      shopStatusEl.textContent = `[B] Mercado Negro: BYTE insuficiente (precisa de ${ENERGY_REFILL_COST_BYTE}, tem ${hackRuntime.byteBalance})`;
     } else {
-      shopStatusEl.textContent = '[B] loja: nao foi possivel comprar agora';
+      shopStatusEl.textContent = '[B] Mercado Negro: nao foi possivel comprar agora';
     }
     return;
   }
-  shopStatusEl.textContent = `[B] recarregar energia por ${ENERGY_REFILL_COST_BYTE} BYTE`;
+
+  if (nearby === 'bed') {
+    if (!lastSleepResult) {
+      shopStatusEl.textContent = `[S] dormir (+${SLEEP_ENERGY_RESTORE} energia, uma vez por minuto)`;
+    } else if (lastSleepResult.success) {
+      shopStatusEl.textContent = `[S] dormiu: +${SLEEP_ENERGY_RESTORE} energia`;
+    } else {
+      const secs = Math.ceil(lastSleepResult.cooldownRemainingMs / 1000);
+      shopStatusEl.textContent = `[S] ainda cansado, espera mais ${secs}s pra dormir de novo`;
+    }
+    return;
+  }
+
+  shopStatusEl.textContent = '';
 }
 
 function handleBuyEnergyRefill() {
   lastShopResult = hackRuntime.buyEnergyRefill();
+  updateShopStatus();
+}
+
+function handleSleep() {
+  lastSleepResult = hackRuntime.sleep();
   updateShopStatus();
 }
 
@@ -128,6 +152,11 @@ window.addEventListener('keydown', (event) => {
   if (event.key === 'b' || event.key === 'B') {
     event.preventDefault();
     handleBuyEnergyRefill();
+    return;
+  }
+  if (event.key === 's' || event.key === 'S') {
+    event.preventDefault();
+    handleSleep();
   }
 });
 
