@@ -111,17 +111,18 @@ function updateShopStatus() {
     return;
   }
 
-  if (nearbyBar === 'counter') {
+  if (nearbyBar === 'counter' || nearbyBar === 'bartender') {
+    const label = nearbyBar === 'bartender' ? 'atendente do bar' : 'balcao do bar';
     if (!lastDrinkResult) {
-      shopStatusEl.textContent = `[D] balcao do bar: pedir um drink por ${DRINK_COST_BYTE} BYTE (+${DRINK_BUFF_AMOUNT} breachSpeed por ${DRINK_BUFF_DURATION_MS / 1000}s)`;
+      shopStatusEl.textContent = `[D] ${label}: pedir um drink por ${DRINK_COST_BYTE} BYTE (+${DRINK_BUFF_AMOUNT} breachSpeed por ${DRINK_BUFF_DURATION_MS / 1000}s)`;
     } else if (lastDrinkResult.success) {
-      shopStatusEl.textContent = `[D] balcao do bar: drink servido por ${lastDrinkResult.byteSpent} BYTE`;
+      shopStatusEl.textContent = `[D] ${label}: drink servido por ${lastDrinkResult.byteSpent} BYTE`;
     } else if (lastDrinkResult.reason === 'buff_ativo') {
-      shopStatusEl.textContent = `[D] balcao do bar: ja esta com um drink ativo (${Math.ceil(hackRuntime.drinkBuffTracker.remainingMs() / 1000)}s restantes)`;
+      shopStatusEl.textContent = `[D] ${label}: ja esta com um drink ativo (${Math.ceil(hackRuntime.drinkBuffTracker.remainingMs() / 1000)}s restantes)`;
     } else if (lastDrinkResult.reason === 'byte_insuficiente') {
-      shopStatusEl.textContent = `[D] balcao do bar: BYTE insuficiente (precisa de ${DRINK_COST_BYTE}, tem ${hackRuntime.byteBalance})`;
+      shopStatusEl.textContent = `[D] ${label}: BYTE insuficiente (precisa de ${DRINK_COST_BYTE}, tem ${hackRuntime.byteBalance})`;
     } else {
-      shopStatusEl.textContent = '[D] balcao do bar: nao foi possivel pedir agora';
+      shopStatusEl.textContent = `[D] ${label}: nao foi possivel pedir agora`;
     }
     return;
   }

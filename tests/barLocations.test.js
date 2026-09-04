@@ -6,6 +6,7 @@ import {
   BAR_COUNTER_LOCATION,
   BAR_STOOL_LOCATION,
   BAR_LAPTOP_LOCATION,
+  BAR_NPC_LOCATION,
 } from '../src/hackIntegration/barLocations.js';
 
 function makeFakeMapManager({ mapId = BAR_MAP_ID, col, row }) {
@@ -30,6 +31,11 @@ test('adjacente ao banco dentro do nullpoint_interior retorna "stool"', () => {
 test('adjacente ao laptop dentro do nullpoint_interior retorna "laptop"', () => {
   const mapManager = makeFakeMapManager({ col: BAR_LAPTOP_LOCATION.originX - 1, row: BAR_LAPTOP_LOCATION.originY });
   assert.equal(nearbyBarInteractable(mapManager), 'laptop');
+});
+
+test('adjacente ao atendente dentro do nullpoint_interior retorna "bartender"', () => {
+  const mapManager = makeFakeMapManager({ col: BAR_NPC_LOCATION.originX - 1, row: BAR_NPC_LOCATION.originY });
+  assert.equal(nearbyBarInteractable(mapManager), 'bartender');
 });
 
 test('longe de tudo, dentro do bar, retorna null', () => {

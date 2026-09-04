@@ -140,9 +140,10 @@ export class HackRuntime {
     return this.hackSession.drinkBuffTracker;
   }
 
-  /** Compra um drink no balcao: da um bonus temporario de breachSpeed. So funciona parado ao lado do balcao. */
+  /** Compra um drink: da um bonus temporario de breachSpeed. Funciona parado ao lado do balcao ou do atendente (mesma loja, dois pontos de acesso). */
   buyDrink() {
-    if (this.nearbyBarInteractable() !== 'counter') {
+    const nearby = this.nearbyBarInteractable();
+    if (nearby !== 'counter' && nearby !== 'bartender') {
       return { success: false, reason: 'fora_do_balcao', byteSpent: 0 };
     }
     if (!this.ledger) {

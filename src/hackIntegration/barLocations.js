@@ -16,13 +16,15 @@ export const BAR_HACKABLE_BUILDING_ID = 'nullpoint_bar';
 export const BAR_COUNTER_LOCATION = { originX: 3, originY: 3, footprintW: 1, footprintH: 1 };
 export const BAR_STOOL_LOCATION = { originX: 3, originY: 6, footprintW: 1, footprintH: 1 };
 export const BAR_LAPTOP_LOCATION = { originX: 6, originY: 3, footprintW: 1, footprintH: 1 };
+export const BAR_NPC_LOCATION = { originX: 3, originY: 2, footprintW: 1, footprintH: 1 };
 
-/** Retorna 'counter', 'stool', 'laptop' ou null, dependendo de onde o personagem esta parado dentro do bar. */
+/** Retorna 'counter', 'stool', 'laptop', 'bartender' ou null, dependendo de onde o personagem esta parado dentro do bar. */
 export function nearbyBarInteractable(mapManager) {
   if (mapManager.currentMap?.id !== BAR_MAP_ID) return null;
   const { playerCol, playerRow } = mapManager;
   if (isAdjacentToBuilding(playerCol, playerRow, BAR_COUNTER_LOCATION)) return 'counter';
   if (isAdjacentToBuilding(playerCol, playerRow, BAR_STOOL_LOCATION)) return 'stool';
   if (isAdjacentToBuilding(playerCol, playerRow, BAR_LAPTOP_LOCATION)) return 'laptop';
+  if (isAdjacentToBuilding(playerCol, playerRow, BAR_NPC_LOCATION)) return 'bartender';
   return null;
 }
