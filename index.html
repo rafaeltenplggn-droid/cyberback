@@ -2,18 +2,20 @@
 <html lang="pt-br">
 <head>
   <meta charset="utf-8" />
-  <title>CYBER - character controller</title>
+  <title>CYBER - hack integration</title>
   <style>
     body { background: #0d0f14; color: #e5e5e5; font-family: monospace; margin: 0; padding: 16px; }
-    #status { margin-bottom: 8px; }
+    #status, #hack-status { margin-bottom: 8px; }
+    #hack-status { color: #ff2079; }
     canvas { background: #05060a; border: 1px solid #333; display: block; }
     p { max-width: 640px; opacity: 0.8; }
   </style>
 </head>
 <body>
   <div id="status">carregando...</div>
+  <div id="hack-status"></div>
   <canvas id="game" width="900" height="560"></canvas>
-  <p>Setas do teclado movem o personagem (grid, 4 direcoes, sem diagonal). Retangulos cinza sao props/predios ainda sem arte final. Ponto ciano e uma porta: ao pisar nela o mapa inteiro troca e o personagem reaparece no spawn do destino.</p>
+  <p>Setas do teclado movem o personagem (grid, 4 direcoes, sem diagonal). Retangulos cinza sao props/predios ainda sem arte final. Ponto ciano e uma porta: ao pisar nela o mapa inteiro troca e o personagem reaparece no spawn do destino. Chegando perto do predio do gridcorp em district_07, ESPACO ou ENTER disparam um hack de teste (tier raro) contra ele; enquanto o hack roda o movimento fica bloqueado.</p>
   <script type="module" src="src/main.js"></script>
 </body>
 </html>
