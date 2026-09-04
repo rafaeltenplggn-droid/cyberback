@@ -7,6 +7,8 @@ import { breach as breachStage } from '../hackloop/breach.js';
 import { exfiltrate as exfiltrateStage, TIME_OVERRUN_TRACE_PENALTY_PER_DIFFICULTY } from '../hackloop/exfiltrate.js';
 import { fence as fenceStage } from '../hackloop/fence.js';
 import { getTier } from '../hackloop/tiers.js';
+import { addXp } from '../hackloop/playerStats.js';
+import { xpRewardForTier } from './xpRewards.js';
 
 const STAGE_IDLE = 'idle';
 const STAGE_RECON = 'recon';
@@ -55,6 +57,8 @@ export class HackSession {
 
     let exfiltrateResult = null;
     let fenceResult = null;
+    let xpGained = 0;
+    const levelBefore = this.playerStats?.level ?? null;
 
     if (breachResult.success) {
       this.status = STAGE_EXFILTRATING;
@@ -65,6 +69,15 @@ export class HackSession {
 
       this.status = STAGE_FENCING;
       fenceResult = fenceStage(exfiltrateResult.loot, this.playerStats, { ledger: this.ledger });
+
+      // Progressao: XP concedido so em hack bem sucedido. addXp() e a curva
+      // de nivel que ja existe em src/hackloop/playerStats.js, nao
+      // reimplementada aqui - so decidimos QUANDO conceder XP e QUANTO
+      // (xpRewardForTier), a formula da curva em si continua intocada.
+      if (this.playerStats) {
+        xpGained = xpRewardForTier(target.tier);
+        this.playerStats = addXp(this.playerStats, xpGained);
+      }
     } else if (this.traceMeter) {
       // breach() nao mexe em trace (nao recebe traceMeter); falha de breach
       // ainda precisa subir o trace, entao isso e feito aqui na integracao,
@@ -82,6 +95,9 @@ export class HackSession {
       exfiltrate: exfiltrateResult,
       fence: fenceResult,
       traceValue: this.traceMeter ? this.traceMeter.value : null,
+      xpGained,
+      leveledUp: levelBefore !== null && this.playerStats.level > levelBefore,
+      playerStats: this.playerStats,
     };
     return this.result;
   }

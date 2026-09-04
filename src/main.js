@@ -2,7 +2,7 @@ import { MapManager } from './maps/mapManager.js';
 import { Renderer } from './render/renderer.js';
 import { MovementController } from './character/movementController.js';
 import { CharacterRenderer } from './character/characterRenderer.js';
-import { createPlayerStats } from './hackloop/playerStats.js';
+import { createPlayerStats, xpRequiredForLevel } from './hackloop/playerStats.js';
 import { TraceMeter } from './hackloop/trace.js';
 import { ByteLedger } from './hackloop/byteLedger.js';
 import { HackRuntime } from './hackIntegration/hackRuntime.js';
@@ -30,10 +30,17 @@ const ledger = new ByteLedger();
 const hackRuntime = new HackRuntime({ mapManager, controller, playerStats, traceMeter, ledger });
 
 const statusEl = document.getElementById('status');
+const playerStatusEl = document.getElementById('player-status');
 const hackStatusEl = document.getElementById('hack-status');
 
 function updateStatus() {
   statusEl.textContent = `mapa: ${mapManager.currentMap.id} | posicao: (${mapManager.playerCol}, ${mapManager.playerRow}) | direcao: ${controller.direction} | pose: ${controller.pose} | trace: ${traceMeter.value.toFixed(1)}`;
+
+  const stats = hackRuntime.playerStats;
+  const xpNeeded = xpRequiredForLevel(stats.level);
+  playerStatusEl.textContent =
+    `nivel ${stats.level} | xp ${stats.xp}/${xpNeeded} | BYTE: ${hackRuntime.byteBalance} | ` +
+    `breachSpeed ${stats.breachSpeed} | stealth ${stats.stealth} | lootYield ${stats.lootYield} | traceResistance ${stats.traceResistance}`;
 }
 
 let hackingBuildingId = null;
@@ -52,7 +59,8 @@ function updateHackStatus() {
     }
     hackStatusEl.textContent =
       `ultimo hack (${target.id}, tier ${target.tier}): SUCESSO | loot bruto: ${exfiltrate.rawAmount} | loot final: ${exfiltrate.loot.amount}` +
-      `${exfiltrate.overTime ? ' (estourou o tempo)' : ''} | BYTE ganho: ${fence.byteAmount} | trace: ${traceMeter.value.toFixed(1)}`;
+      `${exfiltrate.overTime ? ' (estourou o tempo)' : ''} | BYTE ganho: ${fence.byteAmount} | XP ganho: ${lastHackResult.xpGained}` +
+      `${lastHackResult.leveledUp ? ' | SUBIU DE NIVEL!' : ''} | trace: ${traceMeter.value.toFixed(1)}`;
     return;
   }
   const nearby = hackRuntime.nearbyHackableBuilding();

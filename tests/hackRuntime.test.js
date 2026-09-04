@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { HackRuntime } from '../src/hackIntegration/hackRuntime.js';
 import { createPlayerStats } from '../src/hackloop/playerStats.js';
+import { ByteLedger } from '../src/hackloop/byteLedger.js';
 
 function makeFakeMapManager({ mapId = 'district_07', col = 0, row = 1 } = {}) {
   return { currentMap: { id: mapId }, playerCol: col, playerRow: row };
@@ -98,6 +99,35 @@ test('movimento fica bloqueado durante o hack e libera de novo quando termina (f
   const result = await resultPromise;
   assert.equal(result.breach.success, false);
   assert.equal(runtime.isMovementBlocked, false, 'movimento libera mesmo quando o hack falha');
+});
+
+test('playerStats e byteBalance ficam disponiveis no runtime e evoluem depois de um hack bem sucedido', async () => {
+  const mapManager = makeFakeMapManager({ col: 0, row: 1 });
+  const controller = makeFakeController();
+  const ledger = new ByteLedger();
+  const runtime = new HackRuntime({
+    mapManager,
+    controller,
+    playerStats: createPlayerStats(1),
+    ledger,
+    rng: () => 0,
+  });
+
+  assert.equal(runtime.playerStats.xp, 0);
+  assert.equal(runtime.byteBalance, 0);
+
+  await runtime.triggerHack();
+
+  assert.ok(runtime.playerStats.xp > 0, 'xp sobe depois de um hack bem sucedido');
+  assert.ok(runtime.byteBalance > 0, 'BYTE ganho aparece no saldo do ledger');
+});
+
+test('sem ledger, byteBalance e null (o runtime nao inventa um saldo)', () => {
+  const mapManager = makeFakeMapManager({ col: 0, row: 1 });
+  const controller = makeFakeController();
+  const runtime = new HackRuntime({ mapManager, controller, playerStats: createPlayerStats(1) });
+
+  assert.equal(runtime.byteBalance, null);
 });
 
 test('nao da pra disparar um segundo hack enquanto o primeiro ainda esta rodando', async () => {

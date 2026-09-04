@@ -2,7 +2,8 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { HackSession, HACK_STAGES } from '../src/hackIntegration/hackSession.js';
 import { HACKABLE_BUILDINGS } from '../src/hackIntegration/hackableBuildings.js';
-import { createPlayerStats } from '../src/hackloop/playerStats.js';
+import { XP_REWARD_PER_TIER } from '../src/hackIntegration/xpRewards.js';
+import { createPlayerStats, xpRequiredForLevel } from '../src/hackloop/playerStats.js';
 import { TraceMeter } from '../src/hackloop/trace.js';
 import { ByteLedger } from '../src/hackloop/byteLedger.js';
 
@@ -71,6 +72,62 @@ test('HackSession.run rejeita disparar um segundo hack enquanto o primeiro esta 
   // ativa rejeita a Promise (nunca lanca sincronamente).
   await assert.rejects(() => session.run(GRIDCORP_TARGET));
   await first;
+});
+
+test('hack bem sucedido concede XP (proporcional ao tier) e atualiza playerStats.xp', async () => {
+  const playerStats = createPlayerStats(1);
+  const session = new HackSession({ playerStats, rng: () => 0 });
+
+  const result = await session.run(GRIDCORP_TARGET);
+
+  assert.equal(result.xpGained, XP_REWARD_PER_TIER.raro);
+  assert.equal(result.playerStats.xp, XP_REWARD_PER_TIER.raro);
+  assert.equal(session.playerStats.xp, XP_REWARD_PER_TIER.raro, 'a sessao guarda os stats atualizados pro proximo hack');
+});
+
+test('hack que falha no breach nao concede XP nenhum', async () => {
+  const playerStats = createPlayerStats(1);
+  const session = new HackSession({ playerStats, rng: () => 0.999999 });
+
+  const result = await session.run(GRIDCORP_TARGET);
+
+  assert.equal(result.breach.success, false);
+  assert.equal(result.xpGained, 0);
+  assert.equal(result.playerStats.xp, 0);
+  assert.equal(result.leveledUp, false);
+});
+
+test('xp suficiente sobe de nivel e result.leveledUp fica true so nesse hack', async () => {
+  const playerStats = createPlayerStats(1);
+  const session = new HackSession({ playerStats, rng: () => 0 });
+  const needed = xpRequiredForLevel(1);
+
+  let lastResult;
+  let hacksNeeded = 0;
+  while (session.playerStats.level === 1) {
+    lastResult = await session.run(GRIDCORP_TARGET);
+    session.reset();
+    hacksNeeded += 1;
+    if (hacksNeeded > 20) throw new Error('nao deveria precisar de tantos hacks pra subir de nivel');
+  }
+
+  assert.equal(lastResult.leveledUp, true);
+  assert.equal(session.playerStats.level, 2);
+  assert.ok(needed > 0);
+});
+
+test('level up tambem sobe os stats do jogador (breachSpeed etc), reaproveitando addXp do hackloop', async () => {
+  const playerStats = createPlayerStats(1);
+  const breachSpeedBefore = playerStats.breachSpeed;
+  const session = new HackSession({ playerStats, rng: () => 0 });
+
+  let result;
+  do {
+    result = await session.run(GRIDCORP_TARGET);
+    if (!result.leveledUp) session.reset();
+  } while (!result.leveledUp);
+
+  assert.ok(result.playerStats.breachSpeed > breachSpeedBefore);
 });
 
 test('reset() so funciona depois que o hack termina', async () => {
