@@ -7,6 +7,7 @@ import { TraceMeter } from './hackloop/trace.js';
 import { EnergyMeter } from './hackloop/energy.js';
 import { ByteLedger } from './hackloop/byteLedger.js';
 import { HackRuntime } from './hackIntegration/hackRuntime.js';
+import { ENERGY_REFILL_COST_BYTE } from './hackIntegration/energyShop.js';
 
 const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
@@ -34,6 +35,7 @@ const hackRuntime = new HackRuntime({ mapManager, controller, playerStats, trace
 const statusEl = document.getElementById('status');
 const playerStatusEl = document.getElementById('player-status');
 const hackStatusEl = document.getElementById('hack-status');
+const shopStatusEl = document.getElementById('shop-status');
 
 function updateStatus() {
   statusEl.textContent = `mapa: ${mapManager.currentMap.id} | posicao: (${mapManager.playerCol}, ${mapManager.playerRow}) | direcao: ${controller.direction} | pose: ${controller.pose} | trace: ${traceMeter.value.toFixed(1)}`;
@@ -73,6 +75,29 @@ function updateHackStatus() {
   hackStatusEl.textContent = nearby ? `[ESPACO/ENTER] hackear ${nearby.id}` : 'nenhum predio hackavel por perto';
 }
 
+let lastShopResult = null;
+
+function updateShopStatus() {
+  if (lastShopResult) {
+    if (lastShopResult.success) {
+      shopStatusEl.textContent = `[B] loja: recarga de energia comprada por ${lastShopResult.byteSpent} BYTE`;
+    } else if (lastShopResult.reason === 'energia_cheia') {
+      shopStatusEl.textContent = '[B] loja: energia ja esta cheia';
+    } else if (lastShopResult.reason === 'byte_insuficiente') {
+      shopStatusEl.textContent = `[B] loja: BYTE insuficiente (precisa de ${ENERGY_REFILL_COST_BYTE}, tem ${hackRuntime.byteBalance})`;
+    } else {
+      shopStatusEl.textContent = '[B] loja: nao foi possivel comprar agora';
+    }
+    return;
+  }
+  shopStatusEl.textContent = `[B] recarregar energia por ${ENERGY_REFILL_COST_BYTE} BYTE`;
+}
+
+function handleBuyEnergyRefill() {
+  lastShopResult = hackRuntime.buyEnergyRefill();
+  updateShopStatus();
+}
+
 async function handleAction() {
   const nearby = hackRuntime.nearbyHackableBuilding();
   if (!nearby) return;
@@ -98,6 +123,11 @@ window.addEventListener('keydown', (event) => {
   if (event.key === ' ' || event.key === 'Enter') {
     event.preventDefault();
     handleAction();
+    return;
+  }
+  if (event.key === 'b' || event.key === 'B') {
+    event.preventDefault();
+    handleBuyEnergyRefill();
   }
 });
 
@@ -108,6 +138,7 @@ function render() {
   characterRenderer.draw({ col, row, direction: controller.direction, pose: controller.pose });
   updateStatus();
   updateHackStatus();
+  updateShopStatus();
 }
 
 let lastTime = performance.now();

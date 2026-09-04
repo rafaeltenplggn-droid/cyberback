@@ -71,6 +71,29 @@ test('a recarga nunca passa do maximo', () => {
   assert.equal(meter.value, 50);
 });
 
+test('refill adiciona energia diretamente, sem passar do maximo', () => {
+  const clock = makeClock();
+  const meter = new EnergyMeter({ max: 100, now: clock.now, regenPerSecond: 0 });
+
+  meter.spend(80);
+  assert.equal(meter.value, 20);
+
+  meter.refill(30);
+  assert.equal(meter.value, 50);
+
+  meter.refill(1000); // muito mais que o necessario pra encher
+  assert.equal(meter.value, 100);
+});
+
+test('refill com valor <= 0 nao muda nada', () => {
+  const clock = makeClock();
+  const meter = new EnergyMeter({ now: clock.now, regenPerSecond: 0 });
+  meter.spend(50);
+  meter.refill(0);
+  meter.refill(-10);
+  assert.equal(meter.value, 50);
+});
+
 test('depois de recarregar o suficiente, da pra gastar de novo', () => {
   const clock = makeClock();
   const meter = new EnergyMeter({ max: 100, now: clock.now, regenPerSecond: 10 });
