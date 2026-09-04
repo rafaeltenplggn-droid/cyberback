@@ -19,27 +19,34 @@ function makeFakeController({ isMoving = false } = {}) {
 }
 
 test('fora de alcance: canTriggerHack e false e triggerHack nao dispara nada', () => {
-  const mapManager = makeFakeMapManager({ col: 8, row: 8 }); // longe do gridcorp_tower
+  const mapManager = makeFakeMapManager({ col: 7, row: 7 }); // longe de qualquer predio
   const controller = makeFakeController();
   const runtime = new HackRuntime({ mapManager, controller, playerStats: createPlayerStats(1) });
 
+  assert.equal(runtime.nearbyHackableBuilding(), null);
   assert.equal(runtime.canTriggerHack(), false);
   assert.equal(runtime.triggerHack(), null);
   assert.equal(runtime.isMovementBlocked, false);
 });
 
-test('em alcance, parado, em district_07: canTriggerHack e true e triggerHack dispara o hack', async () => {
-  const mapManager = makeFakeMapManager({ col: 0, row: 1 }); // adjacente ao gridcorp_tower (oeste)
-  const controller = makeFakeController();
-  const runtime = new HackRuntime({ mapManager, controller, playerStats: createPlayerStats(1), rng: () => 0 });
+test('em alcance de cada um dos 3 predios, o hack dispara com o target certo', async () => {
+  const adjacentCells = {
+    gridcorp_tower: { col: 0, row: 1 },
+    nullpoint_bar: { col: 9, row: 4 },
+    ghost_row_market: { col: 0, row: 8 },
+  };
 
-  assert.equal(runtime.canTriggerHack(), true);
-  const resultPromise = runtime.triggerHack();
-  assert.ok(resultPromise instanceof Promise);
+  for (const [buildingId, pos] of Object.entries(adjacentCells)) {
+    const mapManager = makeFakeMapManager(pos);
+    const controller = makeFakeController();
+    const runtime = new HackRuntime({ mapManager, controller, playerStats: createPlayerStats(1), rng: () => 0 });
 
-  const result = await resultPromise;
-  assert.equal(result.target.id, 'gridcorp_tower_test');
-  assert.equal(result.target.tier, 'raro');
+    assert.equal(runtime.nearbyHackableBuilding()?.id, buildingId);
+    assert.equal(runtime.canTriggerHack(), true);
+
+    const result = await runtime.triggerHack();
+    assert.equal(result.target.id, `${buildingId}_test`);
+  }
 });
 
 test('mapa errado (fora do district_07) nunca dispara o hack, mesmo com as mesmas coordenadas', () => {
