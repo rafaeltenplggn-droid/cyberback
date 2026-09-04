@@ -8,6 +8,9 @@ import { TraceMeter } from '../src/hackloop/trace.js';
 import { EnergyMeter } from '../src/hackloop/energy.js';
 import { ByteLedger } from '../src/hackloop/byteLedger.js';
 import { ENERGY_COST_PER_TIER } from '../src/hackIntegration/energyCosts.js';
+import { DrinkBuffTracker } from '../src/hackIntegration/drinkBuff.js';
+import { breachSuccessChance } from '../src/hackloop/breach.js';
+import { getTier } from '../src/hackloop/tiers.js';
 
 function makeClock(start = 0) {
   let time = start;
@@ -203,6 +206,48 @@ test('depois de recarregar energia suficiente, o proximo hack ja funciona normal
   const okResult = await session.run(GRIDCORP_TARGET);
   assert.equal(okResult.energyBlocked, false);
   assert.equal(okResult.breach.success, true);
+});
+
+test('drink ativo aumenta a chance de sucesso do breach o suficiente pra virar um roll que antes falhava', async () => {
+  const tier = getTier(GRIDCORP_TARGET.tier);
+  const baseStats = createPlayerStats(1);
+  const buffedStats = { ...baseStats, breachSpeed: baseStats.breachSpeed + 2 };
+
+  const unbuffedChance = breachSuccessChance(baseStats, tier);
+  const buffedChance = breachSuccessChance(buffedStats, tier);
+  assert.ok(buffedChance > unbuffedChance, 'pre-condicao: o buff realmente aumenta a chance calculada pelo hackloop');
+
+  const roll = (unbuffedChance + buffedChance) / 2; // entre as duas chances
+
+  const withoutBuff = new HackSession({ playerStats: createPlayerStats(1), rng: () => roll });
+  const withoutResult = await withoutBuff.run(GRIDCORP_TARGET);
+  assert.equal(withoutResult.breach.success, false, 'sem buff, esse roll deveria falhar');
+
+  const drinkBuffTracker = new DrinkBuffTracker();
+  drinkBuffTracker.activate();
+  const withBuff = new HackSession({ playerStats: createPlayerStats(1), drinkBuffTracker, rng: () => roll });
+  const withResult = await withBuff.run(GRIDCORP_TARGET);
+  assert.equal(withResult.breach.success, true, 'com o buff ativo, o mesmo roll deveria ter sucesso');
+  assert.equal(withResult.drinkBuffActive, true);
+});
+
+test('o buff do drink nao muda os stats permanentes do jogador, so a chance daquele breach', async () => {
+  const playerStats = createPlayerStats(1);
+  const drinkBuffTracker = new DrinkBuffTracker();
+  drinkBuffTracker.activate();
+  const session = new HackSession({ playerStats, drinkBuffTracker, rng: () => 0 });
+
+  const result = await session.run(GRIDCORP_TARGET);
+
+  assert.equal(session.playerStats.breachSpeed, playerStats.breachSpeed, 'breachSpeed permanente nao mudou');
+  assert.equal(result.playerStats.breachSpeed, playerStats.breachSpeed);
+});
+
+test('sem buff ativo, drinkBuffActive vem false no resultado', async () => {
+  const drinkBuffTracker = new DrinkBuffTracker(); // nunca ativado
+  const session = new HackSession({ playerStats: createPlayerStats(1), drinkBuffTracker, rng: () => 0 });
+  const result = await session.run(GRIDCORP_TARGET);
+  assert.equal(result.drinkBuffActive, false);
 });
 
 test('reset() so funciona depois que o hack termina', async () => {

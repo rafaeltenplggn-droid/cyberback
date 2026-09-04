@@ -30,5 +30,9 @@
   "doors": [
     { "x": 5, "y": 9, "target_map": "district_07", "spawn_x": 10, "spawn_y": 7 }
   ],
-  "props": []
+  "props": [
+    { "id": "bar_counter", "asset": "bar_counter.png", "origin_x": 3, "origin_y": 3, "footprint_w": 1, "footprint_h": 1, "collision_footprint": true },
+    { "id": "bar_stool", "asset": "bar_stool.png", "origin_x": 3, "origin_y": 6, "footprint_w": 1, "footprint_h": 1, "collision_footprint": true },
+    { "id": "bar_laptop", "asset": "bar_laptop.png", "origin_x": 6, "origin_y": 3, "footprint_w": 1, "footprint_h": 1, "collision_footprint": true }
+  ]
 }

@@ -9,6 +9,8 @@ import { ByteLedger } from './hackloop/byteLedger.js';
 import { HackRuntime } from './hackIntegration/hackRuntime.js';
 import { ENERGY_REFILL_COST_BYTE } from './hackIntegration/energyShop.js';
 import { SLEEP_ENERGY_RESTORE } from './hackIntegration/sleepAction.js';
+import { DRINK_COST_BYTE } from './hackIntegration/drinkShop.js';
+import { DRINK_BUFF_AMOUNT, DRINK_BUFF_DURATION_MS } from './hackIntegration/drinkBuff.js';
 
 const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
@@ -39,13 +41,17 @@ const hackStatusEl = document.getElementById('hack-status');
 const shopStatusEl = document.getElementById('shop-status');
 
 function updateStatus() {
-  statusEl.textContent = `mapa: ${mapManager.currentMap.id} | posicao: (${mapManager.playerCol}, ${mapManager.playerRow}) | direcao: ${controller.direction} | pose: ${controller.pose} | trace: ${traceMeter.value.toFixed(1)}`;
+  const sittingText = hackRuntime.isSitting ? ' | sentado no banco' : '';
+  statusEl.textContent = `mapa: ${mapManager.currentMap.id} | posicao: (${mapManager.playerCol}, ${mapManager.playerRow}) | direcao: ${controller.direction} | pose: ${controller.pose} | trace: ${traceMeter.value.toFixed(1)}${sittingText}`;
 
   const stats = hackRuntime.playerStats;
   const xpNeeded = xpRequiredForLevel(stats.level);
+  const buffText = hackRuntime.drinkBuffTracker.isActive()
+    ? ` | DRINK ATIVO (+${DRINK_BUFF_AMOUNT} breachSpeed, ${Math.ceil(hackRuntime.drinkBuffTracker.remainingMs() / 1000)}s)`
+    : '';
   playerStatusEl.textContent =
     `nivel ${stats.level} | xp ${stats.xp}/${xpNeeded} | energia: ${hackRuntime.energyValue.toFixed(0)}/${hackRuntime.energyMax} | BYTE: ${hackRuntime.byteBalance} | ` +
-    `breachSpeed ${stats.breachSpeed} | stealth ${stats.stealth} | lootYield ${stats.lootYield} | traceResistance ${stats.traceResistance}`;
+    `breachSpeed ${stats.breachSpeed} | stealth ${stats.stealth} | lootYield ${stats.lootYield} | traceResistance ${stats.traceResistance}${buffText}`;
 }
 
 let hackingBuildingId = null;
@@ -57,17 +63,18 @@ function updateHackStatus() {
     return;
   }
   if (lastHackResult) {
-    const { target, recon, breach, exfiltrate, fence, energyBlocked, energySpent } = lastHackResult;
+    const { target, recon, breach, exfiltrate, fence, energyBlocked, energySpent, drinkBuffActive } = lastHackResult;
+    const buffTag = drinkBuffActive ? ' (com drink)' : '';
     if (energyBlocked) {
       hackStatusEl.textContent = `ultimo hack (${target.id}, tier ${target.tier}): SEM ENERGIA (atual: ${hackRuntime.energyValue.toFixed(0)}/${hackRuntime.energyMax}) | espera recarregar | estimativa que o recon deu: ${recon.estimatedLoot.min}-${recon.estimatedLoot.max}`;
       return;
     }
     if (!breach.success) {
-      hackStatusEl.textContent = `ultimo hack (${target.id}, tier ${target.tier}): FALHA no breach (chance ${(breach.chance * 100).toFixed(0)}%) | energia gasta: ${energySpent} | trace: ${traceMeter.value.toFixed(1)} | estimativa que o recon deu: ${recon.estimatedLoot.min}-${recon.estimatedLoot.max}`;
+      hackStatusEl.textContent = `ultimo hack (${target.id}, tier ${target.tier}): FALHA no breach${buffTag} (chance ${(breach.chance * 100).toFixed(0)}%) | energia gasta: ${energySpent} | trace: ${traceMeter.value.toFixed(1)} | estimativa que o recon deu: ${recon.estimatedLoot.min}-${recon.estimatedLoot.max}`;
       return;
     }
     hackStatusEl.textContent =
-      `ultimo hack (${target.id}, tier ${target.tier}): SUCESSO | loot bruto: ${exfiltrate.rawAmount} | loot final: ${exfiltrate.loot.amount}` +
+      `ultimo hack (${target.id}, tier ${target.tier}): SUCESSO${buffTag} | loot bruto: ${exfiltrate.rawAmount} | loot final: ${exfiltrate.loot.amount}` +
       `${exfiltrate.overTime ? ' (estourou o tempo)' : ''} | BYTE ganho: ${fence.byteAmount} | XP ganho: ${lastHackResult.xpGained}` +
       `${lastHackResult.leveledUp ? ' | SUBIU DE NIVEL!' : ''} | energia gasta: ${energySpent} | trace: ${traceMeter.value.toFixed(1)}`;
     return;
@@ -79,6 +86,8 @@ function updateHackStatus() {
 let lastShopResult = null;
 let lastSleepResult = null;
 let lastNearbyHome = null;
+let lastDrinkResult = null;
+let lastNearbyBar = null;
 
 function updateShopStatus() {
   const nearby = hackRuntime.nearbyHomeInteractable();
@@ -89,6 +98,32 @@ function updateShopStatus() {
     lastShopResult = null;
     lastSleepResult = null;
     lastNearbyHome = nearby;
+  }
+
+  const nearbyBar = hackRuntime.nearbyBarInteractable();
+  if (nearbyBar !== lastNearbyBar) {
+    lastDrinkResult = null;
+    lastNearbyBar = nearbyBar;
+  }
+
+  if (nearbyBar === 'stool') {
+    shopStatusEl.textContent = hackRuntime.isSitting ? '[C] levantar do banco' : '[C] sentar no banco (so cosmetico)';
+    return;
+  }
+
+  if (nearbyBar === 'counter') {
+    if (!lastDrinkResult) {
+      shopStatusEl.textContent = `[D] balcao do bar: pedir um drink por ${DRINK_COST_BYTE} BYTE (+${DRINK_BUFF_AMOUNT} breachSpeed por ${DRINK_BUFF_DURATION_MS / 1000}s)`;
+    } else if (lastDrinkResult.success) {
+      shopStatusEl.textContent = `[D] balcao do bar: drink servido por ${lastDrinkResult.byteSpent} BYTE`;
+    } else if (lastDrinkResult.reason === 'buff_ativo') {
+      shopStatusEl.textContent = `[D] balcao do bar: ja esta com um drink ativo (${Math.ceil(hackRuntime.drinkBuffTracker.remainingMs() / 1000)}s restantes)`;
+    } else if (lastDrinkResult.reason === 'byte_insuficiente') {
+      shopStatusEl.textContent = `[D] balcao do bar: BYTE insuficiente (precisa de ${DRINK_COST_BYTE}, tem ${hackRuntime.byteBalance})`;
+    } else {
+      shopStatusEl.textContent = '[D] balcao do bar: nao foi possivel pedir agora';
+    }
+    return;
   }
 
   if (nearby === 'pc') {
@@ -135,6 +170,17 @@ function handleSleep() {
   updateShopStatus();
 }
 
+function handleBuyDrink() {
+  lastDrinkResult = hackRuntime.buyDrink();
+  updateShopStatus();
+}
+
+function handleToggleSit() {
+  hackRuntime.toggleSit();
+  updateStatus();
+  updateShopStatus();
+}
+
 async function handleAction() {
   const nearby = hackRuntime.nearbyHackableBuilding();
   if (!nearby) return;
@@ -170,6 +216,16 @@ window.addEventListener('keydown', (event) => {
   if (event.key === 's' || event.key === 'S') {
     event.preventDefault();
     handleSleep();
+    return;
+  }
+  if (event.key === 'd' || event.key === 'D') {
+    event.preventDefault();
+    handleBuyDrink();
+    return;
+  }
+  if (event.key === 'c' || event.key === 'C') {
+    event.preventDefault();
+    handleToggleSit();
   }
 });
 

@@ -126,3 +126,12 @@ test('player_home tem o PC e a cama bloqueados, no lugar certo, e o spawn de vol
   assert.equal(districtMap.isBlocked(14, 3), false, 'spawn de volta e chao livre, nao a propria porta');
   assert.equal(districtMap.getDoorAt(14, 3), null, 'spawn de volta nao e, ele mesmo, outra porta');
 });
+
+test('nullpoint_interior tem o balcao do bar bloqueado, e o nullpoint_bar continua hackavel normalmente', async () => {
+  const map = parseMap(await loadMapJson('nullpoint_interior'));
+  assert.equal(map.isBlocked(3, 3), true, 'balcao do bar bloqueia a celula dele');
+
+  const districtMap = parseMap(await loadMapJson('district_07'));
+  assert.equal(districtMap.isBlocked(10, 4), true, 'nullpoint_bar (predio exterior) continua com colisao normal');
+  assert.equal(districtMap.getDoorAt(10, 6).target_map, 'nullpoint_interior');
+});
