@@ -110,7 +110,12 @@ const startMap = params.get('map') || 'district_07';
 const startCol = Number(params.get('x') ?? 5);
 const startRow = Number(params.get('y') ?? 5);
 
-mapManager.loadMap(startMap, startCol, startRow).then(() => {
-  render();
-  requestAnimationFrame(loop);
-});
+mapManager.loadMap(startMap, startCol, startRow).then(
+  () => {
+    render();
+    requestAnimationFrame(loop);
+  },
+  (error) => {
+    statusEl.textContent = `erro ao carregar o mapa "${startMap}": ${error.message}`;
+  }
+);
