@@ -1,0 +1,11 @@
+{
+  "name": "cyberfront",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "CYBER - jogo pixel art isometrico",
+  "scripts": {
+    "test": "node --test tests/*.test.js",
+    "serve": "node scripts/serve.js"
+  }
+}

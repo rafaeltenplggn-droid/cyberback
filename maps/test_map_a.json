@@ -1,0 +1,45 @@
+{
+  "id": "test_map_a",
+  "tileset": "generic",
+  "width": 8,
+  "height": 6,
+  "tiles": [
+    [1, 1, 1, 1, 1, 1, 1, 1],
+    [1, 0, 0, 0, 0, 0, 0, 1],
+    [1, 0, 0, 0, 0, 0, 0, 1],
+    [1, 0, 0, 0, 0, 0, 0, 1],
+    [1, 0, 0, 0, 0, 0, 0, 1],
+    [1, 1, 1, 1, 1, 1, 1, 1]
+  ],
+  "collision": [
+    [0, 0, 0, 0, 0, 0, 0, 0],
+    [0, 0, 0, 0, 0, 0, 0, 0],
+    [0, 0, 0, 0, 0, 0, 0, 0],
+    [0, 0, 0, 0, 0, 0, 0, 0],
+    [0, 0, 0, 0, 0, 0, 0, 0],
+    [0, 0, 0, 0, 0, 0, 0, 0]
+  ],
+  "doors": [
+    { "x": 6, "y": 2, "target_map": "test_map_b", "spawn_x": 1, "spawn_y": 2 }
+  ],
+  "props": [
+    {
+      "id": "test_building_a",
+      "asset": "gray_rect_placeholder.png",
+      "origin_x": 2,
+      "origin_y": 1,
+      "footprint_w": 2,
+      "footprint_h": 2,
+      "collision_footprint": true
+    },
+    {
+      "id": "test_lamp_a",
+      "asset": "gray_rect_placeholder.png",
+      "origin_x": 5,
+      "origin_y": 4,
+      "footprint_w": 1,
+      "footprint_h": 1,
+      "collision_footprint": false
+    }
+  ]
+}
