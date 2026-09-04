@@ -111,6 +111,11 @@ function updateShopStatus() {
     return;
   }
 
+  if (nearbyBar === 'bartender') {
+    shopStatusEl.textContent = 'o atendente do bar acena, mas fica atras do balcao';
+    return;
+  }
+
   if (nearbyBar === 'counter') {
     if (!lastDrinkResult) {
       shopStatusEl.textContent = `[D] balcao do bar: pedir um drink por ${DRINK_COST_BYTE} BYTE (+${DRINK_BUFF_AMOUNT} breachSpeed por ${DRINK_BUFF_DURATION_MS / 1000}s)`;

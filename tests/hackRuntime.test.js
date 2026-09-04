@@ -316,6 +316,18 @@ test('longe do laptop, dentro do nullpoint_interior, nao disparava hack nenhum',
   assert.equal(runtime.canTriggerHack(), false);
 });
 
+test('parado perto do atendente do bar, nearbyBarInteractable retorna "bartender" e nao dispara nenhuma acao', () => {
+  const mapManager = makeFakeMapManager({ mapId: 'nullpoint_interior', col: 2, row: 2 }); // oeste do atendente (origem 3,2)
+  const controller = makeFakeController();
+  const runtime = new HackRuntime({ mapManager, controller, playerStats: createPlayerStats(1) });
+
+  assert.equal(runtime.nearbyBarInteractable(), 'bartender');
+  assert.equal(runtime.nearbyHackableBuilding(), null);
+  assert.equal(runtime.canTriggerHack(), false);
+  assert.equal(runtime.toggleSit().reason, 'fora_do_banco');
+  assert.equal(runtime.buyDrink().reason, 'fora_do_balcao');
+});
+
 test('toggleSit senta parado perto do banco, levanta de qualquer lugar, e levanta sozinho ao se afastar', () => {
   const mapManager = makeFakeMapManager({ mapId: 'nullpoint_interior', col: 2, row: 6 }); // oeste do banco (origem 3,6)
   const controller = makeFakeController();
