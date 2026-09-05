@@ -492,18 +492,122 @@ Pose requirement:
 front-facing neutral idle sprite.
 ```
 
-Aprovado (frente, idle). Ainda faltam, nesse mesmo esquema de sprite
-simples: costas, lado, e as poses de caminhada (passo 1 e passo 2) - trocar
-"front-facing neutral idle sprite" por "back view" / "left side view" /
-"walking pose, mid-stride" mantendo o resto do texto igual, e anexando a
-imagem de frente ja aprovada como referencia (mesma logica do Pose
-Consistency Lock).
+**Personagem 1 completo.** Frente, costas e lado, cada um com pose parada
++ 2 passos de caminhada, todos integrados de verdade em
+`assets/character1/` e `src/main.js` (ver PRs #16 e #17). A direita nunca
+tem asset proprio - e sempre a de "left" espelhada pelo motor
+(`characterRenderer.js`). Um ajuste feito no meio do caminho: a primeira
+geracao da vista de lado saiu sem a mascara tatica que aparece de
+frente/costas - bastou pedir de novo reforcando "the character must be
+wearing the same dark tactical face mask... do not show bare skin on the
+lower face", anexando as imagens de frente/costas como referencia
+adicional.
+
+## Personagem 2 - Ghost Netrunner
+
+Prompt enviado pelo usuario pra gerar a frente (idle) do personagem 2,
+mesmo esquema "Simple 2D Style Lock" do personagem 1 (troca so
+Character/Identity/Visual traits, mantem o resto do texto identico):
+
+```
+MASTER SIMPLE 2D STYLE LOCK — DO NOT IGNORE
+
+Use the provided NEON PROTOCOL character select image as the PRIMARY STYLE REFERENCE.
+
+The goal is NOT detailed full-body pixel illustration.
+The goal is a SIMPLE 2D GAME SPRITE in the exact same style as the sprites shown in the NEON PROTOCOL sheet.
+
+Create a clean, readable, simplified 2D pixel-art character sprite for a cyberpunk RPG.
+
+Style requirements:
+- simple 2D sprite style
+- same visual style as the sprites in the NEON PROTOCOL sheet
+- same pixel density
+- same sprite complexity
+- same body proportions
+- same outline thickness
+- same shading style
+- same color depth
+- same retro pixel-art quality
+- same readability at small size
+
+Very important:
+This must look like a PLAYABLE GAME SPRITE, not like a detailed standalone character illustration.
+
+The character must feel like one of the small "SPRITES" shown in the character select screen.
+
+Use:
+- compact RPG sprite proportions
+- slightly oversized head
+- simple readable body
+- limited animation-friendly detail
+- visible square pixels
+- strong outline
+- simple block shading
+- controlled highlights
+- minimal rendering noise
+
+Do NOT create:
+- highly detailed full-body illustration
+- semi-realistic proportions
+- painterly pixel art
+- large empty background
+- dramatic pose
+- soft gradients
+- anti-aliasing
+- 3D render
+- polished concept-art look
+
+Character:
+Ghost Netrunner
+
+Identity:
+A young female cyberpunk netrunner with long silver-white hair, a transparent blue visor, and a sleek dark futuristic outfit.
+
+Visual traits:
+- long silver-white hair
+- high ponytail
+- long front bangs and side strands
+- blue or blue-violet eyes
+- transparent cyan-blue visor across the eyes
+- dark black / violet cyberpunk outfit
+- subtle cyan tech accents
+- elegant, slim, futuristic silhouette
+- no hood
+- no face mask
+
+Pose:
+Neutral idle pose.
+Standing upright.
+Simple front-facing sprite pose.
+Arms resting naturally.
+No dramatic action pose.
+
+Output goal:
+Create the character as a SIMPLE FRONT VIEW GAME SPRITE in the same style as the NEON PROTOCOL sprite sheet.
+
+Framing:
+Show only the character, centered.
+No environment scene.
+No UI.
+No text.
+No logo.
+
+The result must look like a clean sprite that belongs directly in the "SPRITES" section of the NEON PROTOCOL character select screen.
+Do NOT create a detailed pixel-art full-body illustration.
+Create a SMALL, SIMPLE, GAME-READY 2D RPG SPRITE in the exact style of the "SPRITES" section from the provided NEON PROTOCOL image.
+```
+
+Ainda nao gerado/aprovado. Depois de aprovar a frente, repetir o mesmo
+processo do personagem 1: costas, lado, poses de caminhada (2 por
+direcao), sempre anexando a imagem ja aprovada como referencia e
+conferindo que nenhum traco (aqui, a viseira transparente e o cabelo longo)
+some entre uma vista e outra - foi exatamente esse tipo de inconsistencia
+que aconteceu com a mascara do personagem 1.
 
 ## Pendencia
 
-Nenhum arquivo de imagem real do personagem final foi commitado ainda -
-as imagens aprovadas ate agora foram coladas no chat, sem virar arquivo
-de verdade (exceto um `teste.png` de teste do processo de upload, ja
-removido). Pra integrar de verdade no jogo, subir os PNGs em `art_wip/`
-(upload direto pelo GitHub, "Add file -> Upload files") pra virarem
-arquivos git de verdade.
+Nenhum arquivo de imagem do personagem 2 foi commitado ainda. Mesmo
+processo do personagem 1: gerar, aprovar no chat, subir o PNG de verdade
+via upload direto no repositorio (GitHub "Add file -> Upload files"),
+recortar o fundo vazio e integrar em `assets/character2/`.
