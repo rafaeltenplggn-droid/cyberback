@@ -65,8 +65,16 @@ export class Renderer {
   // do footprint (largura segue o footprint, altura segue a proporcao da
   // imagem - deixa predios mais altos que a "caixa" do footprint, igual
   // ao personagem). Sem arte real ainda, cai no retangulo placeholder.
+  //
+  // A ancora usa o canto MAIS PROXIMO da camera do footprint (maior
+  // col+row), nao o origin_x/origin_y (canto de tras) - senao qualquer
+  // footprint maior que 1x1 desenha "afundado" um passo isometrico
+  // inteiro pra tras de onde ele realmente termina no chao, abrindo um
+  // vao vazio entre o predio e uma porta/personagem logo na frente dele.
   drawProp(prop) {
-    const { x, y } = gridToScreen(prop.origin_x, prop.origin_y, this.originX, this.originY);
+    const frontCol = prop.origin_x + prop.footprint_w - 1;
+    const frontRow = prop.origin_y + prop.footprint_h - 1;
+    const { x, y } = gridToScreen(frontCol, frontRow, this.originX, this.originY);
     const w = prop.footprint_w * TILE_WIDTH;
     const h = prop.footprint_h * TILE_HEIGHT;
     const ctx = this.ctx;
