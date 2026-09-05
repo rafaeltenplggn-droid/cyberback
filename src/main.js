@@ -2,7 +2,7 @@ import { MapManager } from './maps/mapManager.js';
 import { Renderer } from './render/renderer.js';
 import { MovementController } from './character/movementController.js';
 import { CharacterRenderer, isImageReady } from './character/characterRenderer.js';
-import { CHARACTER_ROSTER, loadCharacterAssets, loadFrontIdleImage } from './character/characterRoster.js';
+import { CHARACTER_ROSTER, loadCharacterAssets, loadPortraitImage } from './character/characterRoster.js';
 import { createPlayerStats, xpRequiredForLevel } from './hackloop/playerStats.js';
 import { TraceMeter } from './hackloop/trace.js';
 import { EnergyMeter } from './hackloop/energy.js';
@@ -18,13 +18,9 @@ const ctx = canvas.getContext('2d');
 const origin = { originX: canvas.width / 2, originY: 80 };
 
 // Roda o jogo de verdade com o personagem escolhido na tela de selecao.
-// `frontIdleImage` (opcional) reaproveita a imagem de preview ja
-// carregada na tela de selecao, em vez de buscar de novo do zero.
-function startGame(characterId, frontIdleImage) {
+function startGame(characterId) {
   const mapRenderer = new Renderer(ctx, origin);
-  const characterRenderer = new CharacterRenderer(ctx, origin, {
-    assets: loadCharacterAssets(characterId, { frontIdleImage }),
-  });
+  const characterRenderer = new CharacterRenderer(ctx, origin, { assets: loadCharacterAssets(characterId) });
 
   async function loadMapJson(mapId) {
     const response = await fetch(`../maps/${mapId}.json`);
@@ -285,7 +281,7 @@ const forcedEntry = CHARACTER_ROSTER.find((entry) => entry.id === forcedCharacte
 if (forcedEntry) {
   startGame(forcedEntry.id);
 } else {
-  const previews = CHARACTER_ROSTER.map((entry) => ({ ...entry, image: loadFrontIdleImage(entry.id) }));
+  const previews = CHARACTER_ROSTER.map((entry) => ({ ...entry, image: loadPortraitImage(entry.id) }));
 
   let selectedIndex = 0;
   let confirmed = false;
@@ -345,7 +341,7 @@ if (forcedEntry) {
       event.preventDefault();
       confirmed = true;
       window.removeEventListener('keydown', handleSelectionKeydown);
-      startGame(previews[selectedIndex].id, previews[selectedIndex].image);
+      startGame(previews[selectedIndex].id);
     }
   }
 
