@@ -1,9 +1,27 @@
 # CYBER - especificacao tecnica compartilhada
 
 ## Grid e projecao
-Grid logico de uma celula por posicao, sem pixel livre. Tile visual isometrico 2:1, 64px de largura por 32px de altura, formato losango. Conversao de grid pra tela:
-screenX = originX + (col - row) * 32
-screenY = originY + (col + row) * 16
+
+**PROJECTION LOCK (sprint topdown):** a projecao ativa do jogo mudou de
+isometrica 2:1 pra **top-down ortogonal**. Grid logico continua sendo uma
+celula por posicao, sem pixel livre - so a forma de desenhar mudou, a
+posicao logica (col, row) e tudo que depende dela (colisao, doors, spawn,
+mapa.json) nao mudou em nada.
+
+Tile visual: quadrado 32x32 (`TILE_SIZE`, ver `src/core/topdown.js`).
+`gridToScreen` retorna o CENTRO visual da celula:
+screenX = originX + col * TILE_SIZE + TILE_SIZE / 2
+screenY = originY + row * TILE_SIZE + TILE_SIZE / 2
+
+`screenToGrid` faz o inverso. Props e personagem usam ancora
+BOTTOM-CENTER/FEET (a posicao logica representa onde o objeto toca o
+chao), nao o centro da celula. Depth/draw-order e simples: quem esta
+mais ao norte (row menor) desenha atras, quem esta mais ao sul (row
+maior) desenha na frente - ver `Renderer.drawPropsAndCharacter`.
+
+A projecao isometrica antiga (`src/core/isometric.js`, TILE_WIDTH=64,
+TILE_HEIGHT=32, formato losango) fica mantida no repositorio pra
+rollback, mas nao e mais usada por nenhum consumidor ativo.
 
 ## Movimento do personagem
 4 direcoes, sem diagonal. Um passo equivale a uma celula, a posicao logica so atualiza no fim do tween. Tween visual de 150 a 180ms por passo. Input novo entra em fila e nao interrompe o tween em andamento. Colisao checada por lookup numa matriz binaria separada da camada visual.
@@ -39,7 +57,7 @@ streetlamp_cyan, footprint 1x1, sem colisao. planter_green, footprint 1x1, sem c
 O codigo de mapas, salas e props e desta branch, feat/maps-rooms. O codigo de personagem, camera e input e de outra branch, feat/character-controller, e nao deve ser tocado aqui. Este arquivo so muda se as duas partes combinarem antes.
 
 ## Nucleo compartilhado
-src/core/isometric.js e src/render/renderer.js sao utilitarios compartilhados. A branch feat/character-controller vai importar e reaproveitar esses dois arquivos, nunca reimplementar a logica de projecao isometrica ou o loop de render por conta propria.
+src/core/topdown.js (projecao ativa - ver Projection Lock) e src/render/renderer.js sao utilitarios compartilhados. Quem precisa de grid<->tela sempre importa e reaproveita esses arquivos, nunca reimplementa a logica de projecao ou o loop de render por conta propria.
 
 ## Mapa district_07
 Grid de 16 colunas por 12 linhas (x de 0 a 15, y de 0 a 11). Layout abaixo, onde ponto e chao (tile_plain), cerquilha e footprint de predio bloqueado, D e porta, L e streetlamp_cyan sem colisao, P e planter_green sem colisao, C e crate_stack_magenta com colisao:
