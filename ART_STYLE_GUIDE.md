@@ -854,17 +854,37 @@ No logo.
 The result must look like a clean sprite that belongs directly in the "SPRITES" section of the NEON PROTOCOL character select screen.
 ```
 
-Ainda nao gerado/aprovado. Licoes acumuladas dos 3 personagens
-anteriores valem aqui tambem: conferir fundo escuro liso (sem brilho/halo)
-logo na primeira imagem, e ao pedir costas/lado/poses de caminhada,
-sempre comparar a diferenca de pixel entre passo 1 e passo 2 antes de dar
-como aprovado - foi assim que pegamos as duplicatas do personagem 3 que a
-inspecao visual sozinha deixou passar.
+**Personagem 4 completo - e com ele, os 4 personagens estao prontos.**
+Frente, costas e lado, arquivos reais em `assets/character4/`. Mesmas
+licoes de sempre confirmadas de novo:
+
+- Primeira geracao da frente saiu com fundo claro e cabelo penteado
+  "arrumado demais" - corrigido pedindo fundo escuro explicito e "messy,
+  slightly tousled hair (not neat or slicked back)".
+- Varios uploads sairam duplicados por engano nessa leva (o mesmo
+  arquivo de "costas passo 2" foi reenviado 4 vezes em vez da pose de
+  lado pedida) - identificado comparando pixels antes de aceitar
+  qualquer coisa como valida, mesmo padrao usado no personagem 3.
+- A pose de lado passo 2 final ficou com uma diferenca mais sutil que o
+  usual (diferenca media ~7-10/255, contra ~15/255 dos outros passos) -
+  aceita mesmo assim por ser claramente uma pose distinta (nao uma
+  duplicata de verdade, que fica abaixo de ~4/255), so com um passo
+  menos exagerado.
+- **Limitacao conhecida, aceita de proposito:** `back_walk2.png` e o
+  angulo 3/4 girado que o usuario ja tinha aceitado antes (ver decisao
+  anterior). Comparado por pixel, ele fica mais perto do `side_walk2.png`
+  (diferenca media ~7/255) do que do `back_walk1.png` (diferenca media
+  ~22/255) - ou seja, e quase uma pose de lado, nao uma de costas de
+  verdade. A animacao de andar de costas pode "piscar" entre um angulo
+  mais de costas (passo 1) e um mais de lado (passo 2). O usuario decidiu
+  aceitar assim mesmo pra fechar o personagem, em vez de gerar de novo.
+
+**Ainda nao integrado no jogo**, mesma situacao dos personagens 2 e 3 -
+sem tela de escolha de personagem ainda, os assets ficam guardados em
+`assets/character4/` esperando essa mecanica.
 
 ## Pendencia
 
 - Tela/mecanica de escolha de personagem (NFT) ainda nao existe - e o
   que vai decidir como/quando os personagens 2, 3 e 4 entram de fato no
-  jogo.
-- Personagem 4 (Corporate Spy) - so o prompt da frente definido, nada
-  gerado ainda.
+  jogo. Com os 4 personagens prontos, esse e o proximo passo natural.
