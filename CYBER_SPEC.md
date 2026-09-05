@@ -87,3 +87,27 @@ Portas do district_07:
 - x1 y3, target_map gridcorp_interior, spawn_x 5, spawn_y 7
 - x10 y6, target_map nullpoint_interior, spawn_x 5, spawn_y 7
 - x1 y10, target_map ghost_row_interior, spawn_x 5, spawn_y 7
+- x14 y2, target_map player_home, spawn_x 5, spawn_y 7
+- x6 y8, target_map data_terminal_interior, spawn_x 5, spawn_y 7
+
+## World Structure Lock
+
+Camera fixa por mapa: o jogo nao usa mais camera que segue o personagem
+(o `updateCamera()` por frame foi removido). Em vez disso, `centerMapOrigin`
+(`src/core/topdown.js`) calcula uma unica vez, a cada troca de mapa (load
+inicial e toda vez que `onMapChanged` dispara por uma porta), a origem que
+centraliza o mapa inteiro no canvas: `originX = (canvasWidth - map.width *
+TILE_SIZE) / 2`, mesma coisa pro eixo Y. Generico, depende so de
+`map.width`/`map.height`/`TILE_SIZE` - funciona igual pro exterior e pra
+qualquer interior, sem scroll nem zoom.
+
+Sector 7 (district_07) tem 5 portas ligando pra 5 destinos, cada um um
+map.json separado: MY HOME (`player_home`), BAR (`nullpoint_interior`),
+BLACKNET (`ghost_row_interior`), CORP (`gridcorp_interior`) e DATA TERMINAL
+(`data_terminal_interior`, mapa novo desta sprint - os outros 4 ja
+existiam e foram reaproveitados, sem duplicar). Toda porta de saida de um
+interior fica fora da propria celula da porta de entrada, num chao livre
+na frente do predio correspondente (evita spawn preso em colisao e evita
+loop de reentrar na porta ao sair). Interiores sao blockouts funcionais
+por enquanto (piso, parede/colisao, porta, spawn) - podem ganhar arte
+propria depois, numa sprint futura.
