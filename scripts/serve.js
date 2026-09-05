@@ -11,10 +11,12 @@ const MIME = {
   '.js': 'text/javascript',
   '.json': 'application/json',
   '.css': 'text/css',
+  '.png': 'image/png',
 };
 
 const server = http.createServer(async (req, res) => {
-  const urlPath = req.url === '/' ? '/index.html' : req.url.split('?')[0];
+  const pathOnly = req.url.split('?')[0];
+  const urlPath = pathOnly === '/' ? '/index.html' : pathOnly;
   const filePath = path.join(root, decodeURIComponent(urlPath));
   if (!filePath.startsWith(root)) {
     res.writeHead(403);

@@ -1,5 +1,6 @@
 import { MapManager } from './maps/mapManager.js';
 import { Renderer } from './render/renderer.js';
+import { gridToScreen } from './core/isometric.js';
 import { MovementController } from './character/movementController.js';
 import { CharacterRenderer, isImageReady } from './character/characterRenderer.js';
 import { CHARACTER_ROSTER, loadCharacterAssets, loadPortraitImage } from './character/characterRoster.js';
@@ -234,8 +235,25 @@ function startGame(characterId) {
     }
   });
 
+  // Camera segue o personagem: recalcula a origem da projecao isometrica
+  // a cada frame pra ele ficar sempre centralizado na tela, em vez de uma
+  // origem fixa que deixa o jogador sair da area visivel ao andar pro
+  // mapa afora (o mapa continua bloqueando corretamente nas bordas, so
+  // que fora da tela - dava a impressao de "andar infinito").
+  function updateCamera() {
+    const { col, row } = controller.visualPosition;
+    const raw = gridToScreen(col, row, 0, 0);
+    const camX = canvas.width / 2 - raw.x;
+    const camY = canvas.height / 2 - raw.y;
+    mapRenderer.originX = camX;
+    mapRenderer.originY = camY;
+    characterRenderer.originX = camX;
+    characterRenderer.originY = camY;
+  }
+
   function render() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
+    updateCamera();
     mapRenderer.drawMap(mapManager.currentMap);
     const { col, row } = controller.visualPosition;
     characterRenderer.draw({ col, row, direction: controller.direction, pose: controller.pose });
