@@ -622,9 +622,118 @@ escolha de personagem/NFT no jogo (so um personagem jogavel por vez, ver
 CYBER_SPEC.md). Os assets ficam prontos e guardados em
 `assets/character2/`, esperando a tela de selecao ser projetada depois.
 
+## Personagem 3 - Drone Engineer
+
+Prompt enviado pelo usuario pra gerar a frente (idle) do personagem 3,
+mesmo esquema "Simple 2D Style Lock" dos personagens 1 e 2:
+
+```
+MASTER SIMPLE 2D STYLE LOCK — DO NOT IGNORE
+
+Use the provided NEON PROTOCOL character select image as the PRIMARY STYLE REFERENCE.
+
+The goal is NOT detailed full-body pixel illustration.
+The goal is a SIMPLE 2D GAME SPRITE in the exact same style as the sprites shown in the NEON PROTOCOL sheet.
+
+Create a clean, readable, simplified 2D pixel-art character sprite for a cyberpunk RPG.
+
+Style requirements:
+- simple 2D sprite style
+- same visual style as the sprites in the NEON PROTOCOL sheet
+- same pixel density
+- same sprite complexity
+- same body proportions
+- same outline thickness
+- same shading style
+- same color depth
+- same retro pixel-art quality
+- same readability at small size
+
+Very important:
+This must look like a PLAYABLE GAME SPRITE, not like a detailed standalone character illustration.
+
+The character must feel like one of the small "SPRITES" shown in the character select screen.
+
+Use:
+- compact RPG sprite proportions
+- slightly oversized head
+- simple readable body
+- limited animation-friendly detail
+- visible square pixels
+- strong outline
+- simple block shading
+- controlled highlights
+- minimal rendering noise
+
+Do NOT create:
+- highly detailed full-body illustration
+- semi-realistic proportions
+- painterly pixel art
+- large empty background
+- dramatic pose
+- soft gradients
+- anti-aliasing
+- 3D render
+- polished concept-art look
+
+Character:
+Drone Engineer
+
+Identity:
+A young male cyberpunk engineer and drone specialist with messy dark brown hair, engineering goggles on top of his head, and a practical dark outfit with orange tech accents.
+
+Visual traits:
+- messy dark brown hair
+- engineering goggles resting on the head
+- brown or amber eyes
+- dark practical cyberpunk engineer outfit
+- orange / amber accent details
+- slightly technical / mechanic look
+- compact utility-style clothing
+- no hood
+- no face mask
+- no elegant corporate look
+- no heavy mercenary armor
+
+Optional small readable detail:
+- subtle drone-engineer vibe in the outfit design
+- small technical accessories
+- simple utility elements
+- but keep the sprite clean and readable
+
+Pose:
+Neutral idle pose.
+Standing upright.
+Simple front-facing sprite pose.
+Arms resting naturally.
+No dramatic action pose.
+
+Output goal:
+Create the character as a SIMPLE FRONT VIEW GAME SPRITE in the same style as the NEON PROTOCOL sprite sheet.
+
+Framing:
+Show only the character, centered.
+No environment scene.
+No UI.
+No text.
+No logo.
+
+The result must look like a clean sprite that belongs directly in the "SPRITES" section of the NEON PROTOCOL character select screen.
+Do NOT create a detailed pixel-art full-body illustration.
+Create a SMALL, SIMPLE, GAME-READY 2D RPG SPRITE in the exact style of the "SPRITES" section from the provided NEON PROTOCOL image.
+```
+
+Ainda nao gerado/aprovado. Licoes dos personagens 1 e 2 valem de novo
+aqui: pedir explicitamente fundo liso sem brilho/halo (o personagem 2
+teve isso na primeira tentativa), e ao gerar costas/lado, reforcar que
+os oculos de engenharia na cabeca e o cabelo despenteado nao podem sumir
+nem virar outra coisa.
+
 ## Pendencia
 
 - Tela/mecanica de escolha de personagem (NFT) ainda nao existe - e o
   que vai decidir como/quando os personagens 2, 3 e 4 entram de fato no
   jogo.
-- Personagens 3 e 4 ainda nao comecaram.
+- Personagem 3 (Drone Engineer) - so o prompt da frente definido, nada
+  gerado ainda.
+- Personagem 4 ainda nao comecou.
