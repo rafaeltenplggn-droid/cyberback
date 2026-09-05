@@ -42,6 +42,9 @@ function validateProp(prop, width, height, index) {
     `props[${index}] footprint ultrapassa os limites do mapa`
   );
   assert(typeof prop.collision_footprint === 'boolean', `props[${index}].collision_footprint invalido`);
+  if (prop.art_height_px !== undefined) {
+    assert(typeof prop.art_height_px === 'number' && prop.art_height_px > 0, `props[${index}].art_height_px invalido`);
+  }
 }
 
 /**

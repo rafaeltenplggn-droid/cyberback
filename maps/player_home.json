@@ -31,7 +31,7 @@
     { "x": 5, "y": 9, "target_map": "district_07", "spawn_x": 14, "spawn_y": 3 }
   ],
   "props": [
-    { "id": "home_pc", "asset": "home_pc.png", "origin_x": 3, "origin_y": 3, "footprint_w": 1, "footprint_h": 1, "collision_footprint": true },
-    { "id": "home_bed", "asset": "home_bed.png", "origin_x": 6, "origin_y": 3, "footprint_w": 1, "footprint_h": 1, "collision_footprint": true }
+    { "id": "home_pc", "asset": "home_pc.png", "origin_x": 3, "origin_y": 3, "footprint_w": 1, "footprint_h": 1, "collision_footprint": true, "art_height_px": 26 },
+    { "id": "home_bed", "asset": "home_bed.png", "origin_x": 6, "origin_y": 3, "footprint_w": 1, "footprint_h": 1, "collision_footprint": true, "art_height_px": 34 }
   ]
 }
