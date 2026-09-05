@@ -1,5 +1,5 @@
-// Render do personagem. Reaproveita a projecao isometrica compartilhada
-// (src/core/isometric.js) conforme a secao "Nucleo compartilhado" do
+// Render do personagem. Reaproveita a projecao top-down compartilhada
+// (src/core/topdown.js) conforme a secao "Projection Lock" do
 // CYBER_SPEC.md - nunca reimplementa grid<->tela aqui.
 //
 // Sem `assets`, desenha o placeholder de sempre (retangulo + bolinha).
@@ -7,7 +7,7 @@
 // no lugar - mesma logica de grid de frames (4 direcoes x 3 poses) e o
 // mesmo requisito de espelhamento: o frame de "right" nunca e desenhado
 // direto, e sempre a geometria de "left" com ctx.scale(-1, 1).
-import { gridToScreen, TILE_HEIGHT } from '../core/isometric.js';
+import { gridToScreen, TILE_SIZE } from '../core/topdown.js';
 import { getFrame } from './spriteSheet.js';
 
 const DIRECTION_COLORS = {
@@ -19,9 +19,11 @@ const DIRECTION_COLORS = {
 
 const POSE_BOB = { idle: 0, step1: -3, step2: 3 };
 
-// Altura alvo do sprite desenhado na tela, calibrada visualmente contra o
-// grid isometrico (TILE_WIDTH=64/TILE_HEIGHT=32) - ver preview em
-// ART_STYLE_GUIDE.md. A largura e derivada mantendo a proporcao da imagem.
+// Altura alvo do sprite desenhado na tela - calibrada pra ficar legivel
+// no grid top-down (TILE_SIZE=32), de proposito maior que um tile (o
+// personagem e "mais alto" que a celula que ocupa, igual a referencia
+// visual pede) - ver ART_STYLE_GUIDE.md. A largura e derivada mantendo a
+// proporcao da imagem.
 const SPRITE_TARGET_HEIGHT = 42;
 
 export function isImageReady(img) {
@@ -53,7 +55,11 @@ export class CharacterRenderer {
     const sprite = this.assets?.[sourceDirection]?.[pose];
 
     ctx.save();
-    ctx.translate(x, y - TILE_HEIGHT / 2);
+    // Feet anchor: os pes do personagem ficam no centro-inferior da
+    // celula que ele ocupa (a posicao logica representa onde ele toca o
+    // chao) - o sprite desenha pra cima a partir dai, podendo ficar mais
+    // alto que a propria celula (esperado, ver Projection Lock).
+    ctx.translate(x, y + TILE_SIZE / 2);
     if (frame.mirrored) {
       ctx.scale(-1, 1);
     }

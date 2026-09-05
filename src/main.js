@@ -1,6 +1,6 @@
 import { MapManager } from './maps/mapManager.js';
 import { Renderer } from './render/renderer.js';
-import { gridToScreen } from './core/isometric.js';
+import { gridToScreen } from './core/topdown.js';
 import { MovementController } from './character/movementController.js';
 import { CharacterRenderer, isImageReady } from './character/characterRenderer.js';
 import { CHARACTER_ROSTER, loadCharacterAssets, loadPortraitImage } from './character/characterRoster.js';
@@ -305,7 +305,9 @@ function startGame(characterId) {
     updateCamera();
     mapRenderer.drawMap(mapManager.currentMap);
     const { col, row } = controller.visualPosition;
-    characterRenderer.draw({ col, row, direction: controller.direction, pose: controller.pose });
+    mapRenderer.drawPropsAndCharacter(mapManager.currentMap.props, row, () => {
+      characterRenderer.draw({ col, row, direction: controller.direction, pose: controller.pose });
+    });
     updateStatus();
     updateHackStatus();
     updateShopStatus();
