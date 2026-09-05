@@ -750,9 +750,121 @@ novo, nao so por inspecao visual):
 tela de escolha de personagem ainda, os assets ficam guardados em
 `assets/character3/` esperando essa mecanica.
 
+## Personagem 4 - Corporate Spy
+
+Prompt enviado pelo usuario pra gerar a frente (idle) do personagem 4, o
+ultimo dos quatro. Mesmo esquema "Simple 2D Style Lock" dos anteriores:
+
+```
+Do NOT create a detailed pixel-art full-body illustration.
+Create a SMALL, SIMPLE, GAME-READY 2D RPG SPRITE in the exact style of the "SPRITES" section from the provided NEON PROTOCOL image.
+MASTER SIMPLE 2D STYLE LOCK — DO NOT IGNORE
+
+Use the provided NEON PROTOCOL character select image as the PRIMARY STYLE REFERENCE.
+
+The goal is NOT detailed full-body pixel illustration.
+The goal is a SIMPLE 2D GAME SPRITE in the exact same style as the sprites shown in the NEON PROTOCOL sheet.
+
+Create a clean, readable, simplified 2D pixel-art character sprite for a cyberpunk RPG.
+
+Style requirements:
+- simple 2D sprite style
+- same visual style as the sprites in the NEON PROTOCOL sheet
+- same pixel density
+- same sprite complexity
+- same body proportions
+- same outline thickness
+- same shading style
+- same color depth
+- same retro pixel-art quality
+- same readability at small size
+
+Very important:
+This must look like a PLAYABLE GAME SPRITE, not like a detailed standalone character illustration.
+
+The character must feel like one of the small "SPRITES" shown in the character select screen.
+
+Use:
+- compact RPG sprite proportions
+- slightly oversized head
+- simple readable body
+- limited animation-friendly detail
+- visible square pixels
+- strong outline
+- simple block shading
+- controlled highlights
+- minimal rendering noise
+
+Do NOT create:
+- highly detailed full-body illustration
+- semi-realistic proportions
+- painterly pixel art
+- large empty background
+- dramatic pose
+- soft gradients
+- anti-aliasing
+- 3D render
+- polished concept-art look
+
+Character:
+Corporate Spy
+
+Identity:
+A young adult male cyberpunk corporate spy with styled dark hair, glasses, and a clean formal outfit with subtle blue tech accents.
+
+Visual traits:
+- styled dark blue-black hair
+- neat side-swept hairstyle
+- thin rectangular glasses
+- blue eyes
+- elegant corporate appearance
+- black / dark navy formal suit
+- white shirt
+- dark tie
+- subtle cyan or blue tech accents
+- refined and intelligent silhouette
+- no hood
+- no face mask
+- no messy streetwear
+- no heavy armor
+
+Optional small readable detail:
+- slight corporate-tech vibe in the clothing
+- subtle sleek high-tech details
+- minimal clean accessories
+- but keep the sprite simple and readable
+
+Pose:
+Neutral idle pose.
+Standing upright.
+Simple front-facing sprite pose.
+Arms resting naturally.
+No dramatic action pose.
+
+Output goal:
+Create the character as a SIMPLE FRONT VIEW GAME SPRITE in the same style as the NEON PROTOCOL sprite sheet.
+
+Framing:
+Show only the character, centered.
+No environment scene.
+No UI.
+No text.
+No logo.
+
+The result must look like a clean sprite that belongs directly in the "SPRITES" section of the NEON PROTOCOL character select screen.
+```
+
+Ainda nao gerado/aprovado. Licoes acumuladas dos 3 personagens
+anteriores valem aqui tambem: conferir fundo escuro liso (sem brilho/halo)
+logo na primeira imagem, e ao pedir costas/lado/poses de caminhada,
+sempre comparar a diferenca de pixel entre passo 1 e passo 2 antes de dar
+como aprovado - foi assim que pegamos as duplicatas do personagem 3 que a
+inspecao visual sozinha deixou passar.
+
 ## Pendencia
 
 - Tela/mecanica de escolha de personagem (NFT) ainda nao existe - e o
   que vai decidir como/quando os personagens 2, 3 e 4 entram de fato no
   jogo.
-- Personagem 4 ainda nao comecou.
+- Personagem 4 (Corporate Spy) - so o prompt da frente definido, nada
+  gerado ainda.
