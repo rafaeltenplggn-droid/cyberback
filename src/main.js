@@ -4,6 +4,7 @@ import { gridToScreen } from './core/isometric.js';
 import { MovementController } from './character/movementController.js';
 import { CharacterRenderer, isImageReady } from './character/characterRenderer.js';
 import { CHARACTER_ROSTER, loadCharacterAssets, loadPortraitImage } from './character/characterRoster.js';
+import { loadPropImage } from './render/propAssets.js';
 import { createPlayerStats, xpRequiredForLevel } from './hackloop/playerStats.js';
 import { TraceMeter } from './hackloop/trace.js';
 import { EnergyMeter } from './hackloop/energy.js';
@@ -20,8 +21,20 @@ const origin = { originX: canvas.width / 2, originY: 80 };
 
 // Roda o jogo de verdade com o personagem escolhido na tela de selecao.
 function startGame(characterId) {
-  const mapRenderer = new Renderer(ctx, origin);
+  // Preenchido sob demanda (ver ensurePropImagesLoaded) conforme cada mapa
+  // e carregado. Renderer guarda a MESMA referencia, entao um asset que
+  // termina de carregar depois passa a aparecer sozinho no proximo frame.
+  const propImages = {};
+  const mapRenderer = new Renderer(ctx, origin, { propImages });
   const characterRenderer = new CharacterRenderer(ctx, origin, { assets: loadCharacterAssets(characterId) });
+
+  function ensurePropImagesLoaded(map) {
+    for (const prop of map.props) {
+      if (!propImages[prop.asset]) {
+        propImages[prop.asset] = loadPropImage(prop.asset);
+      }
+    }
+  }
 
   async function loadMapJson(mapId) {
     const response = await fetch(`maps/${mapId}.json`);
@@ -31,7 +44,10 @@ function startGame(characterId) {
 
   const mapManager = new MapManager({ loadMapJson });
   const controller = new MovementController(mapManager, {
-    onMapChanged: () => updateStatus(),
+    onMapChanged: (map) => {
+      ensurePropImagesLoaded(map);
+      updateStatus();
+    },
   });
 
   const playerStats = createPlayerStats(1);
@@ -312,6 +328,7 @@ function startGame(characterId) {
 
   mapManager.loadMap(startMap, startCol, startRow).then(
     () => {
+      ensurePropImagesLoaded(mapManager.currentMap);
       render();
       requestAnimationFrame(loop);
     },
