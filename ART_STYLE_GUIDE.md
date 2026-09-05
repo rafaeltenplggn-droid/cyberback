@@ -598,16 +598,33 @@ Do NOT create a detailed pixel-art full-body illustration.
 Create a SMALL, SIMPLE, GAME-READY 2D RPG SPRITE in the exact style of the "SPRITES" section from the provided NEON PROTOCOL image.
 ```
 
-Ainda nao gerado/aprovado. Depois de aprovar a frente, repetir o mesmo
-processo do personagem 1: costas, lado, poses de caminhada (2 por
-direcao), sempre anexando a imagem ja aprovada como referencia e
-conferindo que nenhum traco (aqui, a viseira transparente e o cabelo longo)
-some entre uma vista e outra - foi exatamente esse tipo de inconsistencia
-que aconteceu com a mascara do personagem 1.
+**Personagem 2 completo.** Frente, costas e lado, cada um com pose parada
++ 2 passos de caminhada, arquivos reais em `assets/character2/` (mesmo
+padrao de nomes do personagem 1: `front_walk1.png`, `front_walk2.png`,
+`back_walk1.png`, `back_walk2.png`, `side_walk1.png`, `side_walk2.png`).
+Dois ajustes feitos no meio do caminho, ambos resolvidos so com o texto
+do prompt (sem mudar a identidade do personagem):
+
+- Primeira geracao da frente saiu com um brilho/halo ao redor do
+  personagem, que o personagem 1 nunca tinha - pedimos de novo com
+  "no glow, no halo, no bloom... completely flat solid background color,
+  same as the reference sprite" e anexando o personagem 1 como referencia
+  de fundo/sombreado.
+- A viseira transparente (traco de assinatura do personagem 2) se
+  manteve visivel em todas as vistas dessa vez, incluindo o perfil -
+  aprendendo com o erro da mascara do personagem 1, o pedido de vista de
+  lado ja incluiu "the visor must remain visible... do not remove it or
+  show bare eyes" desde a primeira tentativa.
+
+**Ainda nao integrado no jogo.** Diferente do personagem 1, o personagem
+2 nao substitui nada em `src/main.js` - ainda nao existe mecanica de
+escolha de personagem/NFT no jogo (so um personagem jogavel por vez, ver
+CYBER_SPEC.md). Os assets ficam prontos e guardados em
+`assets/character2/`, esperando a tela de selecao ser projetada depois.
 
 ## Pendencia
 
-Nenhum arquivo de imagem do personagem 2 foi commitado ainda. Mesmo
-processo do personagem 1: gerar, aprovar no chat, subir o PNG de verdade
-via upload direto no repositorio (GitHub "Add file -> Upload files"),
-recortar o fundo vazio e integrar em `assets/character2/`.
+- Tela/mecanica de escolha de personagem (NFT) ainda nao existe - e o
+  que vai decidir como/quando os personagens 2, 3 e 4 entram de fato no
+  jogo.
+- Personagens 3 e 4 ainda nao comecaram.
