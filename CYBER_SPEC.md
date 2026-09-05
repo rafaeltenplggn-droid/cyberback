@@ -62,7 +62,7 @@ L . . . . . . . . . # # . . . .
 Props com footprint 2x2 e collision_footprint true, ancorados no canto superior esquerdo de cada cerquilha:
 - gridcorp_tower, origem x1 y1
 - nullpoint_bar (asset shop_mid), origem x10 y4
-- ghost_row_market (asset shop_mid), origem x1 y8
+- ghost_row_market (asset ghost_row_market), origem x1 y8
 
 Portas do district_07:
 - x1 y3, target_map gridcorp_interior, spawn_x 5, spawn_y 7
