@@ -41,9 +41,9 @@
     { "id": "gridcorp_tower", "asset": "gridcorp_tower.png", "origin_x": 1, "origin_y": 1, "footprint_w": 2, "footprint_h": 2, "collision_footprint": true },
     { "id": "nullpoint_bar", "asset": "shop_mid.png", "origin_x": 10, "origin_y": 4, "footprint_w": 2, "footprint_h": 2, "collision_footprint": true },
     { "id": "ghost_row_market", "asset": "ghost_row_market.png", "origin_x": 1, "origin_y": 8, "footprint_w": 2, "footprint_h": 2, "collision_footprint": true },
-    { "id": "streetlamp_cyan", "asset": "streetlamp_cyan.png", "origin_x": 0, "origin_y": 5, "footprint_w": 1, "footprint_h": 1, "collision_footprint": false },
-    { "id": "planter_green", "asset": "planter_green.png", "origin_x": 8, "origin_y": 8, "footprint_w": 1, "footprint_h": 1, "collision_footprint": false },
-    { "id": "crate_stack_magenta", "asset": "crate_stack_magenta.png", "origin_x": 13, "origin_y": 6, "footprint_w": 1, "footprint_h": 1, "collision_footprint": true },
-    { "id": "player_home_sign", "asset": "streetlamp_cyan.png", "origin_x": 14, "origin_y": 2, "footprint_w": 1, "footprint_h": 1, "collision_footprint": false }
+    { "id": "streetlamp_cyan", "asset": "streetlamp_cyan.png", "origin_x": 0, "origin_y": 5, "footprint_w": 1, "footprint_h": 1, "collision_footprint": false, "art_height_px": 85 },
+    { "id": "planter_green", "asset": "planter_green.png", "origin_x": 8, "origin_y": 8, "footprint_w": 1, "footprint_h": 1, "collision_footprint": false, "art_height_px": 28 },
+    { "id": "crate_stack_magenta", "asset": "crate_stack_magenta.png", "origin_x": 13, "origin_y": 6, "footprint_w": 1, "footprint_h": 1, "collision_footprint": true, "art_height_px": 46 },
+    { "id": "player_home_sign", "asset": "streetlamp_cyan.png", "origin_x": 14, "origin_y": 2, "footprint_w": 1, "footprint_h": 1, "collision_footprint": false, "art_height_px": 85 }
   ]
 }

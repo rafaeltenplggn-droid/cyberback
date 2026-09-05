@@ -62,15 +62,22 @@ export class Renderer {
   }
 
   // Com arte real carregada pro asset, desenha o sprite ancorado na base
-  // do footprint (largura segue o footprint, altura segue a proporcao da
-  // imagem - deixa predios mais altos que a "caixa" do footprint, igual
-  // ao personagem). Sem arte real ainda, cai no retangulo placeholder.
+  // do footprint. Sem arte real ainda, cai no retangulo placeholder.
   //
   // A ancora usa o canto MAIS PROXIMO da camera do footprint (maior
   // col+row), nao o origin_x/origin_y (canto de tras) - senao qualquer
   // footprint maior que 1x1 desenha "afundado" um passo isometrico
   // inteiro pra tras de onde ele realmente termina no chao, abrindo um
   // vao vazio entre o predio e uma porta/personagem logo na frente dele.
+  //
+  // Tamanho do sprite: se o prop tiver art_height_px no mapa.json, a
+  // altura desenhada e essa (calibrada a mao pra bater com a escala do
+  // personagem principal, ~42px de altura - ver CYBER_SPEC.md), com a
+  // largura seguindo a proporcao da imagem. Sem art_height_px (props
+  // grandes o bastante pra preencher o proprio footprint de proposito,
+  // tipo os predios), a largura segue o footprint e a altura vem da
+  // proporcao da imagem, podendo ficar bem mais alto que a "caixa" do
+  // footprint (torres, por exemplo) - mesmo comportamento de sempre.
   drawProp(prop) {
     const frontCol = prop.origin_x + prop.footprint_w - 1;
     const frontRow = prop.origin_y + prop.footprint_h - 1;
@@ -81,8 +88,13 @@ export class Renderer {
 
     const image = this.propImages[prop.asset];
     if (isImageReady(image)) {
-      const drawH = image.naturalHeight * (w / image.naturalWidth);
-      ctx.drawImage(image, x - w / 2, y - drawH, w, drawH);
+      let drawW = w;
+      let drawH = image.naturalHeight * (drawW / image.naturalWidth);
+      if (prop.art_height_px) {
+        drawH = prop.art_height_px;
+        drawW = image.naturalWidth * (drawH / image.naturalHeight);
+      }
+      ctx.drawImage(image, x - drawW / 2, y - drawH, drawW, drawH);
       return;
     }
 
