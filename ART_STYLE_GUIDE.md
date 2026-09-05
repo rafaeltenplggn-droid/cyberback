@@ -723,17 +723,36 @@ Do NOT create a detailed pixel-art full-body illustration.
 Create a SMALL, SIMPLE, GAME-READY 2D RPG SPRITE in the exact style of the "SPRITES" section from the provided NEON PROTOCOL image.
 ```
 
-Ainda nao gerado/aprovado. Licoes dos personagens 1 e 2 valem de novo
-aqui: pedir explicitamente fundo liso sem brilho/halo (o personagem 2
-teve isso na primeira tentativa), e ao gerar costas/lado, reforcar que
-os oculos de engenharia na cabeca e o cabelo despenteado nao podem sumir
-nem virar outra coisa.
+**Personagem 3 completo.** Frente, costas e lado, arquivos reais em
+`assets/character3/` (mesmo padrao de nomes dos personagens 1 e 2). Assim
+como o personagem 2, a primeira geracao da frente saiu com fundo cinza
+claro (nao o cinza-chumbo escuro padrao) - resolvido pedindo de novo com
+enfase em "flat DARK background (dark charcoal/navy gray, NOT light
+gray)". Duas rodadas de duplicata de imagem aconteceram nessa leva (ambas
+identificadas comparando os pixels das duas imagens antes de pedir de
+novo, nao so por inspecao visual):
+
+- Na frente, a mesma imagem parada foi enviada duas vezes por engano no
+  lugar da pose de passo 2 - corrigido, `front_walk2.png` agora e uma
+  pose de caminhada de verdade.
+- De costas, `back_walk2.png` tambem saiu quase-duplicado de
+  `back_walk1.png` na primeira tentativa (diferenca media de pixel
+  ~2.4/255). A primeira regeracao exagerou (pernas afastadas demais tipo
+  passada larga); a segunda pediu "natural, moderate walking stride...
+  NOT an exaggerated wide lunge" e saiu certo (diferenca media subiu pra
+  ~15/255, na mesma faixa das poses de caminhada reais dos outros
+  personagens). Ficou com um pequeno artefato visual (duas formas cinza
+  pontudas acima da cabeca, tipo orelhas) que o usuario decidiu manter -
+  nao e um traco de identidade do personagem, so uma rendericao estranha
+  dessa imagem especifica.
+
+**Ainda nao integrado no jogo**, mesma situacao do personagem 2 - sem
+tela de escolha de personagem ainda, os assets ficam guardados em
+`assets/character3/` esperando essa mecanica.
 
 ## Pendencia
 
 - Tela/mecanica de escolha de personagem (NFT) ainda nao existe - e o
   que vai decidir como/quando os personagens 2, 3 e 4 entram de fato no
   jogo.
-- Personagem 3 (Drone Engineer) - so o prompt da frente definido, nada
-  gerado ainda.
 - Personagem 4 ainda nao comecou.
