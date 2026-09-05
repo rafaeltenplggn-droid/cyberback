@@ -36,9 +36,9 @@ test('fora de alcance: canTriggerHack e false e triggerHack nao dispara nada', (
 
 test('em alcance de cada um dos 3 predios, o hack dispara com o target certo', async () => {
   const adjacentCells = {
-    gridcorp_tower: { col: 0, row: 1 },
-    nullpoint_bar: { col: 9, row: 4 },
-    ghost_row_market: { col: 0, row: 8 },
+    gridcorp_tower: { col: 16, row: 1 },
+    nullpoint_bar: { col: 0, row: 1 },
+    ghost_row_market: { col: 7, row: 1 },
   };
 
   for (const [buildingId, pos] of Object.entries(adjacentCells)) {
@@ -135,7 +135,7 @@ test('sem ledger, byteBalance e null (o runtime nao inventa um saldo)', () => {
 });
 
 test('energyValue/energyMax ficam disponiveis e caem depois de um hack', async () => {
-  const mapManager = makeFakeMapManager({ col: 0, row: 1 });
+  const mapManager = makeFakeMapManager({ col: 16, row: 1 });
   const controller = makeFakeController();
   const energyMeter = new EnergyMeter({ regenPerSecond: 0 });
   const runtime = new HackRuntime({ mapManager, controller, playerStats: createPlayerStats(1), energyMeter, rng: () => 0 });
@@ -145,7 +145,7 @@ test('energyValue/energyMax ficam disponiveis e caem depois de um hack', async (
 
   await runtime.triggerHack();
 
-  // (0,1) e adjacente ao gridcorp_tower, tier raro
+  // (16,1) e adjacente ao gridcorp_tower, tier raro
   assert.equal(runtime.energyValue, energyMeter.max - ENERGY_COST_PER_TIER.raro);
 });
 
