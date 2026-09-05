@@ -24,7 +24,7 @@ const POSE_BOB = { idle: 0, step1: -3, step2: 3 };
 // ART_STYLE_GUIDE.md. A largura e derivada mantendo a proporcao da imagem.
 const SPRITE_TARGET_HEIGHT = 42;
 
-function isImageReady(img) {
+export function isImageReady(img) {
   return Boolean(img) && img.complete && img.naturalWidth > 0;
 }
 
