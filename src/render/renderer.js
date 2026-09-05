@@ -1,7 +1,9 @@
 // Render de validacao visual: tiles numerados genericos e retangulos
-// cinza no lugar de prop/predio real. Nao faz parte do character controller,
-// so desenha o mapa e um marcador de debug para validar colisao e doors.
+// cinza no lugar de prop/predio sem arte real ainda. Nao faz parte do
+// character controller, so desenha o mapa e um marcador de debug para
+// validar colisao e doors.
 import { gridToScreen, TILE_WIDTH, TILE_HEIGHT } from '../core/isometric.js';
+import { isImageReady } from '../character/characterRenderer.js';
 
 const TILE_COLORS = {
   0: '#2b2f3a',
@@ -11,10 +13,16 @@ const TILE_COLORS = {
 };
 
 export class Renderer {
-  constructor(ctx, { originX, originY }) {
+  /**
+   * `propImages` (opcional) e um objeto { [nomeDoArquivo]: HTMLImageElement }
+   * - ver src/render/propAssets.js. Prop sem entrada carregada/pronta ali
+   * cai sozinho no retangulo placeholder de sempre (isImageReady).
+   */
+  constructor(ctx, { originX, originY }, { propImages } = {}) {
     this.ctx = ctx;
     this.originX = originX;
     this.originY = originY;
+    this.propImages = propImages ?? {};
   }
 
   clear(width, height) {
@@ -53,12 +61,23 @@ export class Renderer {
     }
   }
 
-  // Placeholder cinza no lugar do asset real do prop/predio.
+  // Com arte real carregada pro asset, desenha o sprite ancorado na base
+  // do footprint (largura segue o footprint, altura segue a proporcao da
+  // imagem - deixa predios mais altos que a "caixa" do footprint, igual
+  // ao personagem). Sem arte real ainda, cai no retangulo placeholder.
   drawProp(prop) {
     const { x, y } = gridToScreen(prop.origin_x, prop.origin_y, this.originX, this.originY);
     const w = prop.footprint_w * TILE_WIDTH;
     const h = prop.footprint_h * TILE_HEIGHT;
     const ctx = this.ctx;
+
+    const image = this.propImages[prop.asset];
+    if (isImageReady(image)) {
+      const drawH = image.naturalHeight * (w / image.naturalWidth);
+      ctx.drawImage(image, x - w / 2, y - drawH, w, drawH);
+      return;
+    }
+
     ctx.fillStyle = prop.collision_footprint ? '#8a8a8a' : '#b5b5b5';
     ctx.fillRect(x - w / 2, y - h, w, h);
     ctx.strokeStyle = '#333';
