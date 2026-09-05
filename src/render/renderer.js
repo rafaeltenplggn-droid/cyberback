@@ -52,13 +52,25 @@ export class Renderer {
       }
     }
 
-    for (const prop of map.props) {
-      this.drawProp(prop);
-    }
-
     for (const door of map.doors) {
       this.drawDoorMarker(door);
     }
+  }
+
+  // Desenha os props do mapa e o personagem numa unica passada, ordenados
+  // por profundidade isometrica (col+row do ponto mais proximo da camera
+  // de cada um) - sem isso, o personagem sempre desenhava por cima de
+  // todo prop (inclusive predios), mesmo quando deveria estar visualmente
+  // atras. Quem estiver mais perto da camera (maior col+row) desenha por
+  // ultimo, ficando na frente - "painter's algorithm" isometrico padrao.
+  drawPropsAndCharacter(props, characterDepth, drawCharacter) {
+    const entries = props.map((prop) => ({
+      depth: prop.origin_x + prop.footprint_w - 1 + (prop.origin_y + prop.footprint_h - 1),
+      draw: () => this.drawProp(prop),
+    }));
+    entries.push({ depth: characterDepth, draw: drawCharacter });
+    entries.sort((a, b) => a.depth - b.depth);
+    for (const entry of entries) entry.draw();
   }
 
   // Com arte real carregada pro asset, desenha o sprite ancorado na base

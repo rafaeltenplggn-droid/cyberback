@@ -305,7 +305,9 @@ function startGame(characterId) {
     updateCamera();
     mapRenderer.drawMap(mapManager.currentMap);
     const { col, row } = controller.visualPosition;
-    characterRenderer.draw({ col, row, direction: controller.direction, pose: controller.pose });
+    mapRenderer.drawPropsAndCharacter(mapManager.currentMap.props, col + row, () => {
+      characterRenderer.draw({ col, row, direction: controller.direction, pose: controller.pose });
+    });
     updateStatus();
     updateHackStatus();
     updateShopStatus();
