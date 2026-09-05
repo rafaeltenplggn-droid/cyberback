@@ -20,8 +20,9 @@ const mapRenderer = new Renderer(ctx, origin);
 // Sprite real do personagem 1 (Shadow Hacker, ver ART_STYLE_GUIDE.md).
 // Carrega de forma assincrona - ate a imagem terminar de carregar,
 // CharacterRenderer cai de volta no placeholder sozinho (ver isImageReady
-// em characterRenderer.js). So ha pose de frente distinta pra passo 1/2;
-// costas e lado ainda usam a mesma imagem parada nas 3 poses.
+// em characterRenderer.js). Todas as 3 direcoes ja tem pose de caminhada
+// propria; "idle" reaproveita a imagem de passo 1 (nao ha pose parada
+// separada gerada ainda).
 function loadCharacterImage(fileName) {
   const img = new Image();
   img.src = `../assets/character1/${fileName}`;
@@ -30,13 +31,15 @@ function loadCharacterImage(fileName) {
 
 const character1FrontStep1 = loadCharacterImage('front_walk1.png');
 const character1FrontStep2 = loadCharacterImage('front_walk2.png');
-const character1Side = loadCharacterImage('side_idle.png');
-const character1Back = loadCharacterImage('back_idle.png');
+const character1SideStep1 = loadCharacterImage('side_walk1.png');
+const character1SideStep2 = loadCharacterImage('side_walk2.png');
+const character1BackStep1 = loadCharacterImage('back_walk1.png');
+const character1BackStep2 = loadCharacterImage('back_walk2.png');
 
 const character1Assets = {
   down: { idle: character1FrontStep1, step1: character1FrontStep1, step2: character1FrontStep2 },
-  up: { idle: character1Back, step1: character1Back, step2: character1Back },
-  left: { idle: character1Side, step1: character1Side, step2: character1Side },
+  up: { idle: character1BackStep1, step1: character1BackStep1, step2: character1BackStep2 },
+  left: { idle: character1SideStep1, step1: character1SideStep1, step2: character1SideStep2 },
 };
 
 const characterRenderer = new CharacterRenderer(ctx, origin, { assets: character1Assets });
