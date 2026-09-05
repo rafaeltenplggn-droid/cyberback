@@ -12,33 +12,54 @@ const TILE_COLORS = {
   3: '#1f2229',
 };
 
+// Nome do arquivo (em assets/tiles/) pra cada tileId, se tiver textura real
+// pronta. tileId sem entrada aqui cai sozinho na cor solida de sempre
+// (TILE_COLORS).
+const TILE_ASSETS = {
+  0: 'tile_street.png',
+};
+
 export class Renderer {
   /**
-   * `propImages` (opcional) e um objeto { [nomeDoArquivo]: HTMLImageElement }
-   * - ver src/render/propAssets.js. Prop sem entrada carregada/pronta ali
-   * cai sozinho no retangulo placeholder de sempre (isImageReady).
+   * `propImages` e `tileImages` (opcionais) sao objetos
+   * { [nomeDoArquivo]: HTMLImageElement } - ver src/render/propAssets.js e
+   * tileAssets.js. Entrada sem imagem carregada/pronta cai sozinha no
+   * placeholder de sempre (isImageReady).
    */
-  constructor(ctx, { originX, originY }, { propImages } = {}) {
+  constructor(ctx, { originX, originY }, { propImages, tileImages } = {}) {
     this.ctx = ctx;
     this.originX = originX;
     this.originY = originY;
     this.propImages = propImages ?? {};
+    this.tileImages = tileImages ?? {};
   }
 
   clear(width, height) {
     this.ctx.clearRect(0, 0, width, height);
   }
 
-  drawDiamond(col, row, fillStyle) {
+  // Com textura real carregada pro tileId, desenha a imagem (ja um losango
+  // pre-recortado do tamanho exato de um tile - ver assets/tiles/ e o
+  // script que gera essa textura a partir de um quadrado plano). Sem
+  // textura ainda, cai no losango de cor solida de sempre.
+  drawDiamond(col, row, tileId) {
     const { x, y } = gridToScreen(col, row, this.originX, this.originY);
     const ctx = this.ctx;
+
+    const assetName = TILE_ASSETS[tileId];
+    const image = assetName ? this.tileImages[assetName] : null;
+    if (isImageReady(image)) {
+      ctx.drawImage(image, x - TILE_WIDTH / 2, y - TILE_HEIGHT / 2, TILE_WIDTH, TILE_HEIGHT);
+      return;
+    }
+
     ctx.beginPath();
     ctx.moveTo(x, y - TILE_HEIGHT / 2);
     ctx.lineTo(x + TILE_WIDTH / 2, y);
     ctx.lineTo(x, y + TILE_HEIGHT / 2);
     ctx.lineTo(x - TILE_WIDTH / 2, y);
     ctx.closePath();
-    ctx.fillStyle = fillStyle;
+    ctx.fillStyle = TILE_COLORS[tileId] ?? '#555';
     ctx.fill();
     ctx.strokeStyle = 'rgba(0,0,0,0.25)';
     ctx.stroke();
@@ -47,8 +68,7 @@ export class Renderer {
   drawMap(map) {
     for (let row = 0; row < map.height; row++) {
       for (let col = 0; col < map.width; col++) {
-        const tileId = map.tiles[row][col];
-        this.drawDiamond(col, row, TILE_COLORS[tileId] ?? '#555');
+        this.drawDiamond(col, row, map.tiles[row][col]);
       }
     }
 

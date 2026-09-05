@@ -5,6 +5,7 @@ import { MovementController } from './character/movementController.js';
 import { CharacterRenderer, isImageReady } from './character/characterRenderer.js';
 import { CHARACTER_ROSTER, loadCharacterAssets, loadPortraitImage } from './character/characterRoster.js';
 import { loadPropImage } from './render/propAssets.js';
+import { loadTileImage } from './render/tileAssets.js';
 import { createPlayerStats, xpRequiredForLevel } from './hackloop/playerStats.js';
 import { TraceMeter } from './hackloop/trace.js';
 import { EnergyMeter } from './hackloop/energy.js';
@@ -25,7 +26,10 @@ function startGame(characterId) {
   // e carregado. Renderer guarda a MESMA referencia, entao um asset que
   // termina de carregar depois passa a aparecer sozinho no proximo frame.
   const propImages = {};
-  const mapRenderer = new Renderer(ctx, origin, { propImages });
+  // Textura de chao nao depende do mapa (mesmo asset reaproveitado em
+  // qualquer lugar que use aquele tileId), entao carrega uma vez so.
+  const tileImages = { 'tile_street.png': loadTileImage('tile_street.png') };
+  const mapRenderer = new Renderer(ctx, origin, { propImages, tileImages });
   const characterRenderer = new CharacterRenderer(ctx, origin, { assets: loadCharacterAssets(characterId) });
 
   function ensurePropImagesLoaded(map) {
