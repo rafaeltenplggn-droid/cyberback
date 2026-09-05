@@ -15,17 +15,29 @@ const TILE_COLORS = {
   3: '#12151c', // bloqueado/predio: dark charcoal/navy
 };
 
+// Ground Kit (ver CYBER_SPEC.md): textura real por tile id, com fallback pra
+// cor solida enquanto a imagem nao carregou ou pro id que ainda nao tem
+// asset proprio. Ainda em avaliacao visual - ver secao "Ground Kit" do spec.
+const TILE_ASSETS = {
+  0: 'tile_plain.png',
+  1: 'tile_edge.png',
+};
+
 export class Renderer {
   /**
    * `propImages` (opcional) e um objeto { [nomeDoArquivo]: HTMLImageElement }
    * - ver src/render/propAssets.js. Prop sem entrada carregada/pronta ali
    * cai sozinho no retangulo placeholder de sempre (isImageReady).
+   *
+   * `tileImages` (opcional) e o mesmo esquema pra texturas de tile (ver
+   * src/render/tileAssets.js), chaveado pelo nome do arquivo em TILE_ASSETS.
    */
-  constructor(ctx, { originX, originY }, { propImages } = {}) {
+  constructor(ctx, { originX, originY }, { propImages, tileImages } = {}) {
     this.ctx = ctx;
     this.originX = originX;
     this.originY = originY;
     this.propImages = propImages ?? {};
+    this.tileImages = tileImages ?? {};
   }
 
   clear(width, height) {
@@ -33,13 +45,24 @@ export class Renderer {
   }
 
   // Cada tile e um quadrado ortogonal simples - sem contorno forte entre
-  // tiles vizinhos (fica "grade demais" senao); so a cor solida por
-  // enquanto, ate ter textura real.
+  // tiles vizinhos (fica "grade demais" senao). Com textura real carregada
+  // pro id (Ground Kit), desenha ela esticada pro quadrado 32x32; sem
+  // textura pronta, cai na cor solida placeholder de sempre.
   drawTile(col, row, tileId) {
     const { x, y } = gridToScreen(col, row, this.originX, this.originY);
     const ctx = this.ctx;
+    const left = x - TILE_SIZE / 2;
+    const top = y - TILE_SIZE / 2;
+
+    const asset = TILE_ASSETS[tileId];
+    const image = asset ? this.tileImages[asset] : null;
+    if (isImageReady(image)) {
+      ctx.drawImage(image, left, top, TILE_SIZE, TILE_SIZE);
+      return;
+    }
+
     ctx.fillStyle = TILE_COLORS[tileId] ?? '#555';
-    ctx.fillRect(x - TILE_SIZE / 2, y - TILE_SIZE / 2, TILE_SIZE, TILE_SIZE);
+    ctx.fillRect(left, top, TILE_SIZE, TILE_SIZE);
   }
 
   drawMap(map) {
