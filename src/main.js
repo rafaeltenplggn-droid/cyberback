@@ -21,14 +21,16 @@ const mapRenderer = new Renderer(ctx, origin);
 // Carrega de forma assincrona - ate a imagem terminar de carregar,
 // CharacterRenderer cai de volta no placeholder sozinho (ver isImageReady
 // em characterRenderer.js). Todas as 3 direcoes ja tem pose de caminhada
-// propria; "idle" reaproveita a imagem de passo 1 (nao ha pose parada
-// separada gerada ainda).
+// propria. A direcao de frente tem uma pose "idle" parada de verdade
+// (bracos cruzados); costas e lado ainda reaproveitam o passo 1 como
+// idle, sem pose parada propria gerada ainda.
 function loadCharacterImage(fileName) {
   const img = new Image();
   img.src = `../assets/character1/${fileName}`;
   return img;
 }
 
+const character1FrontIdle = loadCharacterImage('front_idle.png');
 const character1FrontStep1 = loadCharacterImage('front_walk1.png');
 const character1FrontStep2 = loadCharacterImage('front_walk2.png');
 const character1SideStep1 = loadCharacterImage('side_walk1.png');
@@ -37,7 +39,7 @@ const character1BackStep1 = loadCharacterImage('back_walk1.png');
 const character1BackStep2 = loadCharacterImage('back_walk2.png');
 
 const character1Assets = {
-  down: { idle: character1FrontStep1, step1: character1FrontStep1, step2: character1FrontStep2 },
+  down: { idle: character1FrontIdle, step1: character1FrontStep1, step2: character1FrontStep2 },
   up: { idle: character1BackStep1, step1: character1BackStep1, step2: character1BackStep2 },
   left: { idle: character1SideStep1, step1: character1SideStep1, step2: character1SideStep2 },
 };
