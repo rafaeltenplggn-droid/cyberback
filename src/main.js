@@ -208,6 +208,12 @@ function startGame(characterId) {
 
   function feedHeldMovement() {
     if (hackRuntime.isMovementBlocked) return;
+    // So decide o proximo passo quando o passo atual ja terminou de vez -
+    // enfileirar durante o tween em andamento adiantava um passo mesmo
+    // depois da tecla ja ter sido solta, dando aquele deslize/atraso ao
+    // parar. Assim o personagem sempre para exatamente onde a tecla foi
+    // solta, sem "coast" de um passo extra.
+    if (controller.isMoving) return;
     if (controller.queueLength > 0) return;
     if (heldDirections.size === 0) return;
     const direction = [...heldDirections].pop();
