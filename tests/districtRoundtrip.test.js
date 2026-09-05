@@ -38,6 +38,10 @@ test('district_07.json tem 16x12 e as 3 portas para os interiores', async () => 
   const homeDoor = map.getDoorAt(14, 2);
   assert.equal(homeDoor.target_map, 'player_home');
   assert.deepEqual([homeDoor.spawn_x, homeDoor.spawn_y], [5, 7]);
+
+  const dataTerminalDoor = map.getDoorAt(6, 8);
+  assert.equal(dataTerminalDoor.target_map, 'data_terminal_interior');
+  assert.deepEqual([dataTerminalDoor.spawn_x, dataTerminalDoor.spawn_y], [5, 7]);
 });
 
 test('predios do district_07 bloqueiam o footprint inteiro, streetlamp e planter nao bloqueiam', async () => {
@@ -54,6 +58,9 @@ test('predios do district_07 bloqueiam o footprint inteiro, streetlamp e planter
   assert.equal(map.isBlocked(2, 9), true);
   // crate_stack_magenta em 13,6, com colisao
   assert.equal(map.isBlocked(13, 6), true);
+  // data_terminal_building, origem 6,6, 2x2
+  assert.equal(map.isBlocked(6, 6), true);
+  assert.equal(map.isBlocked(7, 7), true);
 
   assert.equal(map.isBlocked(0, 5), false); // streetlamp_cyan
   assert.equal(map.isBlocked(8, 8), false); // planter_green
@@ -64,6 +71,7 @@ for (const [interiorId, exteriorDoor] of [
   ['nullpoint_interior', { x: 10, y: 6 }],
   ['ghost_row_interior', { x: 1, y: 10 }],
   ['player_home', { x: 14, y: 2 }],
+  ['data_terminal_interior', { x: 6, y: 8 }],
 ]) {
   test(`district_07 -> ${interiorId} -> district_07 sem travar em nenhum ponto`, async () => {
     const manager = makeManager();
@@ -92,7 +100,7 @@ for (const [interiorId, exteriorDoor] of [
 }
 
 test('os quatro interiores sao salas 10x10 com borda solida e a porta de saida aberta', async () => {
-  for (const id of ['gridcorp_interior', 'nullpoint_interior', 'ghost_row_interior', 'player_home']) {
+  for (const id of ['gridcorp_interior', 'nullpoint_interior', 'ghost_row_interior', 'player_home', 'data_terminal_interior']) {
     const map = parseMap(await loadMapJson(id));
     assert.equal(map.width, 10);
     assert.equal(map.height, 10);

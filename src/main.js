@@ -1,6 +1,6 @@
 import { MapManager } from './maps/mapManager.js';
 import { Renderer } from './render/renderer.js';
-import { gridToScreen } from './core/topdown.js';
+import { centerMapOrigin } from './core/topdown.js';
 import { MovementController } from './character/movementController.js';
 import { CharacterRenderer, isImageReady } from './character/characterRenderer.js';
 import { CHARACTER_ROSTER, loadCharacterAssets, loadPortraitImage } from './character/characterRoster.js';
@@ -36,6 +36,19 @@ function startGame(characterId) {
     }
   }
 
+  // World Structure Lock: camera fixa por mapa, nunca segue o personagem.
+  // Recalculada uma unica vez a cada troca de mapa (load inicial e
+  // onMapChanged via door) - nao mais a cada frame. Generica: depende so
+  // de map.width/map.height/TILE_SIZE, funciona igual pro exterior e pra
+  // qualquer interior.
+  function fixCameraForMap(map) {
+    const { originX, originY } = centerMapOrigin(map, canvas.width, canvas.height);
+    mapRenderer.originX = originX;
+    mapRenderer.originY = originY;
+    characterRenderer.originX = originX;
+    characterRenderer.originY = originY;
+  }
+
   async function loadMapJson(mapId) {
     const response = await fetch(`maps/${mapId}.json`);
     if (!response.ok) throw new Error(`Falha ao carregar mapa ${mapId}`);
@@ -45,6 +58,7 @@ function startGame(characterId) {
   const mapManager = new MapManager({ loadMapJson });
   const controller = new MovementController(mapManager, {
     onMapChanged: (map) => {
+      fixCameraForMap(map);
       ensurePropImagesLoaded(map);
       updateStatus();
     },
@@ -284,25 +298,8 @@ function startGame(characterId) {
   // segurada.
   window.addEventListener('blur', () => heldDirections.clear());
 
-  // Camera segue o personagem: recalcula a origem da projecao isometrica
-  // a cada frame pra ele ficar sempre centralizado na tela, em vez de uma
-  // origem fixa que deixa o jogador sair da area visivel ao andar pro
-  // mapa afora (o mapa continua bloqueando corretamente nas bordas, so
-  // que fora da tela - dava a impressao de "andar infinito").
-  function updateCamera() {
-    const { col, row } = controller.visualPosition;
-    const raw = gridToScreen(col, row, 0, 0);
-    const camX = canvas.width / 2 - raw.x;
-    const camY = canvas.height / 2 - raw.y;
-    mapRenderer.originX = camX;
-    mapRenderer.originY = camY;
-    characterRenderer.originX = camX;
-    characterRenderer.originY = camY;
-  }
-
   function render() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    updateCamera();
     mapRenderer.drawMap(mapManager.currentMap);
     const { col, row } = controller.visualPosition;
     mapRenderer.drawPropsAndCharacter(mapManager.currentMap.props, row, () => {
@@ -330,6 +327,7 @@ function startGame(characterId) {
 
   mapManager.loadMap(startMap, startCol, startRow).then(
     () => {
+      fixCameraForMap(mapManager.currentMap);
       ensurePropImagesLoaded(mapManager.currentMap);
       render();
       requestAnimationFrame(loop);
