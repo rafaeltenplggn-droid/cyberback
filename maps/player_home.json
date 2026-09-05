@@ -28,7 +28,7 @@
     [1,1,1,1,1,0,1,1,1,1]
   ],
   "doors": [
-    { "x": 5, "y": 9, "target_map": "district_07", "spawn_x": 14, "spawn_y": 3 }
+    { "x": 5, "y": 9, "target_map": "district_07", "spawn_x": 2, "spawn_y": 9 }
   ],
   "props": [
     { "id": "home_pc", "asset": "home_pc.png", "origin_x": 3, "origin_y": 3, "footprint_w": 1, "footprint_h": 1, "collision_footprint": true, "art_height_px": 26 },

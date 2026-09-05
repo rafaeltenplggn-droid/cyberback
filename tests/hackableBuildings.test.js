@@ -38,9 +38,9 @@ test('isAdjacentToBuilding rejeita celulas dentro do footprint, diagonais e long
 });
 
 test('findHackableBuildingAt encontra cada um dos 3 predios pelas celulas adjacentes reais do mapa', () => {
-  assert.equal(findHackableBuildingAt('district_07', 0, 1)?.id, 'gridcorp_tower');
-  assert.equal(findHackableBuildingAt('district_07', 9, 4)?.id, 'nullpoint_bar');
-  assert.equal(findHackableBuildingAt('district_07', 0, 8)?.id, 'ghost_row_market');
+  assert.equal(findHackableBuildingAt('district_07', 16, 1)?.id, 'gridcorp_tower');
+  assert.equal(findHackableBuildingAt('district_07', 0, 1)?.id, 'nullpoint_bar');
+  assert.equal(findHackableBuildingAt('district_07', 7, 1)?.id, 'ghost_row_market');
 });
 
 test('findHackableBuildingAt retorna null longe de qualquer predio ou em outro mapa', () => {

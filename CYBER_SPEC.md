@@ -60,35 +60,49 @@ O codigo de mapas, salas e props e desta branch, feat/maps-rooms. O codigo de pe
 src/core/topdown.js (projecao ativa - ver Projection Lock) e src/render/renderer.js sao utilitarios compartilhados. Quem precisa de grid<->tela sempre importa e reaproveita esses arquivos, nunca reimplementa a logica de projecao ou o loop de render por conta propria.
 
 ## Mapa district_07
-Grid de 16 colunas por 12 linhas (x de 0 a 15, y de 0 a 11). Layout abaixo, onde ponto e chao (tile_plain), cerquilha e footprint de predio bloqueado, D e porta, L e streetlamp_cyan sem colisao, P e planter_green sem colisao, C e crate_stack_magenta com colisao:
+Grid de 24 colunas por 16 linhas (x de 0 a 23, y de 0 a 15) - layout
+"Sector 7 Replica Blockout", reconstruido pra seguir o Visual Master
+oficial (rua horizontal + rua vertical formando cruzamento, 3 predios em
+cima, 2 embaixo). Ponto e chao/calcada (tile 0), igual e rua (tile 1),
+cerquilha e footprint de predio bloqueado, D e porta, L e streetlamp_cyan
+sem colisao, P e planter_green sem colisao, C e crate_stack_magenta com
+colisao:
 
 ```
-. . . . . . . . . . . . . . . .
-. # # . . . . . . . . . . . . .
-. # # . . . . . . . . . . . . .
-. D . . . . . . . . . . . . . .
-. . . . . . . . . . # # . . . .
-L . . . . . . . . . # # . . . .
-. . . . . . . . . . D . . C . .
-. . . . . . . . . . . . . . . .
-. # # . . . . . P . . . . . . .
-. # # . . . . . . . . . . . . .
-. D . . . . . . . . . . . . . .
-. . . . . . . . . . . . . . . .
+. # # # # . . . # # # # . . . . . # # # # . . .
+. # # # # . . . # # # # . . . . . # # # # . . .
+. # # # # . . . # # # # . . . . . # # # # . . .
+. D . . . . . . D . . . . P . . . D . . . . . .
+. . . . . . . . . . . . . . . . . . . . . . . .
+. . . . . . . . . . L . . . L . . . . . . . . .
+= = = = = = = = = = = = = = = = = = = = = = = =
+= = = = = = = = = = = = = = = = = = = = = = = =
+. . . . L . . . . . . . . . . . . L . . . . . .
+. . D . . . . . . . . . . . . . . D . . . . C .
+. # # # . . . . . . . . . . . . . # # # . . . .
+. # # # . . . . . . . . . . . . . # # # . . . .
+. # # # . . . . . . . . . . . . . # # # . . . .
+. . . . . . . . . . . . . . . . . . . . . . . .
+. . . . . . . . . . . . . . . . . . . . . . . .
+. . . . . . . . . . . . . . . . . . . . . . . .
 ```
+(`=` marca a rua horizontal nas linhas 7-8; as colunas 12-13, marcadas com
+`.` nesse diagrama simplificado, sao a rua vertical que atravessa o mapa
+inteiro de cima a baixo)
 
-Props com footprint 2x2 e collision_footprint true, ancorados no canto superior esquerdo de cada cerquilha:
-- gridcorp_tower, origem x1 y1
-- nullpoint_bar (asset shop_mid), origem x10 y4
-- ghost_row_market (asset ghost_row_market), origem x1 y8
-- player_home_building, origem x13 y0
+Props com collision_footprint true, ancorados no canto superior esquerdo do footprint:
+- nullpoint_bar (BAR, asset shop_mid), origem x1 y1, footprint 4x3
+- ghost_row_market (BLACKNET), origem x8 y1, footprint 4x3
+- gridcorp_tower (CORP), origem x17 y1, footprint 4x3
+- player_home_building (MY HOME), origem x2 y11, footprint 3x3
+- data_terminal_building (DATA TERMINAL), origem x17 y11, footprint 3x3
 
 Portas do district_07:
-- x1 y3, target_map gridcorp_interior, spawn_x 5, spawn_y 7
-- x10 y6, target_map nullpoint_interior, spawn_x 5, spawn_y 7
-- x1 y10, target_map ghost_row_interior, spawn_x 5, spawn_y 7
-- x14 y2, target_map player_home, spawn_x 5, spawn_y 7
-- x6 y8, target_map data_terminal_interior, spawn_x 5, spawn_y 7
+- x1 y4, target_map nullpoint_interior (BAR), spawn_x 5, spawn_y 7
+- x8 y4, target_map ghost_row_interior (BLACKNET), spawn_x 5, spawn_y 7
+- x17 y4, target_map gridcorp_interior (CORP), spawn_x 5, spawn_y 7
+- x2 y10, target_map player_home (MY HOME), spawn_x 5, spawn_y 7
+- x17 y10, target_map data_terminal_interior (DATA TERMINAL), spawn_x 5, spawn_y 7
 
 ## World Structure Lock
 
@@ -111,3 +125,21 @@ na frente do predio correspondente (evita spawn preso em colisao e evita
 loop de reentrar na porta ao sair). Interiores sao blockouts funcionais
 por enquanto (piso, parede/colisao, porta, spawn) - podem ganhar arte
 propria depois, numa sprint futura.
+
+## Sector 7 Replica Blockout
+
+district_07 foi redesenhado de 16x12 pra 24x16 pra reproduzir o layout do
+Visual Master oficial (imagem de referencia do exterior do Sector 7):
+3 predios numa fileira de cima (BAR, BLACKNET, CORP) e 2 numa fileira de
+baixo (MY HOME, DATA TERMINAL), com uma rua horizontal principal e uma rua
+vertical formando um cruzamento no meio do mapa - ver diagrama acima.
+Ainda e blockout (sem art pass final, sem iluminacao, sem chuva): o que
+mudou e so layout/posicao/footprint/colisao/portas, pra bater com a
+composicao da imagem.
+
+Como as posicoes dos 3 predios hackaveis mudaram, `HACKABLE_BUILDINGS`
+(`src/hackIntegration/hackableBuildings.js`) foi atualizado pra apontar
+pras novas coordenadas - so as coordenadas, o mecanismo de hack (tier,
+target, adjacencia) continua o mesmo. As portas de saida dos 5 interiores
+tambem foram reapontadas pro spawn correto em frente a cada predio na
+nova posicao.
