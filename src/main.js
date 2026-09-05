@@ -1,5 +1,6 @@
 import { MapManager } from './maps/mapManager.js';
 import { Renderer } from './render/renderer.js';
+import { gridToScreen } from './core/isometric.js';
 import { MovementController } from './character/movementController.js';
 import { CharacterRenderer, isImageReady } from './character/characterRenderer.js';
 import { CHARACTER_ROSTER, loadCharacterAssets, loadPortraitImage } from './character/characterRoster.js';
@@ -199,11 +200,28 @@ function startGame(characterId) {
 
   const MOVE_KEYS = { ArrowUp: 'up', ArrowDown: 'down', ArrowLeft: 'left', ArrowRight: 'right' };
 
+  // Direcoes seguradas de verdade (nao o auto-repeat do SO, que tem um
+  // atraso inicial e uma cadencia proprias e dava aquele "travadinho" ao
+  // segurar a seta - estilo Pokemon FireRed, o input e reamostrado a cada
+  // frame do proprio jogo em vez de depender do repeat do teclado).
+  const heldDirections = new Set();
+
+  function feedHeldMovement() {
+    if (hackRuntime.isMovementBlocked) return;
+    if (controller.queueLength > 0) return;
+    if (heldDirections.size === 0) return;
+    const direction = [...heldDirections].pop();
+    controller.enqueueInput(direction);
+  }
+
   window.addEventListener('keydown', (event) => {
     const direction = MOVE_KEYS[event.key];
     if (direction) {
       event.preventDefault();
-      if (!hackRuntime.isMovementBlocked) {
+      heldDirections.add(direction);
+      // So enfileira aqui no primeiro toque (nao no repeat do SO); o
+      // reforco continuo enquanto segura vem de feedHeldMovement() no loop.
+      if (!event.repeat && !hackRuntime.isMovementBlocked) {
         controller.enqueueInput(direction);
       }
       return;
@@ -234,8 +252,35 @@ function startGame(characterId) {
     }
   });
 
+  window.addEventListener('keyup', (event) => {
+    const direction = MOVE_KEYS[event.key];
+    if (direction) heldDirections.delete(direction);
+  });
+
+  // Perder o foco (trocar de aba, alt-tab) nunca dispara keyup - sem isso
+  // o personagem ficaria andando sozinho pra sempre na direcao que estava
+  // segurada.
+  window.addEventListener('blur', () => heldDirections.clear());
+
+  // Camera segue o personagem: recalcula a origem da projecao isometrica
+  // a cada frame pra ele ficar sempre centralizado na tela, em vez de uma
+  // origem fixa que deixa o jogador sair da area visivel ao andar pro
+  // mapa afora (o mapa continua bloqueando corretamente nas bordas, so
+  // que fora da tela - dava a impressao de "andar infinito").
+  function updateCamera() {
+    const { col, row } = controller.visualPosition;
+    const raw = gridToScreen(col, row, 0, 0);
+    const camX = canvas.width / 2 - raw.x;
+    const camY = canvas.height / 2 - raw.y;
+    mapRenderer.originX = camX;
+    mapRenderer.originY = camY;
+    characterRenderer.originX = camX;
+    characterRenderer.originY = camY;
+  }
+
   function render() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
+    updateCamera();
     mapRenderer.drawMap(mapManager.currentMap);
     const { col, row } = controller.visualPosition;
     characterRenderer.draw({ col, row, direction: controller.direction, pose: controller.pose });
@@ -248,6 +293,7 @@ function startGame(characterId) {
   function loop(now) {
     const deltaMs = now - lastTime;
     lastTime = now;
+    feedHeldMovement();
     hackRuntime.tick(deltaMs);
     render();
     requestAnimationFrame(loop);
