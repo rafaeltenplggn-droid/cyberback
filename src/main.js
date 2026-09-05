@@ -200,11 +200,28 @@ function startGame(characterId) {
 
   const MOVE_KEYS = { ArrowUp: 'up', ArrowDown: 'down', ArrowLeft: 'left', ArrowRight: 'right' };
 
+  // Direcoes seguradas de verdade (nao o auto-repeat do SO, que tem um
+  // atraso inicial e uma cadencia proprias e dava aquele "travadinho" ao
+  // segurar a seta - estilo Pokemon FireRed, o input e reamostrado a cada
+  // frame do proprio jogo em vez de depender do repeat do teclado).
+  const heldDirections = new Set();
+
+  function feedHeldMovement() {
+    if (hackRuntime.isMovementBlocked) return;
+    if (controller.queueLength > 0) return;
+    if (heldDirections.size === 0) return;
+    const direction = [...heldDirections].pop();
+    controller.enqueueInput(direction);
+  }
+
   window.addEventListener('keydown', (event) => {
     const direction = MOVE_KEYS[event.key];
     if (direction) {
       event.preventDefault();
-      if (!hackRuntime.isMovementBlocked) {
+      heldDirections.add(direction);
+      // So enfileira aqui no primeiro toque (nao no repeat do SO); o
+      // reforco continuo enquanto segura vem de feedHeldMovement() no loop.
+      if (!event.repeat && !hackRuntime.isMovementBlocked) {
         controller.enqueueInput(direction);
       }
       return;
@@ -234,6 +251,16 @@ function startGame(characterId) {
       handleToggleSit();
     }
   });
+
+  window.addEventListener('keyup', (event) => {
+    const direction = MOVE_KEYS[event.key];
+    if (direction) heldDirections.delete(direction);
+  });
+
+  // Perder o foco (trocar de aba, alt-tab) nunca dispara keyup - sem isso
+  // o personagem ficaria andando sozinho pra sempre na direcao que estava
+  // segurada.
+  window.addEventListener('blur', () => heldDirections.clear());
 
   // Camera segue o personagem: recalcula a origem da projecao isometrica
   // a cada frame pra ele ficar sempre centralizado na tela, em vez de uma
@@ -266,6 +293,7 @@ function startGame(characterId) {
   function loop(now) {
     const deltaMs = now - lastTime;
     lastTime = now;
+    feedHeldMovement();
     hackRuntime.tick(deltaMs);
     render();
     requestAnimationFrame(loop);
