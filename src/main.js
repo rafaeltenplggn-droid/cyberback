@@ -23,7 +23,7 @@ function startGame(characterId) {
   const characterRenderer = new CharacterRenderer(ctx, origin, { assets: loadCharacterAssets(characterId) });
 
   async function loadMapJson(mapId) {
-    const response = await fetch(`../maps/${mapId}.json`);
+    const response = await fetch(`maps/${mapId}.json`);
     if (!response.ok) throw new Error(`Falha ao carregar mapa ${mapId}`);
     return response.json();
   }
