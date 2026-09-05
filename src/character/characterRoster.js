@@ -28,9 +28,9 @@ function loadImageWithFallback(folder, fileNames) {
       img.onerror = null;
       return;
     }
-    img.src = `../assets/${folder}/${fileNames[index]}`;
+    img.src = `assets/${folder}/${fileNames[index]}`;
   };
-  img.src = `../assets/${folder}/${fileNames[0]}`;
+  img.src = `assets/${folder}/${fileNames[0]}`;
   return img;
 }
 
