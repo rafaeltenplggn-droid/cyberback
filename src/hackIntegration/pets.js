@@ -8,6 +8,7 @@ export const PET_COST_BYTE = 100;
 export const PETS = [
   { id: 'gato_laranja', name: 'Gato Laranja' },
   { id: 'gato_cinza', name: 'Gato Cinza' },
+  { id: 'gato_sphynx', name: 'Gato Sphynx' },
 ];
 
 export const PET_PURCHASE_REASON = {

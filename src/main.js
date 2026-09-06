@@ -41,6 +41,13 @@ const PET_ROOM_SPRITES = {
     earBox: { x: 63, y: 43, w: 32, h: 57 },
     earPivot: { x: 79, y: 100 },
   },
+  gato_sphynx: {
+    body: 'pet_gato_sphynx_body.png',
+    headBase: 'pet_gato_sphynx_head_base.png',
+    ear: 'pet_gato_sphynx_ear.png',
+    earBox: { x: 37, y: 18, w: 73, h: 114 },
+    earPivot: { x: 73.5, y: 132 },
+  },
 };
 const PET_ROOM_ART_HEIGHT_PX = 46;
 const PET_EAR_WIGGLE_MAX_RAD = 0.1;
@@ -293,7 +300,11 @@ function startGame(characterId) {
     }
   }
 
-  const PET_PORTRAITS = { gato_laranja: 'pet_gato_laranja.png', gato_cinza: 'pet_gato_cinza.png' };
+  const PET_PORTRAITS = {
+    gato_laranja: 'pet_gato_laranja.png',
+    gato_cinza: 'pet_gato_cinza.png',
+    gato_sphynx: 'pet_gato_sphynx.png',
+  };
   const petPortraits = {};
 
   /**
