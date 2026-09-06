@@ -10,6 +10,7 @@ import { getTier } from '../hackloop/tiers.js';
 import { addXp } from '../hackloop/playerStats.js';
 import { xpRewardForTier } from './xpRewards.js';
 import { energyCostForTier } from './energyCosts.js';
+import { infoRarityForTier } from './informationLedger.js';
 
 const STAGE_IDLE = 'idle';
 const STAGE_RECON = 'recon';
@@ -28,12 +29,11 @@ export const HACK_STAGES = {
 };
 
 export class HackSession {
-  constructor({ playerStats, traceMeter, energyMeter, drinkBuffTracker, ledger, rng } = {}) {
+  constructor({ playerStats, traceMeter, energyMeter, informationLedger, rng } = {}) {
     this.playerStats = playerStats;
     this.traceMeter = traceMeter;
     this.energyMeter = energyMeter;
-    this.drinkBuffTracker = drinkBuffTracker;
-    this.ledger = ledger;
+    this.informationLedger = informationLedger;
     this.rng = rng;
     this.status = STAGE_IDLE;
     this.result = null;
@@ -75,21 +75,17 @@ export class HackSession {
         energyBlocked: true,
         energySpent: 0,
         energyValue: this.energyMeter.value,
-        drinkBuffActive: Boolean(this.drinkBuffTracker?.isActive()),
       };
       return this.result;
     }
 
     this.status = STAGE_BREACHING;
-    // O drink so afeta a CHANCE de sucesso do breach (visao temporaria dos
-    // stats, nunca muda this.playerStats de verdade); exfiltrate/fence
-    // continuam usando os stats permanentes, sem bonus.
-    const statsForBreach = this.drinkBuffTracker ? this.drinkBuffTracker.applyTo(this.playerStats) : this.playerStats;
-    const breachResult = await breachStage(target, statsForBreach, { rng: this.rng });
+    const breachResult = await breachStage(target, this.playerStats, { rng: this.rng });
 
     let exfiltrateResult = null;
     let fenceResult = null;
     let xpGained = 0;
+    let informationGained = null;
     const levelBefore = this.playerStats?.level ?? null;
 
     if (breachResult.success) {
@@ -100,7 +96,16 @@ export class HackSession {
       });
 
       this.status = STAGE_FENCING;
-      fenceResult = fenceStage(exfiltrateResult.loot, this.playerStats, { ledger: this.ledger });
+      // fence() so calcula o valor equivalente do loot (usado como
+      // referencia/estimativa) - nao credita mais BYTE direto no ledger. O
+      // que o jogador realmente ganha e uma unidade de Informacao (ver
+      // informationLedger.js), vendida depois na BLACKNET por BYTE.
+      fenceResult = fenceStage(exfiltrateResult.loot, this.playerStats, {});
+      if (this.informationLedger) {
+        const rarity = infoRarityForTier(target.tier);
+        this.informationLedger.add(rarity);
+        informationGained = { rarity };
+      }
 
       // Progressao: XP concedido so em hack bem sucedido. addXp() e a curva
       // de nivel que ja existe em src/hackloop/playerStats.js, nao
@@ -126,6 +131,7 @@ export class HackSession {
       breach: breachResult,
       exfiltrate: exfiltrateResult,
       fence: fenceResult,
+      informationGained,
       traceValue: this.traceMeter ? this.traceMeter.value : null,
       xpGained,
       leveledUp: levelBefore !== null && this.playerStats.level > levelBefore,
@@ -133,7 +139,6 @@ export class HackSession {
       energyBlocked: false,
       energySpent: energyCost,
       energyValue: this.energyMeter ? this.energyMeter.value : null,
-      drinkBuffActive: Boolean(this.drinkBuffTracker?.isActive()),
     };
     return this.result;
   }

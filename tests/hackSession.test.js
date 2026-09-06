@@ -6,11 +6,8 @@ import { XP_REWARD_PER_TIER } from '../src/hackIntegration/xpRewards.js';
 import { createPlayerStats, xpRequiredForLevel } from '../src/hackloop/playerStats.js';
 import { TraceMeter } from '../src/hackloop/trace.js';
 import { EnergyMeter } from '../src/hackloop/energy.js';
-import { ByteLedger } from '../src/hackloop/byteLedger.js';
 import { ENERGY_COST_PER_TIER } from '../src/hackIntegration/energyCosts.js';
-import { DrinkBuffTracker } from '../src/hackIntegration/drinkBuff.js';
-import { breachSuccessChance } from '../src/hackloop/breach.js';
-import { getTier } from '../src/hackloop/tiers.js';
+import { InformationLedger } from '../src/hackIntegration/informationLedger.js';
 
 function makeClock(start = 0) {
   let time = start;
@@ -29,11 +26,11 @@ test('HackSession.run exige um target', async () => {
   await assert.rejects(() => session.run());
 });
 
-test('HackSession.run: fluxo completo com sucesso chama recon -> breach -> exfiltrate -> fence e grava no ledger', async () => {
+test('HackSession.run: fluxo completo com sucesso chama recon -> breach -> exfiltrate -> fence e credita Informacao (nao BYTE direto)', async () => {
   const playerStats = createPlayerStats(5);
   const traceMeter = new TraceMeter();
-  const ledger = new ByteLedger();
-  const session = new HackSession({ playerStats, traceMeter, ledger, rng: () => 0 });
+  const informationLedger = new InformationLedger();
+  const session = new HackSession({ playerStats, traceMeter, informationLedger, rng: () => 0 });
 
   assert.equal(session.status, HACK_STAGES.IDLE);
   const resultPromise = session.run(GRIDCORP_TARGET);
@@ -46,17 +43,18 @@ test('HackSession.run: fluxo completo com sucesso chama recon -> breach -> exfil
   assert.equal(result.breach.success, true);
   assert.ok(result.recon.estimatedLoot.min > 0, 'recon rodou e trouxe uma estimativa');
   assert.ok(result.exfiltrate, 'exfiltrate rodou porque o breach teve sucesso');
-  assert.ok(result.fence, 'fence rodou porque exfiltrate rodou');
-  assert.equal(result.fence.byteAmount, ledger.entries[0].amount);
-  assert.equal(ledger.entries.length, 1);
-  assert.equal(ledger.entries[0].type, 'gain');
+  assert.ok(result.fence, 'fence rodou porque exfiltrate rodou (so calcula o valor, nao credita mais BYTE)');
+  assert.ok(result.informationGained, 'informacao foi concedida');
+  assert.equal(result.informationGained.rarity, 'comum'); // gridcorp_tower agora e tier 'comum'
+  assert.equal(informationLedger.counts.comum, 1);
+  assert.equal(informationLedger.total, 1);
 });
 
 test('HackSession.run: falha no breach nao chama exfiltrate/fence e sobe o trace', async () => {
   const playerStats = createPlayerStats(1);
   const traceMeter = new TraceMeter();
-  const ledger = new ByteLedger();
-  const session = new HackSession({ playerStats, traceMeter, ledger, rng: () => 0.999999 });
+  const informationLedger = new InformationLedger();
+  const session = new HackSession({ playerStats, traceMeter, informationLedger, rng: () => 0.999999 });
 
   assert.equal(traceMeter.value, 0);
   const result = await session.run(GRIDCORP_TARGET);
@@ -64,7 +62,8 @@ test('HackSession.run: falha no breach nao chama exfiltrate/fence e sobe o trace
   assert.equal(result.breach.success, false);
   assert.equal(result.exfiltrate, null);
   assert.equal(result.fence, null);
-  assert.equal(ledger.entries.length, 0, 'nada e vendido se o breach falhou');
+  assert.equal(result.informationGained, null, 'nenhuma informacao e concedida se o breach falhou');
+  assert.equal(informationLedger.total, 0);
   assert.ok(traceMeter.value > 0, 'trace sobe numa falha de breach');
 });
 
@@ -95,9 +94,9 @@ test('hack bem sucedido concede XP (proporcional ao tier) e atualiza playerStats
 
   const result = await session.run(GRIDCORP_TARGET);
 
-  assert.equal(result.xpGained, XP_REWARD_PER_TIER.raro);
-  assert.equal(result.playerStats.xp, XP_REWARD_PER_TIER.raro);
-  assert.equal(session.playerStats.xp, XP_REWARD_PER_TIER.raro, 'a sessao guarda os stats atualizados pro proximo hack');
+  assert.equal(result.xpGained, XP_REWARD_PER_TIER.comum);
+  assert.equal(result.playerStats.xp, XP_REWARD_PER_TIER.comum);
+  assert.equal(session.playerStats.xp, XP_REWARD_PER_TIER.comum, 'a sessao guarda os stats atualizados pro proximo hack');
 });
 
 test('hack que falha no breach nao concede XP nenhum', async () => {
@@ -153,8 +152,8 @@ test('hack bem sucedido gasta energia proporcional ao tier', async () => {
   const result = await session.run(GRIDCORP_TARGET);
 
   assert.equal(result.energyBlocked, false);
-  assert.equal(result.energySpent, ENERGY_COST_PER_TIER.raro);
-  assert.equal(energyMeter.value, energyMeter.max - ENERGY_COST_PER_TIER.raro);
+  assert.equal(result.energySpent, ENERGY_COST_PER_TIER.comum);
+  assert.equal(energyMeter.value, energyMeter.max - ENERGY_COST_PER_TIER.comum);
   assert.equal(result.energyValue, energyMeter.value);
 });
 
@@ -166,15 +165,15 @@ test('hack que falha no breach tambem gasta energia (a tentativa aconteceu)', as
   const result = await session.run(GRIDCORP_TARGET);
 
   assert.equal(result.breach.success, false);
-  assert.equal(result.energySpent, ENERGY_COST_PER_TIER.raro);
-  assert.equal(energyMeter.value, energyMeter.max - ENERGY_COST_PER_TIER.raro);
+  assert.equal(result.energySpent, ENERGY_COST_PER_TIER.comum);
+  assert.equal(energyMeter.value, energyMeter.max - ENERGY_COST_PER_TIER.comum);
 });
 
 test('sem energia suficiente, o hack nem tenta o breach: nao gasta xp, nem trace, nem energia', async () => {
   const playerStats = createPlayerStats(1);
   const traceMeter = new TraceMeter();
   const energyMeter = new EnergyMeter({ regenPerSecond: 0 });
-  energyMeter.spend(energyMeter.max - 5); // deixa so 5, menos que o custo do raro
+  energyMeter.spend(energyMeter.max - 5); // deixa so 5, menos que o custo do comum
 
   const session = new HackSession({ playerStats, traceMeter, energyMeter, rng: () => 0.999999 });
   const result = await session.run(GRIDCORP_TARGET);
@@ -206,48 +205,6 @@ test('depois de recarregar energia suficiente, o proximo hack ja funciona normal
   const okResult = await session.run(GRIDCORP_TARGET);
   assert.equal(okResult.energyBlocked, false);
   assert.equal(okResult.breach.success, true);
-});
-
-test('drink ativo aumenta a chance de sucesso do breach o suficiente pra virar um roll que antes falhava', async () => {
-  const tier = getTier(GRIDCORP_TARGET.tier);
-  const baseStats = createPlayerStats(1);
-  const buffedStats = { ...baseStats, breachSpeed: baseStats.breachSpeed + 2 };
-
-  const unbuffedChance = breachSuccessChance(baseStats, tier);
-  const buffedChance = breachSuccessChance(buffedStats, tier);
-  assert.ok(buffedChance > unbuffedChance, 'pre-condicao: o buff realmente aumenta a chance calculada pelo hackloop');
-
-  const roll = (unbuffedChance + buffedChance) / 2; // entre as duas chances
-
-  const withoutBuff = new HackSession({ playerStats: createPlayerStats(1), rng: () => roll });
-  const withoutResult = await withoutBuff.run(GRIDCORP_TARGET);
-  assert.equal(withoutResult.breach.success, false, 'sem buff, esse roll deveria falhar');
-
-  const drinkBuffTracker = new DrinkBuffTracker();
-  drinkBuffTracker.activate();
-  const withBuff = new HackSession({ playerStats: createPlayerStats(1), drinkBuffTracker, rng: () => roll });
-  const withResult = await withBuff.run(GRIDCORP_TARGET);
-  assert.equal(withResult.breach.success, true, 'com o buff ativo, o mesmo roll deveria ter sucesso');
-  assert.equal(withResult.drinkBuffActive, true);
-});
-
-test('o buff do drink nao muda os stats permanentes do jogador, so a chance daquele breach', async () => {
-  const playerStats = createPlayerStats(1);
-  const drinkBuffTracker = new DrinkBuffTracker();
-  drinkBuffTracker.activate();
-  const session = new HackSession({ playerStats, drinkBuffTracker, rng: () => 0 });
-
-  const result = await session.run(GRIDCORP_TARGET);
-
-  assert.equal(session.playerStats.breachSpeed, playerStats.breachSpeed, 'breachSpeed permanente nao mudou');
-  assert.equal(result.playerStats.breachSpeed, playerStats.breachSpeed);
-});
-
-test('sem buff ativo, drinkBuffActive vem false no resultado', async () => {
-  const drinkBuffTracker = new DrinkBuffTracker(); // nunca ativado
-  const session = new HackSession({ playerStats: createPlayerStats(1), drinkBuffTracker, rng: () => 0 });
-  const result = await session.run(GRIDCORP_TARGET);
-  assert.equal(result.drinkBuffActive, false);
 });
 
 test('reset() so funciona depois que o hack termina', async () => {
