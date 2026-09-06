@@ -196,6 +196,48 @@ export class Renderer {
     ctx.strokeRect(anchorX - w / 2, anchorY - h, w, h);
   }
 
+  // Recorte fixo (no espaco original do PNG 320x320) que isola cabeca +
+  // orelhas do resto do corpo do pet - ver assets/props/pet_gato_*_body.png
+  // (corpo, com esse recorte apagado) e pet_gato_*_head.png (so o recorte).
+  // Mesmo recorte pras duas variantes de gato, pois ambas vem da mesma
+  // pose/composicao original. O pivo fica na borda esquerda da cabeca
+  // (onde ela encosta no corpo), entao a orelha (bem mais longe do pivo)
+  // e o que mais se mexe quando gira - da o efeito de "orelha balancando"
+  // sem precisar recortar a orelha sozinha (fragil, testado e descartado).
+  static PET_HEAD_BOX = { x: 190, y: 80, w: 118, h: 182 };
+  static PET_HEAD_PIVOT = { x: 190, y: 171 };
+  static PET_SPRITE_SIZE = 320;
+
+  /**
+   * Desenha um pet decorativo (puramente cosmetico) ancorado no
+   * bottom-center do tile, igual drawProp. `wiggleAngleRad` gira so a
+   * cabeca/orelha em torno do pivo - o corpo fica parado.
+   */
+  drawPet(originCol, originRow, bodyImage, headImage, artHeightPx, wiggleAngleRad, xOffsetPx = 0) {
+    if (!isImageReady(bodyImage) || !isImageReady(headImage)) return;
+    const ctx = this.ctx;
+    const anchorX = this.originX + (originCol + 0.5) * TILE_SIZE + xOffsetPx;
+    const anchorY = this.originY + (originRow + 1) * TILE_SIZE;
+
+    const scale = artHeightPx / Renderer.PET_SPRITE_SIZE;
+    const fullSize = Renderer.PET_SPRITE_SIZE * scale;
+    const drawX = anchorX - fullSize / 2;
+    const drawY = anchorY - fullSize;
+
+    ctx.drawImage(bodyImage, drawX, drawY, fullSize, fullSize);
+
+    const { x: headX, y: headY, w: headW, h: headH } = Renderer.PET_HEAD_BOX;
+    const pivot = Renderer.PET_HEAD_PIVOT;
+    const pivotScreenX = drawX + pivot.x * scale;
+    const pivotScreenY = drawY + pivot.y * scale;
+
+    ctx.save();
+    ctx.translate(pivotScreenX, pivotScreenY);
+    ctx.rotate(wiggleAngleRad);
+    ctx.drawImage(headImage, (headX - pivot.x) * scale, (headY - pivot.y) * scale, headW * scale, headH * scale);
+    ctx.restore();
+  }
+
   drawDoorMarker(door) {
     const { x, y } = gridToScreen(door.x, door.y, this.originX, this.originY);
     const ctx = this.ctx;

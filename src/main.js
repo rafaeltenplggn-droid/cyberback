@@ -16,8 +16,19 @@ import { DRINK_COST_BYTE } from './hackIntegration/drinkShop.js';
 import { INFO_MINING_ENERGY_COST_RATIO } from './hackIntegration/infoMining.js';
 import { WORKER_HIRE_COST_BYTE } from './hackIntegration/workers.js';
 import { PET_COST_BYTE } from './hackIntegration/pets.js';
+import { PLAYER_HOME_MAP_ID, HOME_BED_LOCATION } from './hackIntegration/homeLocations.js';
 
 const STARTING_BYTE_BALANCE = 100;
+
+// Corpo/cabeca separados pra cada pet adotado poder "balancar a orelha"
+// sem depender de sprite-sheet de verdade - ver Renderer.drawPet.
+const PET_ROOM_SPRITES = {
+  gato_laranja: { body: 'pet_gato_laranja_body.png', head: 'pet_gato_laranja_head.png' },
+  gato_cinza: { body: 'pet_gato_cinza_body.png', head: 'pet_gato_cinza_head.png' },
+};
+const PET_ROOM_ART_HEIGHT_PX = 46;
+const PET_EAR_WIGGLE_MAX_RAD = 0.12;
+const PET_EAR_WIGGLE_PERIOD_MS = 1400;
 
 const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
@@ -325,6 +336,40 @@ function startGame(characterId) {
     playerStatusEl.textContent =
       `nivel ${stats.level} | xp ${stats.xp}/${xpNeeded} | energia: ${hackRuntime.energyValue.toFixed(0)}/${hackRuntime.energyMax} | BYTE: ${hackRuntime.byteBalance} | ` +
       `breachSpeed ${stats.breachSpeed} | stealth ${stats.stealth} | lootYield ${stats.lootYield} | traceResistance ${stats.traceResistance}${infoText}`;
+  }
+
+  const petRoomImages = {};
+
+  /**
+   * Desenha os pets adotados em cima da cama, so no player_home - puramente
+   * cosmetico (ver pets.js), com a cabeca/orelha balancando sozinha (seno
+   * no tempo, sem depender de nenhum input). Mais de um pet adotado fica
+   * lado a lado em cima da cama, cada um com uma fase propria pra nao
+   * balancarem em sincronia perfeita.
+   */
+  function drawOwnedPets(nowMs) {
+    if (mapManager.currentMap?.id !== PLAYER_HOME_MAP_ID) return;
+    const ownedPets = hackRuntime.pets.filter((pet) => pet.owned);
+    if (ownedPets.length === 0) return;
+
+    const spacingPx = 20;
+    const startOffset = -((ownedPets.length - 1) * spacingPx) / 2;
+
+    ownedPets.forEach((pet, index) => {
+      const sprites = PET_ROOM_SPRITES[pet.id];
+      if (!sprites) return;
+      if (!petRoomImages[pet.id]) {
+        petRoomImages[pet.id] = {
+          body: loadPropImage(sprites.body),
+          head: loadPropImage(sprites.head),
+        };
+      }
+      const { body, head } = petRoomImages[pet.id];
+      const phase = index * 2.1;
+      const angle = PET_EAR_WIGGLE_MAX_RAD * Math.sin((nowMs / PET_EAR_WIGGLE_PERIOD_MS) * Math.PI * 2 + phase);
+      const xOffsetPx = startOffset + index * spacingPx;
+      mapRenderer.drawPet(HOME_BED_LOCATION.originX, HOME_BED_LOCATION.originY, body, head, PET_ROOM_ART_HEIGHT_PX, angle, xOffsetPx);
+    });
   }
 
   let hackingBuildingId = null;
@@ -781,6 +826,7 @@ function startGame(characterId) {
     mapRenderer.drawPropsAndCharacter(mapManager.currentMap.props, row, () => {
       characterRenderer.draw({ col, row, direction: controller.direction, pose: controller.pose });
     });
+    drawOwnedPets(nowMs);
     updateStatus();
     updateHackStatus();
     updateShopStatus();
