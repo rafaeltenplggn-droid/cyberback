@@ -15,6 +15,7 @@ import { SLEEP_ENERGY_RESTORE } from './hackIntegration/sleepAction.js';
 import { DRINK_COST_BYTE } from './hackIntegration/drinkShop.js';
 import { INFO_MINING_ENERGY_COST_RATIO } from './hackIntegration/infoMining.js';
 import { WORKER_HIRE_COST_BYTE } from './hackIntegration/workers.js';
+import { PET_COST_BYTE } from './hackIntegration/pets.js';
 
 const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
@@ -93,8 +94,10 @@ function startGame(characterId) {
   const pcScreenEl = document.getElementById('pc-screen');
   const pcTabTerminalEl = document.getElementById('pc-tab-terminal');
   const pcTabEquipeEl = document.getElementById('pc-tab-equipe');
+  const pcTabLojaEl = document.getElementById('pc-tab-loja');
   const pcPanelTerminalEl = document.getElementById('pc-panel-terminal');
   const pcPanelEquipeEl = document.getElementById('pc-panel-equipe');
+  const pcPanelLojaEl = document.getElementById('pc-panel-loja');
   const pcHeadTargetEl = document.getElementById('pc-head-target');
   const pcHeadTierEl = document.getElementById('pc-head-tier');
   const pcLogEl = document.getElementById('pc-log');
@@ -102,28 +105,33 @@ function startGame(characterId) {
   const pcBarFillEl = document.getElementById('pc-bar-fill');
   const pcBarValEl = document.getElementById('pc-bar-val');
   const pcWorkersEl = document.getElementById('pc-workers');
+  const pcPetsEl = document.getElementById('pc-pets');
   const pcMenuEl = document.getElementById('pc-menu');
   const pcRunEl = document.getElementById('pc-run');
   const pcMenuMineBtn = document.getElementById('pc-menu-mine');
   const pcMenuTargetsEl = document.getElementById('pc-menu-targets');
 
   const workerPortraits = {};
+  let lastPetResult = null;
 
   function wait(ms) {
     return new Promise((resolve) => setTimeout(resolve, ms));
   }
 
   function pcScreenSetTab(tab) {
-    const showEquipe = tab === 'equipe';
-    pcTabTerminalEl.dataset.active = String(!showEquipe);
-    pcTabEquipeEl.dataset.active = String(showEquipe);
-    pcPanelTerminalEl.hidden = showEquipe;
-    pcPanelEquipeEl.hidden = !showEquipe;
+    pcTabTerminalEl.dataset.active = String(tab === 'terminal');
+    pcTabEquipeEl.dataset.active = String(tab === 'equipe');
+    pcTabLojaEl.dataset.active = String(tab === 'loja');
+    pcPanelTerminalEl.hidden = tab !== 'terminal';
+    pcPanelEquipeEl.hidden = tab !== 'equipe';
+    pcPanelLojaEl.hidden = tab !== 'loja';
   }
 
-  function pcScreenOpen({ showEquipeTab }) {
+  /** showExtraTabs: true so no fluxo do PC de casa (menu) - EQUIPE e LOJA nao fazem sentido durante um hack de predio fisico/remoto. */
+  function pcScreenOpen({ showExtraTabs }) {
     pcScreenEl.hidden = false;
-    pcTabEquipeEl.hidden = !showEquipeTab;
+    pcTabEquipeEl.hidden = !showExtraTabs;
+    pcTabLojaEl.hidden = !showExtraTabs;
     pcScreenSetTab('terminal');
   }
 
@@ -248,6 +256,57 @@ function startGame(characterId) {
       card.append(img, name, btn);
       pcWorkersEl.appendChild(card);
     }
+  }
+
+  const PET_ICONS = { gato: '🐈' };
+
+  /**
+   * Desenha a aba LOJA: por enquanto so o gato, puramente decorativo (nao
+   * muda nada no jogo, e nao tem sprite proprio ainda dentro do quarto -
+   * so um icone aqui na loja mesmo, ate ter arte de verdade).
+   */
+  function pcRenderPets() {
+    pcPetsEl.innerHTML = '';
+    for (const pet of hackRuntime.pets) {
+      const card = document.createElement('div');
+      card.className = 'pc-worker-card';
+
+      const icon = document.createElement('div');
+      icon.className = 'pc-pet-icon';
+      icon.textContent = PET_ICONS[pet.id] ?? '🐾';
+
+      const name = document.createElement('div');
+      name.className = 'pc-worker-name';
+      name.textContent = pet.name;
+
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'pc-worker-btn';
+      if (pet.owned) {
+        btn.textContent = 'adotado';
+        btn.classList.add('hired');
+        btn.disabled = true;
+      } else if (lastPetResult?.petId === pet.id && lastPetResult.result.reason === 'byte_insuficiente') {
+        btn.textContent = `BYTE insuficiente (${hackRuntime.byteBalance}/${PET_COST_BYTE})`;
+        btn.addEventListener('click', () => {
+          handleBuyPet(pet.id);
+          pcRenderPets();
+        });
+      } else {
+        btn.textContent = `adotar (${PET_COST_BYTE} BYTE)`;
+        btn.addEventListener('click', () => {
+          handleBuyPet(pet.id);
+          pcRenderPets();
+        });
+      }
+
+      card.append(icon, name, btn);
+      pcPetsEl.appendChild(card);
+    }
+  }
+
+  function handleBuyPet(petId) {
+    lastPetResult = { petId, result: hackRuntime.buyPet(petId) };
   }
 
   function updateStatus() {
@@ -451,9 +510,10 @@ function startGame(characterId) {
   function handleOpenPc() {
     if (hackRuntime.nearbyHomeInteractable() !== 'pc') return;
     if (hackRuntime.isMovementBlocked) return;
-    pcScreenOpen({ showEquipeTab: true });
+    pcScreenOpen({ showExtraTabs: true });
     renderPcMenu();
     pcRenderWorkers();
+    pcRenderPets();
     pcScreenShowMenu();
   }
 
@@ -513,11 +573,9 @@ function startGame(characterId) {
     pcLogClear();
     pcSetHead(buildingId.toUpperCase(), target.tier.toUpperCase());
     pcSetBar(0, 'STATUS', '--');
+    pcLogPush(`> conectando a ${buildingId}...`, 'ok');
 
-    const [result] = await Promise.all([
-      hackRuntime.triggerRemoteHack(buildingId),
-      runHackAnimation({ id: buildingId }),
-    ]);
+    const result = await runHackVisual(hackRuntime.triggerRemoteHack(buildingId));
     lastHackResult = result;
     updateHackStatus();
     pcRevealHackResult(result);
@@ -556,25 +614,44 @@ function startGame(characterId) {
     updateShopStatus();
   }
 
+  const HACK_FLAVOR_LINES = [
+    '> mapeando defesas do perimetro...',
+    '> testando portas de entrada...',
+    '> contornando deteccao de intrusao...',
+    '> forcando camadas de criptografia...',
+    '> interceptando pacotes de resposta...',
+  ];
+
   /**
-   * Sequencia cosmetica de uns 1.5s pra tela de invasao nao parecer
-   * instantanea - o hack de verdade (recon/breach/exfiltrate/fence, ver
-   * hackSession.js) resolve rapido demais pra acompanhar visualmente, e
-   * essa animacao roda em paralelo com ele (Promise.all em handleAction),
-   * sem mudar em nada o tempo/energia/chance reais do hack.
+   * Acompanha o hack de verdade (fisico ou remoto) enquanto ele roda -
+   * o delay real agora mora no proprio HackRuntime (ver hackDelayMs em
+   * hackRuntime.js), entao aqui e so ler `hackRemainingMs`/`isHacking` e
+   * atualizar a barra + linhas de "sabor" aleatorias, mesmo padrao do
+   * startMining(). Um hack que nem chega a tentar (levelBlocked/
+   * energyBlocked) resolve quase instantaneo, entao o loop nem chega a
+   * rodar de verdade - sem espera artificial pra um resultado que ja se
+   * sabe de cara.
    */
-  async function runHackAnimation(target) {
-    pcLogPush(`> conectando a ${target.id}...`, 'ok');
-    await wait(280);
-    pcSetBar(20, 'RECON', '20%');
-    pcLogPush('> [RECON] mapeando defesas', 'ok');
-    await wait(320);
-    pcSetBar(55, 'BREACH', '55%');
-    pcLogPush('> [BREACH] tentando quebrar a seguranca', 'ok');
-    await wait(420);
-    pcSetBar(85, 'BREACH', '85%');
-    await wait(320);
-    pcSetBar(100, 'BREACH', '100%');
+  async function runHackVisual(resultPromise) {
+    const totalMs = hackRuntime.hackRemainingMs || 20000;
+    let flavorIndex = 0;
+    const intervalId = setInterval(() => {
+      const remaining = hackRuntime.hackRemainingMs;
+      const pct = (1 - remaining / totalMs) * 100;
+      pcSetBar(pct, 'BREACH', `${Math.ceil(remaining / 1000)}s`);
+      if (!hackRuntime.isHacking) {
+        clearInterval(intervalId);
+        return;
+      }
+      if (Math.random() < 0.4) {
+        pcLogPush(HACK_FLAVOR_LINES[flavorIndex % HACK_FLAVOR_LINES.length], 'ok');
+        flavorIndex += 1;
+      }
+    }, 1500);
+
+    const result = await resultPromise;
+    clearInterval(intervalId);
+    return result;
   }
 
   async function handleAction() {
@@ -583,13 +660,14 @@ function startGame(characterId) {
     hackingBuildingId = nearby.id;
     updateHackStatus();
 
-    pcScreenOpen({ showEquipeTab: false });
+    pcScreenOpen({ showExtraTabs: false });
     pcScreenShowRun();
     pcLogClear();
     pcSetHead(nearby.id.toUpperCase(), nearby.target.tier.toUpperCase());
     pcSetBar(0, 'STATUS', '--');
+    pcLogPush(`> conectando a ${nearby.id}...`, 'ok');
 
-    const [result] = await Promise.all([hackRuntime.triggerHack(), runHackAnimation(nearby)]);
+    const result = await runHackVisual(hackRuntime.triggerHack());
     lastHackResult = result;
     hackingBuildingId = null;
     updateHackStatus();
@@ -677,6 +755,7 @@ function startGame(characterId) {
 
   pcTabTerminalEl.addEventListener('click', () => pcScreenSetTab('terminal'));
   pcTabEquipeEl.addEventListener('click', () => pcScreenSetTab('equipe'));
+  pcTabLojaEl.addEventListener('click', () => pcScreenSetTab('loja'));
   pcMenuMineBtn.addEventListener('click', () => startMining());
 
   window.addEventListener('keyup', (event) => {

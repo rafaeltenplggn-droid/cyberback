@@ -16,13 +16,33 @@ import { InformationLedger } from './informationLedger.js';
 import { mineInformation as mineInformationAction } from './infoMining.js';
 import { WorkerRoster } from './workers.js';
 import { requiredLevelForTier } from './hackLevelGate.js';
+import { PetCollection } from './pets.js';
 
 // 30s pra dar tempo real de "trabalho" (e de mostrar uma tela de PC/HUD
 // enquanto isso acontece), em vez do resultado aparecer quase instantaneo.
 const DEFAULT_MINING_DELAY_MS = 30000;
 
+// Hackear um predio (fisico ou remoto) tambem leva um tempo de verdade -
+// um pouco menos que minerar no PC, pra sentir mais "profissional"/rapido
+// que ficar tateando sozinho. So estica quanto tempo o resultado demora
+// pra aparecer; nao muda energia/chance/trace, que continuam 100% do
+// HackSession/hack-loop de sempre.
+const DEFAULT_HACK_DELAY_MS = 20000;
+
 export class HackRuntime {
-  constructor({ mapManager, controller, playerStats, traceMeter, energyMeter, ledger, rng, now, miningDelayMs = DEFAULT_MINING_DELAY_MS, delayFn } = {}) {
+  constructor({
+    mapManager,
+    controller,
+    playerStats,
+    traceMeter,
+    energyMeter,
+    ledger,
+    rng,
+    now,
+    miningDelayMs = DEFAULT_MINING_DELAY_MS,
+    hackDelayMs = DEFAULT_HACK_DELAY_MS,
+    delayFn,
+  } = {}) {
     this.mapManager = mapManager;
     this.controller = controller;
     this.ledger = ledger;
@@ -32,10 +52,14 @@ export class HackRuntime {
     this.hackSession = new HackSession({ playerStats, traceMeter, energyMeter, informationLedger: this.informationLedger, rng });
     this.sleepTracker = new SleepTracker(now ? { now } : undefined);
     this.workerRoster = new WorkerRoster({ rng: this.rng });
+    this.petCollection = new PetCollection();
     this._sitting = false;
     this._mining = false;
     this._miningStartedAt = null;
     this._miningDelayMs = miningDelayMs;
+    this._hacking = false;
+    this._hackStartedAt = null;
+    this._hackDelayMs = hackDelayMs;
     this._delayFn = delayFn ?? ((ms) => new Promise((resolve) => setTimeout(resolve, ms)));
   }
 
@@ -61,7 +85,7 @@ export class HackRuntime {
 
   /** Enquanto um hack (de predio ou minerando no PC) estiver em andamento, o personagem nao pode andar. */
   get isMovementBlocked() {
-    return this.hackSession.isActive || this._mining;
+    return this.hackSession.isActive || this._mining || this._hacking;
   }
 
   /** true enquanto mineInformation() esta rodando (o delay artificial de feedback, ver DEFAULT_MINING_DELAY_MS). */
@@ -73,6 +97,17 @@ export class HackRuntime {
   get miningRemainingMs() {
     if (!this._mining || this._miningStartedAt === null) return 0;
     return Math.max(0, this._miningDelayMs - (this._now() - this._miningStartedAt));
+  }
+
+  /** true enquanto um hack (fisico ou remoto) esta rodando (ver DEFAULT_HACK_DELAY_MS). */
+  get isHacking() {
+    return this._hacking;
+  }
+
+  /** Quantos ms faltam pro hack em andamento terminar (0 se nao estiver hackeando). */
+  get hackRemainingMs() {
+    if (!this._hacking || this._hackStartedAt === null) return 0;
+    return Math.max(0, this._hackDelayMs - (this._now() - this._hackStartedAt));
   }
 
   /**
@@ -125,21 +160,38 @@ export class HackRuntime {
    * exigido pro tier do alvo, nem tenta, igual energyBlocked mas pra
    * nivel. Compartilhado entre triggerHack (fisico) e triggerRemoteHack
    * (do PC) - a trava e a mesma pros dois jeitos de hackear.
+   *
+   * O hack de verdade (recon/breach/exfiltrate/fence) roda rapido demais
+   * pra acompanhar visualmente, entao o resultado real e calculado logo,
+   * mas so "revelado" (a Promise so resolve) depois de DEFAULT_HACK_DELAY_MS
+   * no total - da tempo real de sensacao de trabalho, igual o PC. Um
+   * hack que nem chega a tentar o breach (energyBlocked) nao espera esse
+   * tempo todo - nao faz sentido segurar 20s so pra dizer "sem energia".
    */
-  _runHack(entry) {
+  async _runHack(entry) {
     const requiredLevel = requiredLevelForTier(entry.target.tier);
     if (this.playerStats.level < requiredLevel) {
-      return Promise.resolve({
+      return {
         target: entry.target,
         levelBlocked: true,
         requiredLevel,
         playerLevel: this.playerStats.level,
-      });
+      };
     }
-    return this.hackSession.run(entry.target).then((result) => {
-      this.hackSession.reset();
-      return result;
-    });
+
+    this._hacking = true;
+    this._hackStartedAt = this._now();
+    const result = await this.hackSession.run(entry.target);
+    this.hackSession.reset();
+
+    if (!result.energyBlocked) {
+      const remaining = this._hackDelayMs - (this._now() - this._hackStartedAt);
+      if (remaining > 0) await this._delayFn(remaining);
+    }
+
+    this._hacking = false;
+    this._hackStartedAt = null;
+    return result;
   }
 
   /** Dispara o hack contra o predio adjacente, se houver. Retorna a Promise do resultado, ou null se fora de alcance/bloqueado. */
@@ -169,7 +221,7 @@ export class HackRuntime {
    */
   triggerRemoteHack(buildingId) {
     if (this.nearbyHomeInteractable() !== 'pc') return null;
-    if (this.hackSession.isActive || this._mining) return null;
+    if (this.hackSession.isActive || this._mining || this._hacking) return null;
     const entry = HACKABLE_BUILDINGS.find((building) => building.id === buildingId);
     if (!entry) return null;
     return this._runHack(entry);
@@ -237,6 +289,22 @@ export class HackRuntime {
       return { success: false, reason: 'loja_indisponivel' };
     }
     return this.workerRoster.hire(workerId, { ledger: this.ledger });
+  }
+
+  /** Lista dos pets compraveis (id/nome) e quais ja foram comprados - ver pets.js. Puramente decorativo. */
+  get pets() {
+    return this.petCollection.list();
+  }
+
+  /** Compra um pet pelo id (ver PETS em pets.js). So funciona parado no PC, no player_home. */
+  buyPet(petId) {
+    if (this.nearbyHomeInteractable() !== 'pc') {
+      return { success: false, reason: 'fora_do_pc' };
+    }
+    if (!this.ledger) {
+      return { success: false, reason: 'loja_indisponivel' };
+    }
+    return this.petCollection.buy(petId, { ledger: this.ledger });
   }
 
   /** Dorme na cama: recupera energia de graca, mas so fora do cooldown. So funciona parado ao lado da cama. */
