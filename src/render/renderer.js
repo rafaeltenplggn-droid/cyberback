@@ -15,6 +15,14 @@ const TILE_COLORS = {
   3: '#12151c', // bloqueado/predio: dark charcoal/navy
 };
 
+function hexToRgba(hex, alpha) {
+  const value = hex.replace('#', '');
+  const r = parseInt(value.substring(0, 2), 16);
+  const g = parseInt(value.substring(2, 4), 16);
+  const b = parseInt(value.substring(4, 6), 16);
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}
+
 export class Renderer {
   /**
    * `propImages` (opcional) e um objeto { [nomeDoArquivo]: HTMLImageElement }
@@ -69,6 +77,39 @@ export class Renderer {
     for (const door of map.doors) {
       this.drawDoorMarker(door);
     }
+  }
+
+  // Brilho animado e sutil sobre os reflexos de neon na rua molhada
+  // (map.reflections no mapa.json - opcional, so o Sector 7 usa por
+  // enquanto). Cada entrada e um gradiente radial na cor do letreiro,
+  // com a opacidade "respirando" ao longo do tempo (nowMs, o mesmo
+  // timestamp do requestAnimationFrame) - fase e periodo proprios por
+  // reflexo pra nao pulsarem todos em sincronia. Desenhado sobre o
+  // fundo mas antes de props/personagem, pra ficar no plano do chao.
+  drawReflections(map, nowMs) {
+    const reflections = map.reflections;
+    if (!reflections || reflections.length === 0) return;
+
+    const ctx = this.ctx;
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    for (const r of reflections) {
+      const { x, y } = gridToScreen(r.x, r.y, this.originX, this.originY);
+      const radiusPx = r.radius * TILE_SIZE;
+      const phase = r.phase ?? 0;
+      const periodMs = r.periodMs ?? 3000;
+      const baseAlpha = r.baseAlpha ?? 0.12;
+      const amplitude = r.amplitude ?? 0.06;
+      const alpha = baseAlpha + amplitude * Math.sin((nowMs / periodMs) * Math.PI * 2 + phase);
+
+      const gradient = ctx.createRadialGradient(x, y, 0, x, y, radiusPx);
+      gradient.addColorStop(0, hexToRgba(r.color, Math.max(alpha, 0)));
+      gradient.addColorStop(1, hexToRgba(r.color, 0));
+
+      ctx.fillStyle = gradient;
+      ctx.fillRect(x - radiusPx, y - radiusPx, radiusPx * 2, radiusPx * 2);
+    }
+    ctx.restore();
   }
 
   // Props e personagem sao desenhados juntos, ordenados por profundidade

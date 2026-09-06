@@ -163,3 +163,18 @@ test('rejeita prop cujo footprint ultrapassa os limites do mapa', () => {
     MapParseError
   );
 });
+
+test('background e reflections sao repassados quando presentes, com default sensato quando ausentes', () => {
+  const withoutExtras = parseMap(baseMap());
+  assert.equal(withoutExtras.background, null);
+  assert.deepEqual(withoutExtras.reflections, []);
+
+  const withExtras = parseMap(
+    baseMap({
+      background: 'sector7_exterior.png',
+      reflections: [{ x: 2, y: 1, radius: 2, color: '#ff2d78' }],
+    })
+  );
+  assert.equal(withExtras.background, 'sector7_exterior.png');
+  assert.deepEqual(withExtras.reflections, [{ x: 2, y: 1, radius: 2, color: '#ff2d78' }]);
+});

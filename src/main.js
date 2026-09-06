@@ -307,9 +307,10 @@ function startGame(characterId) {
   // segurada.
   window.addEventListener('blur', () => heldDirections.clear());
 
-  function render() {
+  function render(nowMs) {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     mapRenderer.drawMap(mapManager.currentMap);
+    mapRenderer.drawReflections(mapManager.currentMap, nowMs);
     const { col, row } = controller.visualPosition;
     mapRenderer.drawPropsAndCharacter(mapManager.currentMap.props, row, () => {
       characterRenderer.draw({ col, row, direction: controller.direction, pose: controller.pose });
@@ -325,7 +326,7 @@ function startGame(characterId) {
     lastTime = now;
     feedHeldMovement();
     hackRuntime.tick(deltaMs);
-    render();
+    render(now);
     requestAnimationFrame(loop);
   }
 
@@ -339,7 +340,7 @@ function startGame(characterId) {
       fixCameraForMap(mapManager.currentMap);
       ensurePropImagesLoaded(mapManager.currentMap);
       ensureBackgroundImageLoaded(mapManager.currentMap);
-      render();
+      render(performance.now());
       requestAnimationFrame(loop);
     },
     (error) => {
