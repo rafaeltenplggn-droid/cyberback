@@ -8,7 +8,7 @@
 // ENERGY_COST_PER_TIER em energyCosts.js).
 export const INFO_MINING_SUCCESS_CHANCE = 0.6;
 export const INFO_MINING_RARITY = 'comum';
-export const INFO_MINING_ENERGY_COST_RATIO = 0.5;
+export const INFO_MINING_ENERGY_COST_RATIO = 0.25;
 
 export const INFO_MINING_REASON = {
   FAILED: 'minerou_sem_sucesso',

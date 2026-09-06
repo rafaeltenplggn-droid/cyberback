@@ -208,18 +208,42 @@ sempre rende 1 unidade de Informacao comum (a fonte facil/barata;
 informacao melhor so vem hackeando os predios de verdade). A tecla
 continua sendo B.
 
-Minerar no PC gasta energia toda vez que tenta, sucesso ou falha -
-metade da energia maxima (`INFO_MINING_ENERGY_COST_RATIO = 0.5`), pra
+Minerar no PC gasta energia toda vez que tenta, sucesso ou falha - um
+quarto da energia maxima (`INFO_MINING_ENERGY_COST_RATIO = 0.25`), pra
 nao virar fonte infinita de informacao/BYTE (antes nao gastava nada).
-`HackRuntime.mineInformation()` tambem passou a ser assincrono: tem um
-delay artificial curto (`DEFAULT_MINING_DELAY_MS`, ~650ms) em que
+`HackRuntime.mineInformation()` tambem passou a ser assincrono: leva uns
+30 segundos de verdade (`DEFAULT_MINING_DELAY_MS`) em que
 `isMining`/`isMovementBlocked` ficam true e a UI mostra "[B]
-minerando..." - antes o resultado aparecia instantaneo, sem nenhum
-feedback de que algo estava acontecendo. Hackear os predios de verdade
-continua custando bem mais energia que minerar no PC e progressivo por
-tier (`ENERGY_COST_PER_TIER` em `src/hackIntegration/energyCosts.js`:
-comum 60, incomum 75, raro 90 - todos acima dos 50 do PC), reforcando
-que a informacao melhor (rara/epica) vem de um risco maior.
+minerando... Ns" com contagem regressiva (`miningRemainingMs`) - antes o
+resultado aparecia instantaneo, sem nenhum feedback de que algo estava
+acontecendo. Hackear os predios de verdade continua custando mais
+energia que minerar no PC e progressivo por tier (`ENERGY_COST_PER_TIER`
+em `src/hackIntegration/energyCosts.js`: comum 30, incomum 40, raro 50 -
+todos acima dos 25 do PC), reforcando que a informacao melhor
+(rara/epica) vem de um risco maior. Os valores de energia foram
+recalibrados uma vez pra baixo (de um primeiro rascunho 50/60/75/90) por
+ficarem pesados demais somados a chance de sucesso ja ser baixa nos
+tiers mais dificeis.
+
+### Trabalhadores contratados (`src/hackIntegration/workers.js`)
+
+Alem de minerar manualmente, o jogador pode contratar os outros
+personagens do elenco (`character2`/`character3`/`character4` -
+Ghost Netrunner, Drone Engineer, Corporate Spy - ver
+`src/character/characterRoster.js`) pra minerar informacao sozinhos, em
+tempo real, pelo resto da partida. Cada contratacao custa
+`WORKER_HIRE_COST_BYTE` (150 BYTE) e e paga uma unica vez por
+personagem; da pra contratar todos ao mesmo tempo. Um trabalhador
+contratado tenta minerar (mesma `INFO_MINING_SUCCESS_CHANCE` do PC, sem
+gastar a energia do jogador - a "energia" dele e sempre cheia) a cada
+`WORKER_WORK_INTERVAL_MS` (30s), via `WorkerRoster.tick()`, chamado a
+cada frame de `HackRuntime.tick()` **mesmo com o movimento do jogador
+bloqueado** - ele trabalha sozinho, independente do que o jogador esta
+fazendo. Sem nenhum prop fisico no mapa: e so um estoque de "quem esta
+contratado", com a UI (menu no PC, teclas 1/2/3) sendo o unico jeito de
+interagir por enquanto - pensado pra virar uma aba com a foto de cada um
+dentro da futura tela do PC (ver o mockup do terminal de hack
+compartilhado com o usuario).
 
 Energia agora so recupera de duas formas: dormindo na cama do quarto
 (de graca, cooldown de 2 minutos, sem mudanca) ou comprando um

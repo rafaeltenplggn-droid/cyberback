@@ -14,8 +14,11 @@ import { nearbyBlacknetInteractable as nearbyBlacknetInteractableAt } from './bl
 import { buyDrink as buyDrinkAction } from './drinkShop.js';
 import { InformationLedger } from './informationLedger.js';
 import { mineInformation as mineInformationAction } from './infoMining.js';
+import { WorkerRoster } from './workers.js';
 
-const DEFAULT_MINING_DELAY_MS = 650;
+// 30s pra dar tempo real de "trabalho" (e de mostrar uma tela de PC/HUD
+// enquanto isso acontece), em vez do resultado aparecer quase instantaneo.
+const DEFAULT_MINING_DELAY_MS = 30000;
 
 export class HackRuntime {
   constructor({ mapManager, controller, playerStats, traceMeter, energyMeter, ledger, rng, now, miningDelayMs = DEFAULT_MINING_DELAY_MS, delayFn } = {}) {
@@ -23,11 +26,14 @@ export class HackRuntime {
     this.controller = controller;
     this.ledger = ledger;
     this.rng = rng ?? Math.random;
+    this._now = now ?? (() => Date.now());
     this.informationLedger = new InformationLedger();
     this.hackSession = new HackSession({ playerStats, traceMeter, energyMeter, informationLedger: this.informationLedger, rng });
     this.sleepTracker = new SleepTracker(now ? { now } : undefined);
+    this.workerRoster = new WorkerRoster({ rng: this.rng });
     this._sitting = false;
     this._mining = false;
+    this._miningStartedAt = null;
     this._miningDelayMs = miningDelayMs;
     this._delayFn = delayFn ?? ((ms) => new Promise((resolve) => setTimeout(resolve, ms)));
   }
@@ -62,8 +68,20 @@ export class HackRuntime {
     return this._mining;
   }
 
-  /** Chamado pelo loop de render no lugar de controller.tick() direto. */
+  /** Quantos ms faltam pro mineInformation() em andamento terminar (0 se nao estiver minerando). */
+  get miningRemainingMs() {
+    if (!this._mining || this._miningStartedAt === null) return 0;
+    return Math.max(0, this._miningDelayMs - (this._now() - this._miningStartedAt));
+  }
+
+  /**
+   * Chamado pelo loop de render no lugar de controller.tick() direto. Os
+   * trabalhadores contratados (ver workers.js) tickam sempre, mesmo com o
+   * movimento bloqueado - eles trabalham sozinhos, independente do que o
+   * jogador esta fazendo.
+   */
   tick(deltaMs) {
+    this.workerRoster.tick(deltaMs, { informationLedger: this.informationLedger });
     if (this.isMovementBlocked) return;
     this.controller.tick(deltaMs);
     // Levanta sozinho se o jogador se afastou do banco (cosmetico, nao
@@ -146,6 +164,7 @@ export class HackRuntime {
       return { success: false, reason: 'fora_do_pc' };
     }
     this._mining = true;
+    this._miningStartedAt = this._now();
     await this._delayFn(this._miningDelayMs);
     const result = mineInformationAction({
       informationLedger: this.informationLedger,
@@ -153,7 +172,24 @@ export class HackRuntime {
       rng: this.rng,
     });
     this._mining = false;
+    this._miningStartedAt = null;
     return result;
+  }
+
+  /** Lista dos trabalhadores contrataveis (id/nome) e quais ja foram contratados - ver workers.js. */
+  get hirableWorkers() {
+    return this.workerRoster.list();
+  }
+
+  /** Contrata um trabalhador pelo id (ver HIRABLE_WORKERS em workers.js). So funciona parado no PC, no player_home. */
+  hireWorker(workerId) {
+    if (this.nearbyHomeInteractable() !== 'pc') {
+      return { success: false, reason: 'fora_do_pc' };
+    }
+    if (!this.ledger) {
+      return { success: false, reason: 'loja_indisponivel' };
+    }
+    return this.workerRoster.hire(workerId, { ledger: this.ledger });
   }
 
   /** Dorme na cama: recupera energia de graca, mas so fora do cooldown. So funciona parado ao lado da cama. */

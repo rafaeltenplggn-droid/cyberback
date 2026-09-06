@@ -14,6 +14,7 @@ import { HackRuntime } from './hackIntegration/hackRuntime.js';
 import { SLEEP_ENERGY_RESTORE } from './hackIntegration/sleepAction.js';
 import { DRINK_COST_BYTE } from './hackIntegration/drinkShop.js';
 import { INFO_MINING_ENERGY_COST_RATIO } from './hackIntegration/infoMining.js';
+import { WORKER_HIRE_COST_BYTE } from './hackIntegration/workers.js';
 
 const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
@@ -82,6 +83,7 @@ function startGame(characterId) {
   const playerStatusEl = document.getElementById('player-status');
   const hackStatusEl = document.getElementById('hack-status');
   const shopStatusEl = document.getElementById('shop-status');
+  const workerStatusEl = document.getElementById('worker-status');
 
   function updateStatus() {
     const sittingText = hackRuntime.isSitting ? ' | sentado no banco' : '';
@@ -131,6 +133,8 @@ function startGame(characterId) {
   let lastNearbyBar = null;
   let lastSellResult = null;
   let lastNearbyBlacknet = null;
+  let lastHireResult = null;
+  let lastNearbyHomeForWorkers = null;
 
   function updateShopStatus() {
     const nearby = hackRuntime.nearbyHomeInteractable();
@@ -192,9 +196,10 @@ function startGame(characterId) {
     if (nearby === 'pc') {
       const energyCost = hackRuntime.energyMax != null ? Math.round(hackRuntime.energyMax * INFO_MINING_ENERGY_COST_RATIO) : null;
       if (hackRuntime.isMining) {
-        shopStatusEl.textContent = '[B] minerando...';
+        const secs = Math.ceil(hackRuntime.miningRemainingMs / 1000);
+        shopStatusEl.textContent = `[B] minerando... ${secs}s`;
       } else if (!lastMineResult) {
-        shopStatusEl.textContent = `[B] minerar informacao (chance de sucesso, gasta ${energyCost} de energia)`;
+        shopStatusEl.textContent = `[B] minerar informacao (~30s, chance de sucesso, gasta ${energyCost} de energia)`;
       } else if (lastMineResult.success) {
         shopStatusEl.textContent = `[B] minerou com sucesso: +1 informacao ${lastMineResult.rarity} (energia gasta: ${lastMineResult.energySpent})`;
       } else if (lastMineResult.reason === 'sem_energia') {
@@ -224,6 +229,42 @@ function startGame(characterId) {
     shopStatusEl.textContent = '';
   }
 
+  /**
+   * Linha separada do shop-status: os trabalhadores contratados (ver
+   * workers.js) trabalham sozinhos o tempo todo, entao mostra quantos
+   * estao ativos em qualquer lugar do mapa; perto do PC, mostra tambem o
+   * menu de contratacao (teclas 1/2/3).
+   */
+  function updateWorkerStatus() {
+    const nearby = hackRuntime.nearbyHomeInteractable();
+    if (nearby !== lastNearbyHomeForWorkers) {
+      lastHireResult = null;
+      lastNearbyHomeForWorkers = nearby;
+    }
+
+    const workers = hackRuntime.hirableWorkers;
+    const hiredCount = workers.filter((w) => w.hired).length;
+
+    if (nearby !== 'pc') {
+      workerStatusEl.textContent = hiredCount > 0
+        ? `equipe: ${hiredCount}/${workers.length} trabalhando sozinho(s) em segundo plano`
+        : '';
+      return;
+    }
+
+    const lines = workers.map((worker, index) => {
+      const key = index + 1;
+      if (worker.hired) {
+        return `[${key}] ${worker.name}: contratado, minerando sozinho`;
+      }
+      if (lastHireResult?.workerId === worker.id && lastHireResult.result.reason === 'byte_insuficiente') {
+        return `[${key}] ${worker.name}: BYTE insuficiente (precisa de ${WORKER_HIRE_COST_BYTE}, tem ${hackRuntime.byteBalance})`;
+      }
+      return `[${key}] ${worker.name}: contratar por ${WORKER_HIRE_COST_BYTE} BYTE`;
+    });
+    workerStatusEl.textContent = lines.join('\n');
+  }
+
   async function handleMineInformation() {
     if (hackRuntime.isMining) return;
     updateShopStatus();
@@ -244,6 +285,12 @@ function startGame(characterId) {
   function handleSellInformation() {
     lastSellResult = hackRuntime.sellInformation();
     updateShopStatus();
+  }
+
+  function handleHireWorker(workerId) {
+    const result = hackRuntime.hireWorker(workerId);
+    lastHireResult = { workerId, result };
+    updateWorkerStatus();
   }
 
   function handleToggleSit() {
@@ -325,6 +372,12 @@ function startGame(characterId) {
     if (event.key === 'c' || event.key === 'C') {
       event.preventDefault();
       handleToggleSit();
+      return;
+    }
+    if (event.key === '1' || event.key === '2' || event.key === '3') {
+      event.preventDefault();
+      const worker = hackRuntime.hirableWorkers[Number(event.key) - 1];
+      if (worker) handleHireWorker(worker.id);
     }
   });
 
@@ -349,6 +402,7 @@ function startGame(characterId) {
     updateStatus();
     updateHackStatus();
     updateShopStatus();
+    updateWorkerStatus();
   }
 
   let lastTime = performance.now();

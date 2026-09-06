@@ -49,10 +49,11 @@
       line-height: 1.4;
       pointer-events: none;
     }
-    #status, #player-status, #hack-status, #shop-status { margin-bottom: 4px; }
+    #status, #player-status, #hack-status, #shop-status, #worker-status { margin-bottom: 4px; }
     #player-status { color: #7dffb3; }
     #hack-status { color: #ff2079; }
     #shop-status { color: #ffd23a; }
+    #worker-status { color: #b47bff; white-space: pre-line; }
 
     #help {
       position: fixed;
@@ -86,11 +87,12 @@
     <div id="player-status"></div>
     <div id="hack-status"></div>
     <div id="shop-status"></div>
+    <div id="worker-status"></div>
   </div>
 
   <details id="help">
     <summary>Ajuda / controles</summary>
-    <p>Setas do teclado movem o personagem (grid, 4 direcoes, sem diagonal). Retangulos cinza sao props/predios ainda sem arte final. Ponto ciano e uma porta: ao pisar nela o mapa inteiro troca e o personagem reaparece no spawn do destino. Chegando perto de qualquer predio hackavel em district_07 (gridcorp_tower - comum, nullpoint_bar - incomum, ghost_row_market/BLACKNET - raro, o mais dificil), ESPACO ou ENTER disparam um hack de teste contra ele; enquanto o hack roda o movimento fica bloqueado. Hack bem sucedido rende XP (sobe de nivel e os stats crescem) e uma unidade de Informacao (raridade de acordo com o tier do predio: comum/rara/epica). Cada tentativa de hack gasta energia (mesmo se falhar); sem energia suficiente pro tier do predio, o hack nem tenta - a energia so recupera dormindo ou comprando um energetico no bar (nao recarrega sozinha nem tem loja no PC de casa). O personagem tem um quarto (player_home), acessivel por uma porta em district_07: perto do PC, tecla B tenta minerar informacao (chance de sucesso, sempre rende comum quando da certo); perto da cama, tecla S deixa o personagem dormir, recuperando energia de graca, mas so uma vez a cada 2 minutos. O nullpoint_bar (fora, hackavel normalmente) tem um balcao dentro dele: perto do balcao, tecla D compra um energetico por BYTE que recarrega a energia ate o maximo. Ainda dentro do bar: perto do banco, tecla C senta/levanta (so cosmetico, sem efeito no jogo); perto do laptop, ESPACO ou ENTER hackeiam o proprio nullpoint_bar remotamente, sem precisar sair do bar. Atras do balcao tem um atendente (NPC): perto dele, tecla D tambem compra o energetico, exatamente como no balcao (mesma loja, dois pontos de acesso). Dentro da BLACKNET (ghost_row_interior), tecla V vende toda a Informacao acumulada por BYTE (preco por raridade: comum 8, rara 25, epica 60).</p>
+    <p>Setas do teclado movem o personagem (grid, 4 direcoes, sem diagonal). Retangulos cinza sao props/predios ainda sem arte final. Ponto ciano e uma porta: ao pisar nela o mapa inteiro troca e o personagem reaparece no spawn do destino. Chegando perto de qualquer predio hackavel em district_07 (gridcorp_tower - comum, nullpoint_bar - incomum, ghost_row_market/BLACKNET - raro, o mais dificil), ESPACO ou ENTER disparam um hack de teste contra ele; enquanto o hack roda o movimento fica bloqueado. Hack bem sucedido rende XP (sobe de nivel e os stats crescem) e uma unidade de Informacao (raridade de acordo com o tier do predio: comum/rara/epica). Cada tentativa de hack gasta energia (mesmo se falhar); sem energia suficiente pro tier do predio, o hack nem tenta - a energia so recupera dormindo ou comprando um energetico no bar (nao recarrega sozinha nem tem loja no PC de casa). O personagem tem um quarto (player_home), acessivel por uma porta em district_07: perto do PC, tecla B tenta minerar informacao (leva uns 30 segundos, chance de sucesso, sempre rende comum quando da certo, gasta energia mesmo se falhar); ainda perto do PC, teclas 1/2/3 contratam os outros personagens do elenco por BYTE - uma vez contratados, eles minerm informacao sozinhos, em tempo real, pelo resto da partida, sem gastar a energia do jogador; perto da cama, tecla S deixa o personagem dormir, recuperando energia de graca, mas so uma vez a cada 2 minutos. O nullpoint_bar (fora, hackavel normalmente) tem um balcao dentro dele: perto do balcao, tecla D compra um energetico por BYTE que recarrega a energia ate o maximo. Ainda dentro do bar: perto do banco, tecla C senta/levanta (so cosmetico, sem efeito no jogo); perto do laptop, ESPACO ou ENTER hackeiam o proprio nullpoint_bar remotamente, sem precisar sair do bar. Atras do balcao tem um atendente (NPC): perto dele, tecla D tambem compra o energetico, exatamente como no balcao (mesma loja, dois pontos de acesso). Dentro da BLACKNET (ghost_row_interior), tecla V vende toda a Informacao acumulada por BYTE (preco por raridade: comum 8, rara 25, epica 60).</p>
   </details>
 
   <script type="module" src="src/main.js"></script>
