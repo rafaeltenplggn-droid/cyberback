@@ -17,6 +17,8 @@ import { INFO_MINING_ENERGY_COST_RATIO } from './hackIntegration/infoMining.js';
 import { WORKER_HIRE_COST_BYTE } from './hackIntegration/workers.js';
 import { PET_COST_BYTE } from './hackIntegration/pets.js';
 
+const STARTING_BYTE_BALANCE = 100;
+
 const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
 const origin = { originX: canvas.width / 2, originY: 80 };
@@ -78,6 +80,7 @@ function startGame(characterId) {
   const traceMeter = new TraceMeter();
   const energyMeter = new EnergyMeter();
   const ledger = new ByteLedger();
+  ledger.record({ type: 'gain', amount: STARTING_BYTE_BALANCE, meta: { source: 'saldo_inicial' } });
   const hackRuntime = new HackRuntime({ mapManager, controller, playerStats, traceMeter, energyMeter, ledger });
 
   const statusEl = document.getElementById('status');
