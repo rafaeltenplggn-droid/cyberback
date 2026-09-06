@@ -173,7 +173,7 @@ test('sem energia suficiente, o hack nem tenta o breach: nao gasta xp, nem trace
   const playerStats = createPlayerStats(1);
   const traceMeter = new TraceMeter();
   const energyMeter = new EnergyMeter({ regenPerSecond: 0 });
-  energyMeter.spend(energyMeter.max - 5); // deixa so 5, menos que o custo do comum
+  energyMeter.spend(energyMeter.max - 5); // deixa so 5, menos que o custo do comum (60)
 
   const session = new HackSession({ playerStats, traceMeter, energyMeter, rng: () => 0.999999 });
   const result = await session.run(GRIDCORP_TARGET);
@@ -193,7 +193,7 @@ test('depois de recarregar energia suficiente, o proximo hack ja funciona normal
   const clock = makeClock();
   const playerStats = createPlayerStats(5);
   const energyMeter = new EnergyMeter({ now: clock.now, regenPerSecond: 10 });
-  energyMeter.spend(energyMeter.max - 5); // so 5 de energia, insuficiente pro raro (30)
+  energyMeter.spend(energyMeter.max - 5); // so 5 de energia, insuficiente pro comum (60)
 
   const session = new HackSession({ playerStats, energyMeter, rng: () => 0 });
 
@@ -201,7 +201,7 @@ test('depois de recarregar energia suficiente, o proximo hack ja funciona normal
   assert.equal(blockedResult.energyBlocked, true);
   session.reset();
 
-  clock.advance(5000); // +50 de energia
+  clock.advance(6000); // +60 de energia (5 + 60 = 65, o suficiente)
   const okResult = await session.run(GRIDCORP_TARGET);
   assert.equal(okResult.energyBlocked, false);
   assert.equal(okResult.breach.success, true);

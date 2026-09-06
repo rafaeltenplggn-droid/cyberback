@@ -164,7 +164,7 @@ test('sem energia suficiente, o hack roda mas nao tenta o breach (energyBlocked)
   const mapManager = makeFakeMapManager({ col: 3, row: 5 });
   const controller = makeFakeController();
   const energyMeter = new EnergyMeter({ regenPerSecond: 0 });
-  energyMeter.spend(energyMeter.max - 5); // so 5, menos que o custo do gridcorp_tower (raro, 30)
+  energyMeter.spend(energyMeter.max - 5); // so 5, menos que o custo do gridcorp_tower (comum, 60)
   const runtime = new HackRuntime({ mapManager, controller, playerStats: createPlayerStats(1), energyMeter, rng: () => 0 });
 
   const result = await runtime.triggerHack();
@@ -174,44 +174,88 @@ test('sem energia suficiente, o hack roda mas nao tenta o breach (energyBlocked)
   assert.equal(runtime.isMovementBlocked, false, 'movimento libera normalmente mesmo bloqueado por energia');
 });
 
-test('mineInformation rende informacao comum quando parado perto do PC no player_home (chance de sucesso)', () => {
+test('mineInformation rende informacao comum e gasta metade da energia quando parado perto do PC no player_home', async () => {
   const mapManager = makeFakeMapManager({ mapId: 'player_home', col: 6, row: 2 }); // oeste do PC (origem 7,2)
   const controller = makeFakeController();
-  const runtime = new HackRuntime({ mapManager, controller, playerStats: createPlayerStats(1), rng: () => 0 });
+  const energyMeter = new EnergyMeter({ regenPerSecond: 0 });
+  const runtime = new HackRuntime({ mapManager, controller, playerStats: createPlayerStats(1), energyMeter, rng: () => 0, miningDelayMs: 0 });
 
   assert.equal(runtime.nearbyHomeInteractable(), 'pc');
-  const result = runtime.mineInformation();
+  const result = await runtime.mineInformation();
 
   assert.equal(result.success, true);
   assert.equal(result.rarity, 'comum');
+  assert.equal(result.energySpent, energyMeter.max / 2);
   assert.equal(runtime.informationCounts.comum, 1);
+  assert.equal(runtime.energyValue, energyMeter.max / 2);
 });
 
-test('mineInformation pode falhar (rng alto) sem conceder informacao nenhuma', () => {
+test('mineInformation pode falhar (rng alto) sem conceder informacao nenhuma, mas ainda gasta energia', async () => {
   const mapManager = makeFakeMapManager({ mapId: 'player_home', col: 6, row: 2 });
   const controller = makeFakeController();
-  const runtime = new HackRuntime({ mapManager, controller, playerStats: createPlayerStats(1), rng: () => 0.999999 });
+  const energyMeter = new EnergyMeter({ regenPerSecond: 0 });
+  const runtime = new HackRuntime({ mapManager, controller, playerStats: createPlayerStats(1), energyMeter, rng: () => 0.999999, miningDelayMs: 0 });
 
-  const result = runtime.mineInformation();
+  const result = await runtime.mineInformation();
 
   assert.equal(result.success, false);
   assert.equal(runtime.informationTotal, 0);
+  assert.equal(result.energySpent, energyMeter.max / 2);
+  assert.equal(runtime.energyValue, energyMeter.max / 2);
 });
 
-test('mineInformation e recusado fora do PC (outro mapa, ou longe dele dentro do player_home)', () => {
+test('mineInformation e recusado sem energia suficiente (nao gasta nem tenta minerar)', async () => {
+  const mapManager = makeFakeMapManager({ mapId: 'player_home', col: 6, row: 2 });
+  const controller = makeFakeController();
+  const energyMeter = new EnergyMeter({ regenPerSecond: 0 });
+  energyMeter.spend(energyMeter.max - 10); // so 10, menos que os 50 necessarios
+  const runtime = new HackRuntime({ mapManager, controller, playerStats: createPlayerStats(1), energyMeter, rng: () => 0, miningDelayMs: 0 });
+
+  const result = await runtime.mineInformation();
+
+  assert.equal(result.success, false);
+  assert.equal(result.reason, 'sem_energia');
+  assert.equal(runtime.informationTotal, 0);
+  assert.equal(runtime.energyValue, 10, 'nada foi descontado sem energia suficiente');
+});
+
+test('mineInformation bloqueia o movimento enquanto o delay de feedback esta rodando', async () => {
+  const mapManager = makeFakeMapManager({ mapId: 'player_home', col: 6, row: 2 });
+  const controller = makeFakeController();
+  const runtime = new HackRuntime({
+    mapManager,
+    controller,
+    playerStats: createPlayerStats(1),
+    rng: () => 0,
+    delayFn: () => new Promise((resolve) => setTimeout(resolve, 0)),
+  });
+
+  assert.equal(runtime.isMovementBlocked, false);
+  const resultPromise = runtime.mineInformation();
+  assert.equal(runtime.isMining, true);
+  assert.equal(runtime.isMovementBlocked, true, 'minerando tambem bloqueia movimento, igual um hack de predio');
+
+  await resultPromise;
+  assert.equal(runtime.isMining, false);
+  assert.equal(runtime.isMovementBlocked, false);
+});
+
+test('mineInformation e recusado fora do PC (outro mapa, ou longe dele dentro do player_home)', async () => {
   const inDistrict = new HackRuntime({
     mapManager: makeFakeMapManager({ mapId: 'district_07', col: 3, row: 5 }),
     controller: makeFakeController(),
     playerStats: createPlayerStats(1),
+    miningDelayMs: 0,
   });
-  assert.equal(inDistrict.mineInformation().reason, 'fora_do_pc');
+  assert.equal((await inDistrict.mineInformation()).reason, 'fora_do_pc');
 
   const farFromPc = new HackRuntime({
     mapManager: makeFakeMapManager({ mapId: 'player_home', col: 8, row: 8 }),
     controller: makeFakeController(),
     playerStats: createPlayerStats(1),
+    miningDelayMs: 0,
   });
-  assert.equal(farFromPc.mineInformation().reason, 'fora_do_pc');
+  assert.equal((await farFromPc.mineInformation()).reason, 'fora_do_pc');
 });
 
 test('sleep recupera energia parado perto da cama, mas so fora do cooldown', () => {

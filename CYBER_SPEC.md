@@ -198,15 +198,28 @@ ghost_row_interior): um ponto de venda logico
 (`BLACKNET_SELL_LOCATION` em `src/hackIntegration/blacknetLocations.js`,
 ainda sem prop visual - blockout) vende todo o estoque de uma vez
 (`InformationLedger.sellAll()`), ao preco por raridade em
-`INFO_SELL_PRICE_BYTE` (comum 8, rara 25, epica 60 - valores baixos de
+`INFO_SELL_PRICE_BYTE` (comum 5, rara 25, epica 60 - valores baixos de
 proposito, informacao e um item farmavel).
 
 O PC de casa (player_home) nao vende mais recarga de energia - virou um
 ponto de "minerar informacao" (`src/hackIntegration/infoMining.js`):
-chance fixa de sucesso (`INFO_MINING_SUCCESS_CHANCE`, sem gastar energia
-nem trace), e quando da certo sempre rende 1 unidade de Informacao
-comum (a fonte facil/barata; informacao melhor so vem hackeando os
-predios de verdade). A tecla continua sendo B, so a acao mudou.
+chance fixa de sucesso (`INFO_MINING_SUCCESS_CHANCE`), e quando da certo
+sempre rende 1 unidade de Informacao comum (a fonte facil/barata;
+informacao melhor so vem hackeando os predios de verdade). A tecla
+continua sendo B.
+
+Minerar no PC gasta energia toda vez que tenta, sucesso ou falha -
+metade da energia maxima (`INFO_MINING_ENERGY_COST_RATIO = 0.5`), pra
+nao virar fonte infinita de informacao/BYTE (antes nao gastava nada).
+`HackRuntime.mineInformation()` tambem passou a ser assincrono: tem um
+delay artificial curto (`DEFAULT_MINING_DELAY_MS`, ~650ms) em que
+`isMining`/`isMovementBlocked` ficam true e a UI mostra "[B]
+minerando..." - antes o resultado aparecia instantaneo, sem nenhum
+feedback de que algo estava acontecendo. Hackear os predios de verdade
+continua custando bem mais energia que minerar no PC e progressivo por
+tier (`ENERGY_COST_PER_TIER` em `src/hackIntegration/energyCosts.js`:
+comum 60, incomum 75, raro 90 - todos acima dos 50 do PC), reforcando
+que a informacao melhor (rara/epica) vem de um risco maior.
 
 Energia agora so recupera de duas formas: dormindo na cama do quarto
 (de graca, cooldown de 2 minutos, sem mudanca) ou comprando um

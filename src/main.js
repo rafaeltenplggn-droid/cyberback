@@ -13,6 +13,7 @@ import { ByteLedger } from './hackloop/byteLedger.js';
 import { HackRuntime } from './hackIntegration/hackRuntime.js';
 import { SLEEP_ENERGY_RESTORE } from './hackIntegration/sleepAction.js';
 import { DRINK_COST_BYTE } from './hackIntegration/drinkShop.js';
+import { INFO_MINING_ENERGY_COST_RATIO } from './hackIntegration/infoMining.js';
 
 const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
@@ -189,12 +190,17 @@ function startGame(characterId) {
     }
 
     if (nearby === 'pc') {
-      if (!lastMineResult) {
-        shopStatusEl.textContent = '[B] minerar informacao (chance de sucesso)';
+      const energyCost = hackRuntime.energyMax != null ? Math.round(hackRuntime.energyMax * INFO_MINING_ENERGY_COST_RATIO) : null;
+      if (hackRuntime.isMining) {
+        shopStatusEl.textContent = '[B] minerando...';
+      } else if (!lastMineResult) {
+        shopStatusEl.textContent = `[B] minerar informacao (chance de sucesso, gasta ${energyCost} de energia)`;
       } else if (lastMineResult.success) {
-        shopStatusEl.textContent = `[B] minerou com sucesso: +1 informacao ${lastMineResult.rarity}`;
+        shopStatusEl.textContent = `[B] minerou com sucesso: +1 informacao ${lastMineResult.rarity} (energia gasta: ${lastMineResult.energySpent})`;
+      } else if (lastMineResult.reason === 'sem_energia') {
+        shopStatusEl.textContent = `[B] energia insuficiente pra minerar (precisa de ${energyCost}, tem ${hackRuntime.energyValue.toFixed(0)})`;
       } else {
-        shopStatusEl.textContent = '[B] minerou sem sucesso, tenta de novo';
+        shopStatusEl.textContent = `[B] minerou sem sucesso (energia gasta: ${lastMineResult.energySpent}), tenta de novo`;
       }
       return;
     }
@@ -218,8 +224,10 @@ function startGame(characterId) {
     shopStatusEl.textContent = '';
   }
 
-  function handleMineInformation() {
-    lastMineResult = hackRuntime.mineInformation();
+  async function handleMineInformation() {
+    if (hackRuntime.isMining) return;
+    updateShopStatus();
+    lastMineResult = await hackRuntime.mineInformation();
     updateShopStatus();
   }
 

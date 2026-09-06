@@ -9,7 +9,7 @@ export const INFO_RARITIES = ['comum', 'rara', 'epica'];
 // (informacao e um item farmavel, nao deve substituir o hack direto como
 // fonte principal de BYTE).
 export const INFO_SELL_PRICE_BYTE = {
-  comum: 8,
+  comum: 5,
   rara: 25,
   epica: 60,
 };

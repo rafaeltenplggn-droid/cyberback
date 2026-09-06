@@ -15,8 +15,10 @@ import { buyDrink as buyDrinkAction } from './drinkShop.js';
 import { InformationLedger } from './informationLedger.js';
 import { mineInformation as mineInformationAction } from './infoMining.js';
 
+const DEFAULT_MINING_DELAY_MS = 650;
+
 export class HackRuntime {
-  constructor({ mapManager, controller, playerStats, traceMeter, energyMeter, ledger, rng, now } = {}) {
+  constructor({ mapManager, controller, playerStats, traceMeter, energyMeter, ledger, rng, now, miningDelayMs = DEFAULT_MINING_DELAY_MS, delayFn } = {}) {
     this.mapManager = mapManager;
     this.controller = controller;
     this.ledger = ledger;
@@ -25,6 +27,9 @@ export class HackRuntime {
     this.hackSession = new HackSession({ playerStats, traceMeter, energyMeter, informationLedger: this.informationLedger, rng });
     this.sleepTracker = new SleepTracker(now ? { now } : undefined);
     this._sitting = false;
+    this._mining = false;
+    this._miningDelayMs = miningDelayMs;
+    this._delayFn = delayFn ?? ((ms) => new Promise((resolve) => setTimeout(resolve, ms)));
   }
 
   /** Stats atuais do jogador, sempre atualizados apos cada hack bem sucedido (XP/nivel). */
@@ -47,9 +52,14 @@ export class HackRuntime {
     return this.hackSession.energyMeter ? this.hackSession.energyMeter.max : null;
   }
 
-  /** Enquanto um hack estiver em andamento, o personagem nao pode andar. */
+  /** Enquanto um hack (de predio ou minerando no PC) estiver em andamento, o personagem nao pode andar. */
   get isMovementBlocked() {
-    return this.hackSession.isActive;
+    return this.hackSession.isActive || this._mining;
+  }
+
+  /** true enquanto mineInformation() esta rodando (o delay artificial de feedback, ver DEFAULT_MINING_DELAY_MS). */
+  get isMining() {
+    return this._mining;
   }
 
   /** Chamado pelo loop de render no lugar de controller.tick() direto. */
@@ -100,9 +110,16 @@ export class HackRuntime {
     });
   }
 
-  /** 'pc', 'bed' ou null - onde o personagem esta parado dentro do player_home. */
+  /**
+   * 'pc', 'bed' ou null - onde o personagem esta parado dentro do
+   * player_home. So bloqueia por hack de predio (hackSession.isActive) e
+   * movimento em andamento - nao por `_mining`, senao a propria tela de
+   * "minerando..." perderia a referencia de onde o jogador esta assim que
+   * mineInformation() comeca (o personagem nao anda enquanto minera, entao
+   * a adjacencia real nao muda de qualquer forma).
+   */
   nearbyHomeInteractable() {
-    if (this.isMovementBlocked) return null;
+    if (this.hackSession.isActive) return null;
     if (this.controller.isMoving) return null;
     return nearbyHomeInteractableAt(this.mapManager);
   }
@@ -116,12 +133,27 @@ export class HackRuntime {
     return this.informationLedger.total;
   }
 
-  /** Minera informacao (chance fixa de sucesso). So funciona parado ao lado do PC, no player_home. */
-  mineInformation() {
+  /**
+   * Minera informacao (chance fixa de sucesso, gasta energia toda vez -
+   * ver INFO_MINING_ENERGY_COST_RATIO em infoMining.js). So funciona
+   * parado ao lado do PC, no player_home. Assincrona de proposito: o
+   * delay artificial (`isMining` fica true durante ele, bloqueando
+   * movimento) da um feedback visual de que algo esta acontecendo, em vez
+   * do resultado aparecer instantaneo sem nenhum sinal.
+   */
+  async mineInformation() {
     if (this.nearbyHomeInteractable() !== 'pc') {
       return { success: false, reason: 'fora_do_pc' };
     }
-    return mineInformationAction({ informationLedger: this.informationLedger, rng: this.rng });
+    this._mining = true;
+    await this._delayFn(this._miningDelayMs);
+    const result = mineInformationAction({
+      informationLedger: this.informationLedger,
+      energyMeter: this.hackSession.energyMeter,
+      rng: this.rng,
+    });
+    this._mining = false;
+    return result;
   }
 
   /** Dorme na cama: recupera energia de graca, mas so fora do cooldown. So funciona parado ao lado da cama. */
