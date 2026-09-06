@@ -4,22 +4,95 @@
   <meta charset="utf-8" />
   <title>CYBER - hack integration</title>
   <style>
-    body { background: #0d0f14; color: #e5e5e5; font-family: monospace; margin: 0; padding: 16px; }
-    #status, #player-status, #hack-status, #shop-status { margin-bottom: 8px; }
+    html, body {
+      margin: 0;
+      height: 100%;
+      background: #05060a;
+      overflow: hidden;
+      font-family: monospace;
+      color: #e5e5e5;
+    }
+
+    /* Canvas ocupa a tela inteira mantendo a proporcao 900:560 (sem
+       esticar/distorcer): o truque e limitar width/height cruzado com
+       calc() baseado no aspect ratio, tudo em CSS puro - a resolucao
+       interna do canvas (atributos width/height) continua fixa, so o
+       tamanho exibido em tela muda. */
+    #game-wrap {
+      position: fixed;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #000;
+    }
+    #game {
+      background: #05060a;
+      image-rendering: pixelated;
+      width: 100%;
+      height: 100%;
+      max-width: calc(100vh * 900 / 560);
+      max-height: calc(100vw * 560 / 900);
+    }
+
+    /* HUD de debug: cantinho discreto sobre o jogo, nao ocupa layout. */
+    #debug-hud {
+      position: fixed;
+      top: 8px;
+      left: 8px;
+      max-width: min(520px, 90vw);
+      background: rgba(5, 6, 10, 0.72);
+      border: 1px solid #333;
+      border-radius: 6px;
+      padding: 8px 10px;
+      font-size: 12px;
+      line-height: 1.4;
+      pointer-events: none;
+    }
+    #status, #player-status, #hack-status, #shop-status { margin-bottom: 4px; }
     #player-status { color: #7dffb3; }
     #hack-status { color: #ff2079; }
     #shop-status { color: #ffd23a; }
-    canvas { background: #05060a; border: 1px solid #333; display: block; }
-    p { max-width: 640px; opacity: 0.8; }
+
+    #help {
+      position: fixed;
+      bottom: 8px;
+      left: 8px;
+      max-width: min(640px, 90vw);
+      background: rgba(5, 6, 10, 0.72);
+      border: 1px solid #333;
+      border-radius: 6px;
+      font-size: 12px;
+    }
+    #help summary {
+      cursor: pointer;
+      padding: 6px 10px;
+      opacity: 0.85;
+    }
+    #help p {
+      margin: 0;
+      padding: 0 10px 10px;
+      opacity: 0.8;
+    }
   </style>
 </head>
 <body>
-  <div id="status">carregando...</div>
-  <div id="player-status"></div>
-  <div id="hack-status"></div>
-  <div id="shop-status"></div>
-  <canvas id="game" width="900" height="560"></canvas>
-  <p>Setas do teclado movem o personagem (grid, 4 direcoes, sem diagonal). Retangulos cinza sao props/predios ainda sem arte final. Ponto ciano e uma porta: ao pisar nela o mapa inteiro troca e o personagem reaparece no spawn do destino. Chegando perto de qualquer predio hackavel em district_07 (gridcorp_tower - raro, nullpoint_bar - incomum, ghost_row_market - comum), ESPACO ou ENTER disparam um hack de teste contra ele; enquanto o hack roda o movimento fica bloqueado. Hack bem sucedido rende XP (sobe de nivel e os stats crescem) e BYTE. Cada tentativa de hack gasta energia (mesmo se falhar); sem energia suficiente pro tier do predio, o hack nem tenta - a energia recarrega sozinha com o tempo. O personagem tem um quarto (player_home), acessivel por uma porta nova em district_07 (ponto ciano perto do canto superior direito). Dentro do quarto: perto do PC, tecla B abre o Mercado Negro e compra uma recarga de energia instantanea pagando BYTE; perto da cama, tecla S deixa o personagem dormir, recuperando um pouco de energia de graca, mas so uma vez a cada 2 minutos. O nullpoint_bar (fora, hackavel normalmente) tem um balcao dentro dele: perto do balcao, tecla D pede um drink por BYTE, dando um bonus temporario e pequeno de breachSpeed pro proximo hack. Ainda dentro do bar: perto do banco, tecla C senta/levanta (so cosmetico, sem efeito no jogo); perto do laptop, ESPACO ou ENTER hackeiam o proprio nullpoint_bar remotamente, sem precisar sair do bar. Atras do balcao tem um atendente (NPC): perto dele, tecla D tambem pede um drink, exatamente como no balcao (mesma loja, dois pontos de acesso).</p>
+  <div id="game-wrap">
+    <canvas id="game" width="900" height="560"></canvas>
+  </div>
+
+  <div id="debug-hud">
+    <div id="status">carregando...</div>
+    <div id="player-status"></div>
+    <div id="hack-status"></div>
+    <div id="shop-status"></div>
+  </div>
+
+  <details id="help">
+    <summary>Ajuda / controles</summary>
+    <p>Setas do teclado movem o personagem (grid, 4 direcoes, sem diagonal). Retangulos cinza sao props/predios ainda sem arte final. Ponto ciano e uma porta: ao pisar nela o mapa inteiro troca e o personagem reaparece no spawn do destino. Chegando perto de qualquer predio hackavel em district_07 (gridcorp_tower - raro, nullpoint_bar - incomum, ghost_row_market - comum), ESPACO ou ENTER disparam um hack de teste contra ele; enquanto o hack roda o movimento fica bloqueado. Hack bem sucedido rende XP (sobe de nivel e os stats crescem) e BYTE. Cada tentativa de hack gasta energia (mesmo se falhar); sem energia suficiente pro tier do predio, o hack nem tenta - a energia recarrega sozinha com o tempo. O personagem tem um quarto (player_home), acessivel por uma porta nova em district_07 (ponto ciano perto do canto superior direito). Dentro do quarto: perto do PC, tecla B abre o Mercado Negro e compra uma recarga de energia instantanea pagando BYTE; perto da cama, tecla S deixa o personagem dormir, recuperando um pouco de energia de graca, mas so uma vez a cada 2 minutos. O nullpoint_bar (fora, hackavel normalmente) tem um balcao dentro dele: perto do balcao, tecla D pede um drink por BYTE, dando um bonus temporario e pequeno de breachSpeed pro proximo hack. Ainda dentro do bar: perto do banco, tecla C senta/levanta (so cosmetico, sem efeito no jogo); perto do laptop, ESPACO ou ENTER hackeiam o proprio nullpoint_bar remotamente, sem precisar sair do bar. Atras do balcao tem um atendente (NPC): perto dele, tecla D tambem pede um drink, exatamente como no balcao (mesma loja, dois pontos de acesso).</p>
+  </details>
+
   <script type="module" src="src/main.js"></script>
 </body>
 </html>
