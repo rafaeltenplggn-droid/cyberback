@@ -43,6 +43,6 @@
   ],
   "props": [],
   "reflections": [
-    { "x": 7.5, "y": 3.1, "radius": 1.1, "color": "#3ad6ff", "periodMs": 2400, "phase": 0, "baseAlpha": 0.015, "amplitude": 0.01 }
+    { "x": 7.5, "y": 3.1, "radius": 1.2, "color": "#3ad6ff", "periodMs": 2400, "phase": 0, "baseAlpha": 0.025, "amplitude": 0.015 }
   ]
 }
