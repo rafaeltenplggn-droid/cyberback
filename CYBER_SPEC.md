@@ -148,3 +148,11 @@ nunca bakeados na imagem - permite reposicionar/animar sem reeditar a
 arte. O trade-off aceito: reposicionar um predio dessa cena exige editar a
 imagem de novo, nao só o mapa.json - so vale a pena pra uma composicao ja
 aprovada como definitiva, como e o caso do Sector 7.
+
+`map.reflections` (opcional, so district_07 usa por enquanto) e uma lista
+de pontos `{x, y, radius, color, periodMs, phase}` em coordenadas de grid,
+desenhados por `Renderer.drawReflections` como gradiente radial aditivo
+sobre o fundo, com a opacidade oscilando em `Math.sin` ao longo do tempo
+(cada um com periodo/fase proprios pra nao pulsarem em sincronia) - o
+efeito de luz de neon "respirando" na rua molhada. Puramente visual, nao
+afeta colisao nem gameplay.
