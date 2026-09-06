@@ -5,6 +5,7 @@ import { MovementController } from './character/movementController.js';
 import { CharacterRenderer, isImageReady } from './character/characterRenderer.js';
 import { CHARACTER_ROSTER, loadCharacterAssets, loadPortraitImage } from './character/characterRoster.js';
 import { loadPropImage } from './render/propAssets.js';
+import { loadBackgroundImage } from './render/backgroundAssets.js';
 import { createPlayerStats, xpRequiredForLevel } from './hackloop/playerStats.js';
 import { TraceMeter } from './hackloop/trace.js';
 import { EnergyMeter } from './hackloop/energy.js';
@@ -25,7 +26,8 @@ function startGame(characterId) {
   // e carregado. Renderer guarda a MESMA referencia, entao um asset que
   // termina de carregar depois passa a aparecer sozinho no proximo frame.
   const propImages = {};
-  const mapRenderer = new Renderer(ctx, origin, { propImages });
+  const backgroundImages = {};
+  const mapRenderer = new Renderer(ctx, origin, { propImages, backgroundImages });
   const characterRenderer = new CharacterRenderer(ctx, origin, { assets: loadCharacterAssets(characterId) });
 
   function ensurePropImagesLoaded(map) {
@@ -33,6 +35,12 @@ function startGame(characterId) {
       if (!propImages[prop.asset]) {
         propImages[prop.asset] = loadPropImage(prop.asset);
       }
+    }
+  }
+
+  function ensureBackgroundImageLoaded(map) {
+    if (map.background && !backgroundImages[map.background]) {
+      backgroundImages[map.background] = loadBackgroundImage(map.background);
     }
   }
 
@@ -60,6 +68,7 @@ function startGame(characterId) {
     onMapChanged: (map) => {
       fixCameraForMap(map);
       ensurePropImagesLoaded(map);
+      ensureBackgroundImageLoaded(map);
       updateStatus();
     },
   });
@@ -329,6 +338,7 @@ function startGame(characterId) {
     () => {
       fixCameraForMap(mapManager.currentMap);
       ensurePropImagesLoaded(mapManager.currentMap);
+      ensureBackgroundImageLoaded(mapManager.currentMap);
       render();
       requestAnimationFrame(loop);
     },
