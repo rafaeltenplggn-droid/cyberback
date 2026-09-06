@@ -6,13 +6,29 @@
 import { gridToScreen, TILE_SIZE } from '../core/topdown.js';
 import { isImageReady } from '../character/characterRenderer.js';
 
-// Placeholder mais proximo da referencia visual (cyber-noir) enquanto os
-// tiles finais nao existem - ver CYBER_SPEC.md.
+// Placeholder mais proximo da referencia visual (cyber-noir) enquanto a
+// textura real nao carregou - ver CYBER_SPEC.md, secao "Ground Kit".
 const TILE_COLORS = {
-  0: '#1c2230', // piso: dark navy/blue-gray
-  1: '#2a3142', // calcada: um pouco mais claro
-  2: '#333b4d',
-  3: '#12151c', // bloqueado/predio: dark charcoal/navy
+  0: '#1c2230', // calcada
+  1: '#2a3142', // asfalto (piso liso, ainda sem uso no district_07 atual)
+  2: '#2a3142', // meio-fio norte (calcada em cima / rua embaixo)
+  3: '#2a3142', // meio-fio sul (rua em cima / calcada embaixo)
+  4: '#2a3142', // meio-fio oeste (calcada esquerda / rua direita)
+  5: '#2a3142', // meio-fio leste (calcada direita / rua esquerda)
+  6: '#3a2f42', // crosswalk (faixa de pedestre no cruzamento)
+};
+
+// Ground Kit (ver CYBER_SPEC.md): textura real por tile id, com fallback pra
+// cor solida enquanto a imagem nao carregou. Meio-fio e a mesma peca de
+// origem em 4 orientacoes (norte/sul/oeste/leste) - ver src/render/tileAssets.js.
+const TILE_ASSETS = {
+  0: 'sidewalk.png',
+  1: 'asphalt.png',
+  2: 'curb_north.png',
+  3: 'curb_south.png',
+  4: 'curb_west.png',
+  5: 'curb_east.png',
+  6: 'crosswalk_ew.png',
 };
 
 export class Renderer {
@@ -20,12 +36,16 @@ export class Renderer {
    * `propImages` (opcional) e um objeto { [nomeDoArquivo]: HTMLImageElement }
    * - ver src/render/propAssets.js. Prop sem entrada carregada/pronta ali
    * cai sozinho no retangulo placeholder de sempre (isImageReady).
+   *
+   * `tileImages` (opcional) e o mesmo esquema pra texturas de tile (ver
+   * src/render/tileAssets.js), chaveado pelo nome do arquivo em TILE_ASSETS.
    */
-  constructor(ctx, { originX, originY }, { propImages } = {}) {
+  constructor(ctx, { originX, originY }, { propImages, tileImages } = {}) {
     this.ctx = ctx;
     this.originX = originX;
     this.originY = originY;
     this.propImages = propImages ?? {};
+    this.tileImages = tileImages ?? {};
   }
 
   clear(width, height) {
@@ -33,13 +53,24 @@ export class Renderer {
   }
 
   // Cada tile e um quadrado ortogonal simples - sem contorno forte entre
-  // tiles vizinhos (fica "grade demais" senao); so a cor solida por
-  // enquanto, ate ter textura real.
+  // tiles vizinhos (fica "grade demais" senao). Com textura real carregada
+  // pro id (Ground Kit), desenha ela esticada pro quadrado 32x32; sem
+  // textura pronta, cai na cor solida placeholder de sempre.
   drawTile(col, row, tileId) {
     const { x, y } = gridToScreen(col, row, this.originX, this.originY);
     const ctx = this.ctx;
+    const left = x - TILE_SIZE / 2;
+    const top = y - TILE_SIZE / 2;
+
+    const asset = TILE_ASSETS[tileId];
+    const image = asset ? this.tileImages[asset] : null;
+    if (isImageReady(image)) {
+      ctx.drawImage(image, left, top, TILE_SIZE, TILE_SIZE);
+      return;
+    }
+
     ctx.fillStyle = TILE_COLORS[tileId] ?? '#555';
-    ctx.fillRect(x - TILE_SIZE / 2, y - TILE_SIZE / 2, TILE_SIZE, TILE_SIZE);
+    ctx.fillRect(left, top, TILE_SIZE, TILE_SIZE);
   }
 
   drawMap(map) {
