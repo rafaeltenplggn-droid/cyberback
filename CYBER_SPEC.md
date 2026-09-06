@@ -280,3 +280,31 @@ ja leva ~30s de verdade (ver secao anterior), entao a tela so acompanha o
 `miningRemainingMs` de verdade (`setInterval` atualizando a barra +
 linhas de "sabor" aleatorias tipo "escaneando redes abertas...") em vez
 de fingir um tempo proprio.
+
+### Menu do PC, hack remoto, e trava de nivel
+
+A tecla B no PC nao dispara mais a mineracao direto - abre a tela num
+**menu** (`#pc-menu` em `index.html`, `renderPcMenu()`/`pcScreenShowMenu()`
+em `main.js`): o jogador escolhe "Minerar" ou um dos 3 predios pra
+"Hackear remoto", e so ai a acao comeca de verdade (`startMining()` /
+`startRemoteHack()`). Antes disso a tela so ficava aberta contando os 30s
+sem dar nenhuma opcao.
+
+Hackear remoto (`HackRuntime.triggerRemoteHack(buildingId)`) roda o
+mesmo `HackSession` de sempre, so que sem exigir proximidade fisica do
+predio - so precisa estar parado no PC, e nao pode ja ter outro
+hack/mineracao em andamento. Depois que a acao termina (minerar ou
+hackear remoto), a tela volta pro menu sozinha (em vez de fechar) - da
+pra emendar varias acoes sem reabrir o PC toda hora; ESC continua
+fechando a qualquer momento.
+
+Cada tier de predio agora exige um nivel minimo do jogador pra ser
+hackeado - `src/hackIntegration/hackLevelGate.js`,
+`REQUIRED_LEVEL_PER_TIER` (comum 1, incomum 3, raro 5) - vale tanto pro
+hack fisico (`triggerHack`) quanto pro remoto (`triggerRemoteHack`),
+mesma trava, mesma funcao (`_runHack`). Abaixo do nivel exigido o hack
+nem tenta - resultado com `levelBlocked: true` (mesmo espirito do
+`energyBlocked` que ja existia), mostrado na tela como "NIVEL
+INSUFICIENTE". A lista de alvos no menu (`remoteHackTargets`) ja vem com
+`locked`/`requiredLevel` prontos pra UI desabilitar os botoes dos
+predios ainda travados.

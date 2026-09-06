@@ -15,6 +15,7 @@ import { buyDrink as buyDrinkAction } from './drinkShop.js';
 import { InformationLedger } from './informationLedger.js';
 import { mineInformation as mineInformationAction } from './infoMining.js';
 import { WorkerRoster } from './workers.js';
+import { requiredLevelForTier } from './hackLevelGate.js';
 
 // 30s pra dar tempo real de "trabalho" (e de mostrar uma tela de PC/HUD
 // enquanto isso acontece), em vez do resultado aparecer quase instantaneo.
@@ -118,14 +119,60 @@ export class HackRuntime {
     return this.nearbyHackableBuilding() !== null;
   }
 
-  /** Dispara o hack contra o predio adjacente, se houver. Retorna a Promise do resultado, ou null se fora de alcance/bloqueado. */
-  triggerHack() {
-    const entry = this.nearbyHackableBuilding();
-    if (!entry) return null;
+  /**
+   * Roda o hack contra `entry` (uma entrada de HACKABLE_BUILDINGS), com a
+   * trava de nivel minimo (ver hackLevelGate.js) - abaixo do nivel
+   * exigido pro tier do alvo, nem tenta, igual energyBlocked mas pra
+   * nivel. Compartilhado entre triggerHack (fisico) e triggerRemoteHack
+   * (do PC) - a trava e a mesma pros dois jeitos de hackear.
+   */
+  _runHack(entry) {
+    const requiredLevel = requiredLevelForTier(entry.target.tier);
+    if (this.playerStats.level < requiredLevel) {
+      return Promise.resolve({
+        target: entry.target,
+        levelBlocked: true,
+        requiredLevel,
+        playerLevel: this.playerStats.level,
+      });
+    }
     return this.hackSession.run(entry.target).then((result) => {
       this.hackSession.reset();
       return result;
     });
+  }
+
+  /** Dispara o hack contra o predio adjacente, se houver. Retorna a Promise do resultado, ou null se fora de alcance/bloqueado. */
+  triggerHack() {
+    const entry = this.nearbyHackableBuilding();
+    if (!entry) return null;
+    return this._runHack(entry);
+  }
+
+  /**
+   * Lista dos 3 predios hackaveis com o nivel minimo de cada um e se
+   * estao travados pro nivel atual do jogador - pronta pra UI (aba de
+   * hackear remoto no PC).
+   */
+  get remoteHackTargets() {
+    const level = this.playerStats.level;
+    return HACKABLE_BUILDINGS.map((entry) => {
+      const requiredLevel = requiredLevelForTier(entry.target.tier);
+      return { id: entry.id, tier: entry.target.tier, requiredLevel, locked: level < requiredLevel };
+    });
+  }
+
+  /**
+   * Hackeia um predio remotamente, direto do PC de casa - sem precisar
+   * andar ate la. So funciona parado no PC, sem nenhum hack/mineracao ja
+   * em andamento, e respeita a mesma trava de nivel do hack fisico.
+   */
+  triggerRemoteHack(buildingId) {
+    if (this.nearbyHomeInteractable() !== 'pc') return null;
+    if (this.hackSession.isActive || this._mining) return null;
+    const entry = HACKABLE_BUILDINGS.find((building) => building.id === buildingId);
+    if (!entry) return null;
+    return this._runHack(entry);
   }
 
   /**
