@@ -157,6 +157,26 @@ sobre o fundo, com a opacidade oscilando em `Math.sin` ao longo do tempo
 efeito de luz de neon "respirando" na rua molhada. Puramente visual, nao
 afeta colisao nem gameplay.
 
+## Interior: MY HOME
+
+Primeiro interior a sair do blockout - usa o mesmo mecanismo de fundo real
+do Sector 7 (`map.background`, ver secao acima), so que numa sala 16x12
+em vez do 10x10 generico. `assets/backgrounds/player_home_interior.png`
+mostra o quarto inteiro (banheiro, geladeira, mesa com PC de 3 monitores,
+cama, mesinha de centro, porta de saida) - `district_07.json` nao mudou,
+so o `player_home.json`.
+
+Colisao recalibrada pra bater com os moveis reais da imagem (banheiro,
+geladeira, estante, mesa do PC, cama, bau, mesinha) em vez do quarto vazio
+de antes. Os pontos de interacao (`HOME_PC_LOCATION`, `HOME_BED_LOCATION`
+em `src/hackIntegration/homeLocations.js`) foram recalibrados pras novas
+coordenadas - mesma logica de adjacencia de sempre (`isAdjacentToBuilding`),
+so a posicao mudou. Porta de saida em (7,9), no vao da parede sul da
+imagem.
+
+Os outros 4 interiores (BAR, BLACKNET, CORP, DATA TERMINAL) continuam em
+blockout 10x10 generico ate ganharem sua propria arte, numa sprint por vez.
+
 ## Economia: Informacao e BLACKNET
 
 Hackear um predio (gridcorp_tower, nullpoint_bar, ghost_row_market) nao

@@ -111,8 +111,8 @@ for (const [interiorId, exteriorDoor] of [
   });
 }
 
-test('os cinco interiores sao salas 10x10 com borda solida e a porta de saida aberta', async () => {
-  for (const id of ['gridcorp_interior', 'nullpoint_interior', 'ghost_row_interior', 'player_home', 'data_terminal_interior']) {
+test('os quatro interiores ainda em blockout sao salas 10x10 com borda solida e a porta de saida aberta', async () => {
+  for (const id of ['gridcorp_interior', 'nullpoint_interior', 'ghost_row_interior', 'data_terminal_interior']) {
     const map = parseMap(await loadMapJson(id));
     assert.equal(map.width, 10);
     assert.equal(map.height, 10);
@@ -133,12 +133,20 @@ test('os cinco interiores sao salas 10x10 com borda solida e a porta de saida ab
   }
 });
 
-test('player_home tem o PC e a cama bloqueados, no lugar certo, e o spawn de volta pro district_07 nao e a propria porta', async () => {
+test('player_home usa arte de fundo real, 16x12, com PC e cama bloqueados no lugar certo', async () => {
   const map = parseMap(await loadMapJson('player_home'));
-  assert.equal(map.isBlocked(3, 3), true, 'PC bloqueia a celula dele');
-  assert.equal(map.isBlocked(6, 3), true, 'cama bloqueia a celula dela');
+  assert.equal(map.width, 16);
+  assert.equal(map.height, 12);
+  assert.equal(map.background, 'player_home_interior.png');
 
-  const door = map.getDoorAt(5, 9);
+  assert.equal(map.isBlocked(7, 2), true, 'PC (mesa com monitores) bloqueia a celula dele');
+  assert.equal(map.isBlocked(11, 4), true, 'cama bloqueia a celula dela');
+  assert.equal(map.isBlocked(7, 3), false, 'chao em frente ao PC e livre (cadeira)');
+  assert.equal(map.isBlocked(10, 4), false, 'chao a oeste da cama e livre');
+
+  const door = map.getDoorAt(7, 9);
+  assert.ok(door, 'porta de saida no vao sul');
+  assert.equal(door.target_map, 'district_07');
   assert.equal(door.spawn_x, 7);
   assert.equal(door.spawn_y, 14);
 

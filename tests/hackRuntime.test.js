@@ -175,7 +175,7 @@ test('sem energia suficiente, o hack roda mas nao tenta o breach (energyBlocked)
 });
 
 test('mineInformation rende informacao comum quando parado perto do PC no player_home (chance de sucesso)', () => {
-  const mapManager = makeFakeMapManager({ mapId: 'player_home', col: 2, row: 3 }); // oeste do PC (origem 3,3)
+  const mapManager = makeFakeMapManager({ mapId: 'player_home', col: 6, row: 2 }); // oeste do PC (origem 7,2)
   const controller = makeFakeController();
   const runtime = new HackRuntime({ mapManager, controller, playerStats: createPlayerStats(1), rng: () => 0 });
 
@@ -188,7 +188,7 @@ test('mineInformation rende informacao comum quando parado perto do PC no player
 });
 
 test('mineInformation pode falhar (rng alto) sem conceder informacao nenhuma', () => {
-  const mapManager = makeFakeMapManager({ mapId: 'player_home', col: 2, row: 3 });
+  const mapManager = makeFakeMapManager({ mapId: 'player_home', col: 6, row: 2 });
   const controller = makeFakeController();
   const runtime = new HackRuntime({ mapManager, controller, playerStats: createPlayerStats(1), rng: () => 0.999999 });
 
@@ -216,7 +216,7 @@ test('mineInformation e recusado fora do PC (outro mapa, ou longe dele dentro do
 
 test('sleep recupera energia parado perto da cama, mas so fora do cooldown', () => {
   let now = 0;
-  const mapManager = makeFakeMapManager({ mapId: 'player_home', col: 7, row: 3 }); // leste da cama (origem 6,3)
+  const mapManager = makeFakeMapManager({ mapId: 'player_home', col: 10, row: 4 }); // oeste da cama (origem 11,4)
   const controller = makeFakeController();
   const energyMeter = new EnergyMeter({ regenPerSecond: 0, now: () => now });
   const runtime = new HackRuntime({ mapManager, controller, playerStats: createPlayerStats(1), energyMeter, now: () => now });
