@@ -7,6 +7,8 @@ import { EnergyMeter } from '../src/hackloop/energy.js';
 import { ENERGY_COST_PER_TIER } from '../src/hackIntegration/energyCosts.js';
 import { SLEEP_COOLDOWN_MS } from '../src/hackIntegration/sleepAction.js';
 import { DRINK_COST_BYTE } from '../src/hackIntegration/drinkShop.js';
+import { INFO_MINING_ENERGY_COST_RATIO } from '../src/hackIntegration/infoMining.js';
+import { HIRABLE_WORKERS, WORKER_HIRE_COST_BYTE, WORKER_WORK_INTERVAL_MS } from '../src/hackIntegration/workers.js';
 
 function makeFakeMapManager({ mapId = 'district_07', col = 3, row = 5 } = {}) {
   return { currentMap: { id: mapId }, playerCol: col, playerRow: row };
@@ -164,7 +166,7 @@ test('sem energia suficiente, o hack roda mas nao tenta o breach (energyBlocked)
   const mapManager = makeFakeMapManager({ col: 3, row: 5 });
   const controller = makeFakeController();
   const energyMeter = new EnergyMeter({ regenPerSecond: 0 });
-  energyMeter.spend(energyMeter.max - 5); // so 5, menos que o custo do gridcorp_tower (raro, 30)
+  energyMeter.spend(energyMeter.max - 5); // so 5, menos que o custo do gridcorp_tower (comum, 30)
   const runtime = new HackRuntime({ mapManager, controller, playerStats: createPlayerStats(1), energyMeter, rng: () => 0 });
 
   const result = await runtime.triggerHack();
@@ -174,44 +176,88 @@ test('sem energia suficiente, o hack roda mas nao tenta o breach (energyBlocked)
   assert.equal(runtime.isMovementBlocked, false, 'movimento libera normalmente mesmo bloqueado por energia');
 });
 
-test('mineInformation rende informacao comum quando parado perto do PC no player_home (chance de sucesso)', () => {
+test('mineInformation rende informacao comum e gasta um quarto da energia quando parado perto do PC no player_home', async () => {
   const mapManager = makeFakeMapManager({ mapId: 'player_home', col: 6, row: 2 }); // oeste do PC (origem 7,2)
   const controller = makeFakeController();
-  const runtime = new HackRuntime({ mapManager, controller, playerStats: createPlayerStats(1), rng: () => 0 });
+  const energyMeter = new EnergyMeter({ regenPerSecond: 0 });
+  const runtime = new HackRuntime({ mapManager, controller, playerStats: createPlayerStats(1), energyMeter, rng: () => 0, miningDelayMs: 0 });
 
   assert.equal(runtime.nearbyHomeInteractable(), 'pc');
-  const result = runtime.mineInformation();
+  const result = await runtime.mineInformation();
 
   assert.equal(result.success, true);
   assert.equal(result.rarity, 'comum');
+  assert.equal(result.energySpent, energyMeter.max * INFO_MINING_ENERGY_COST_RATIO);
   assert.equal(runtime.informationCounts.comum, 1);
+  assert.equal(runtime.energyValue, energyMeter.max * (1 - INFO_MINING_ENERGY_COST_RATIO));
 });
 
-test('mineInformation pode falhar (rng alto) sem conceder informacao nenhuma', () => {
+test('mineInformation pode falhar (rng alto) sem conceder informacao nenhuma, mas ainda gasta energia', async () => {
   const mapManager = makeFakeMapManager({ mapId: 'player_home', col: 6, row: 2 });
   const controller = makeFakeController();
-  const runtime = new HackRuntime({ mapManager, controller, playerStats: createPlayerStats(1), rng: () => 0.999999 });
+  const energyMeter = new EnergyMeter({ regenPerSecond: 0 });
+  const runtime = new HackRuntime({ mapManager, controller, playerStats: createPlayerStats(1), energyMeter, rng: () => 0.999999, miningDelayMs: 0 });
 
-  const result = runtime.mineInformation();
+  const result = await runtime.mineInformation();
 
   assert.equal(result.success, false);
   assert.equal(runtime.informationTotal, 0);
+  assert.equal(result.energySpent, energyMeter.max * INFO_MINING_ENERGY_COST_RATIO);
+  assert.equal(runtime.energyValue, energyMeter.max * (1 - INFO_MINING_ENERGY_COST_RATIO));
 });
 
-test('mineInformation e recusado fora do PC (outro mapa, ou longe dele dentro do player_home)', () => {
+test('mineInformation e recusado sem energia suficiente (nao gasta nem tenta minerar)', async () => {
+  const mapManager = makeFakeMapManager({ mapId: 'player_home', col: 6, row: 2 });
+  const controller = makeFakeController();
+  const energyMeter = new EnergyMeter({ regenPerSecond: 0 });
+  energyMeter.spend(energyMeter.max - 10); // so 10, menos que os 25 necessarios
+  const runtime = new HackRuntime({ mapManager, controller, playerStats: createPlayerStats(1), energyMeter, rng: () => 0, miningDelayMs: 0 });
+
+  const result = await runtime.mineInformation();
+
+  assert.equal(result.success, false);
+  assert.equal(result.reason, 'sem_energia');
+  assert.equal(runtime.informationTotal, 0);
+  assert.equal(runtime.energyValue, 10, 'nada foi descontado sem energia suficiente');
+});
+
+test('mineInformation bloqueia o movimento enquanto o delay de feedback esta rodando', async () => {
+  const mapManager = makeFakeMapManager({ mapId: 'player_home', col: 6, row: 2 });
+  const controller = makeFakeController();
+  const runtime = new HackRuntime({
+    mapManager,
+    controller,
+    playerStats: createPlayerStats(1),
+    rng: () => 0,
+    delayFn: () => new Promise((resolve) => setTimeout(resolve, 0)),
+  });
+
+  assert.equal(runtime.isMovementBlocked, false);
+  const resultPromise = runtime.mineInformation();
+  assert.equal(runtime.isMining, true);
+  assert.equal(runtime.isMovementBlocked, true, 'minerando tambem bloqueia movimento, igual um hack de predio');
+
+  await resultPromise;
+  assert.equal(runtime.isMining, false);
+  assert.equal(runtime.isMovementBlocked, false);
+});
+
+test('mineInformation e recusado fora do PC (outro mapa, ou longe dele dentro do player_home)', async () => {
   const inDistrict = new HackRuntime({
     mapManager: makeFakeMapManager({ mapId: 'district_07', col: 3, row: 5 }),
     controller: makeFakeController(),
     playerStats: createPlayerStats(1),
+    miningDelayMs: 0,
   });
-  assert.equal(inDistrict.mineInformation().reason, 'fora_do_pc');
+  assert.equal((await inDistrict.mineInformation()).reason, 'fora_do_pc');
 
   const farFromPc = new HackRuntime({
     mapManager: makeFakeMapManager({ mapId: 'player_home', col: 8, row: 8 }),
     controller: makeFakeController(),
     playerStats: createPlayerStats(1),
+    miningDelayMs: 0,
   });
-  assert.equal(farFromPc.mineInformation().reason, 'fora_do_pc');
+  assert.equal((await farFromPc.mineInformation()).reason, 'fora_do_pc');
 });
 
 test('sleep recupera energia parado perto da cama, mas so fora do cooldown', () => {
@@ -431,4 +477,55 @@ test('sellInformation e recusado fora do ponto de venda, e com o estoque vazio',
     ledger,
   });
   assert.equal(emptyStock.sellInformation().reason, 'sem_informacao');
+});
+
+test('hireWorker contrata parado no PC, cobrando do ledger', () => {
+  const mapManager = makeFakeMapManager({ mapId: 'player_home', col: 6, row: 2 });
+  const controller = makeFakeController();
+  const ledger = new ByteLedger();
+  ledger.record({ type: 'gain', amount: WORKER_HIRE_COST_BYTE });
+  const runtime = new HackRuntime({ mapManager, controller, playerStats: createPlayerStats(1), ledger });
+
+  const workerId = HIRABLE_WORKERS[0].id;
+  const result = runtime.hireWorker(workerId);
+
+  assert.equal(result.success, true);
+  assert.equal(runtime.byteBalance, 0);
+  assert.equal(runtime.hirableWorkers.find((w) => w.id === workerId).hired, true);
+});
+
+test('hireWorker e recusado fora do PC, e sem BYTE suficiente', () => {
+  const ledger = new ByteLedger();
+  const farFromPc = new HackRuntime({
+    mapManager: makeFakeMapManager({ mapId: 'player_home', col: 8, row: 8 }),
+    controller: makeFakeController(),
+    playerStats: createPlayerStats(1),
+    ledger,
+  });
+  assert.equal(farFromPc.hireWorker(HIRABLE_WORKERS[0].id).reason, 'fora_do_pc');
+
+  const brokeAtPc = new HackRuntime({
+    mapManager: makeFakeMapManager({ mapId: 'player_home', col: 6, row: 2 }),
+    controller: makeFakeController(),
+    playerStats: createPlayerStats(1),
+    ledger,
+  });
+  assert.equal(brokeAtPc.hireWorker(HIRABLE_WORKERS[0].id).reason, 'byte_insuficiente');
+});
+
+test('trabalhadores contratados minerm sozinhos via tick(), mesmo com o movimento bloqueado', async () => {
+  const mapManager = makeFakeMapManager({ mapId: 'player_home', col: 6, row: 2 });
+  const controller = makeFakeController();
+  const ledger = new ByteLedger();
+  ledger.record({ type: 'gain', amount: WORKER_HIRE_COST_BYTE });
+  const runtime = new HackRuntime({ mapManager, controller, playerStats: createPlayerStats(1), ledger, rng: () => 0, miningDelayMs: 0 });
+
+  runtime.hireWorker(HIRABLE_WORKERS[0].id);
+
+  const miningPromise = runtime.mineInformation();
+  assert.equal(runtime.isMovementBlocked, true);
+  runtime.tick(WORKER_WORK_INTERVAL_MS);
+  assert.equal(runtime.informationTotal, 1, 'trabalhador contratado minerou mesmo com o jogador minerando/bloqueado');
+
+  await miningPromise;
 });
