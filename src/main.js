@@ -43,8 +43,8 @@ const PET_ROOM_SPRITES = {
   },
 };
 const PET_ROOM_ART_HEIGHT_PX = 46;
-const PET_EAR_WIGGLE_MAX_RAD = 0.35;
-const PET_EAR_WIGGLE_PERIOD_MS = 1000;
+const PET_EAR_WIGGLE_MAX_RAD = 0.1;
+const PET_EAR_WIGGLE_PERIOD_MS = 1300;
 // Deslocamento em pixels de tela pra tirar o pet da borda da cama (perto
 // do travesseiro, onde fica o tile de interacao) e por mais perto do meio
 // do colchao - calibrado a olho contra o fundo (player_home_interior.png).
