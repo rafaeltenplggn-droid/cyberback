@@ -308,3 +308,26 @@ nem tenta - resultado com `levelBlocked: true` (mesmo espirito do
 INSUFICIENTE". A lista de alvos no menu (`remoteHackTargets`) ja vem com
 `locked`/`requiredLevel` prontos pra UI desabilitar os botoes dos
 predios ainda travados.
+
+### Hackear tambem leva um tempo de verdade, e a loja de pets
+
+Hackear um predio (fisico ou remoto) tambem passou a levar um tempo real
+- `DEFAULT_HACK_DELAY_MS` (20s) em `hackRuntime.js`, mesmo padrao do
+`DEFAULT_MINING_DELAY_MS` (30s) que a mineracao ja usava. `_runHack()`
+calcula o resultado de verdade na hora (pra nao duplicar a logica de
+energia/nivel do `HackSession`), mas so "revela" (a Promise so resolve)
+depois desse tempo - exceto quando o hack nem chega a tentar
+(`energyBlocked`), caso em que nao faz sentido segurar o jogador so pra
+dizer que faltou energia. `isHacking`/`hackRemainingMs` (mesma forma de
+`isMining`/`miningRemainingMs`) deixam a UI mostrar a contagem regressiva
+e bloqueiam o movimento por todo esse tempo, nao so durante o calculo em
+si (que e quase instantaneo).
+
+Terceira aba no PC, **LOJA** (`src/hackIntegration/pets.js`): compra de
+pet, puramente decorativo (nenhum efeito no jogo, nao ajuda a minerar
+nem da bonus - so um "tenho ou nao tenho"). Comeca com um unico pet, o
+gato (`PET_COST_BYTE` = 100), com espaco de sobra pra adicionar mais
+depois sem reestruturar nada (mesmo formato de `HIRABLE_WORKERS` em
+workers.js). Ainda sem arte propria - a loja mostra um emoji de gato no
+lugar de um retrato de verdade, e comprar o pet nao adiciona nenhum
+sprite no quarto (so fica registrado como "adotado" na loja).

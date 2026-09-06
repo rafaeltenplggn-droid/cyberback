@@ -9,6 +9,7 @@ import { SLEEP_COOLDOWN_MS } from '../src/hackIntegration/sleepAction.js';
 import { DRINK_COST_BYTE } from '../src/hackIntegration/drinkShop.js';
 import { INFO_MINING_ENERGY_COST_RATIO } from '../src/hackIntegration/infoMining.js';
 import { HIRABLE_WORKERS, WORKER_HIRE_COST_BYTE, WORKER_WORK_INTERVAL_MS } from '../src/hackIntegration/workers.js';
+import { PET_COST_BYTE } from '../src/hackIntegration/pets.js';
 
 function makeFakeMapManager({ mapId = 'district_07', col = 3, row = 5 } = {}) {
   return { currentMap: { id: mapId }, playerCol: col, playerRow: row };
@@ -46,7 +47,7 @@ test('em alcance de cada um dos 3 predios, o hack dispara com o target certo', a
   for (const [buildingId, pos] of Object.entries(adjacentCells)) {
     const mapManager = makeFakeMapManager(pos);
     const controller = makeFakeController();
-    const runtime = new HackRuntime({ mapManager, controller, playerStats: createPlayerStats(1), rng: () => 0 });
+    const runtime = new HackRuntime({ mapManager, controller, playerStats: createPlayerStats(1), rng: () => 0, hackDelayMs: 0 });
 
     assert.equal(runtime.nearbyHackableBuilding()?.id, buildingId);
     assert.equal(runtime.canTriggerHack(), true);
@@ -75,7 +76,7 @@ test('personagem em movimento (tween em andamento) nao pode disparar o hack', ()
 test('movimento fica bloqueado durante o hack e libera de novo quando termina (sucesso)', async () => {
   const mapManager = makeFakeMapManager({ col: 3, row: 5 });
   const controller = makeFakeController();
-  const runtime = new HackRuntime({ mapManager, controller, playerStats: createPlayerStats(5), rng: () => 0 });
+  const runtime = new HackRuntime({ mapManager, controller, playerStats: createPlayerStats(5), rng: () => 0, hackDelayMs: 0 });
 
   assert.equal(runtime.isMovementBlocked, false);
   runtime.tick(100);
@@ -97,7 +98,7 @@ test('movimento fica bloqueado durante o hack e libera de novo quando termina (s
 test('movimento fica bloqueado durante o hack e libera de novo quando termina (falha)', async () => {
   const mapManager = makeFakeMapManager({ col: 3, row: 5 });
   const controller = makeFakeController();
-  const runtime = new HackRuntime({ mapManager, controller, playerStats: createPlayerStats(5), rng: () => 0.999999 });
+  const runtime = new HackRuntime({ mapManager, controller, playerStats: createPlayerStats(5), rng: () => 0.999999, hackDelayMs: 0 });
 
   const resultPromise = runtime.triggerHack();
   assert.equal(runtime.isMovementBlocked, true);
@@ -117,6 +118,7 @@ test('playerStats evolui e a informacao aparece no informationLedger depois de u
     playerStats: createPlayerStats(5),
     ledger,
     rng: () => 0,
+    hackDelayMs: 0,
   });
 
   assert.equal(runtime.playerStats.xp, 0);
@@ -142,7 +144,7 @@ test('energyValue/energyMax ficam disponiveis e caem depois de um hack', async (
   const mapManager = makeFakeMapManager({ col: 15, row: 2 });
   const controller = makeFakeController();
   const energyMeter = new EnergyMeter({ regenPerSecond: 0 });
-  const runtime = new HackRuntime({ mapManager, controller, playerStats: createPlayerStats(1), energyMeter, rng: () => 0 });
+  const runtime = new HackRuntime({ mapManager, controller, playerStats: createPlayerStats(1), energyMeter, rng: () => 0, hackDelayMs: 0 });
 
   assert.equal(runtime.energyValue, energyMeter.max);
   assert.equal(runtime.energyMax, energyMeter.max);
@@ -167,7 +169,7 @@ test('sem energia suficiente, o hack roda mas nao tenta o breach (energyBlocked)
   const controller = makeFakeController();
   const energyMeter = new EnergyMeter({ regenPerSecond: 0 });
   energyMeter.spend(energyMeter.max - 5); // so 5, menos que o custo do gridcorp_tower (comum, 30)
-  const runtime = new HackRuntime({ mapManager, controller, playerStats: createPlayerStats(5), energyMeter, rng: () => 0 });
+  const runtime = new HackRuntime({ mapManager, controller, playerStats: createPlayerStats(5), energyMeter, rng: () => 0, hackDelayMs: 0 });
 
   const result = await runtime.triggerHack();
 
@@ -345,7 +347,7 @@ test('buyDrink e recusado fora do balcao (outro mapa, ou longe dele dentro do ba
 test('parado no laptop dentro do nullpoint_interior, nearbyHackableBuilding aponta pro nullpoint_bar', async () => {
   const mapManager = makeFakeMapManager({ mapId: 'nullpoint_interior', col: 5, row: 3 }); // oeste do laptop (origem 6,3)
   const controller = makeFakeController();
-  const runtime = new HackRuntime({ mapManager, controller, playerStats: createPlayerStats(1), rng: () => 0 });
+  const runtime = new HackRuntime({ mapManager, controller, playerStats: createPlayerStats(1), rng: () => 0, hackDelayMs: 0 });
 
   const entry = runtime.nearbyHackableBuilding();
   assert.equal(entry?.id, 'nullpoint_bar');
@@ -431,7 +433,7 @@ test('sentado, o personagem levanta sozinho quando o jogo detecta que ele se afa
 test('nao da pra disparar um segundo hack enquanto o primeiro ainda esta rodando', async () => {
   const mapManager = makeFakeMapManager({ col: 3, row: 5 });
   const controller = makeFakeController();
-  const runtime = new HackRuntime({ mapManager, controller, playerStats: createPlayerStats(5), rng: () => 0 });
+  const runtime = new HackRuntime({ mapManager, controller, playerStats: createPlayerStats(5), rng: () => 0, hackDelayMs: 0 });
 
   const first = runtime.triggerHack();
   assert.equal(runtime.canTriggerHack(), false);
@@ -554,7 +556,7 @@ test('remoteHackTargets lista os 3 predios com o nivel minimo certo, travados ou
 test('triggerRemoteHack hackeia um predio direto do PC, sem precisar andar ate la', async () => {
   const mapManager = makeFakeMapManager({ mapId: 'player_home', col: 6, row: 2 });
   const controller = makeFakeController();
-  const runtime = new HackRuntime({ mapManager, controller, playerStats: createPlayerStats(1), rng: () => 0 });
+  const runtime = new HackRuntime({ mapManager, controller, playerStats: createPlayerStats(1), rng: () => 0, hackDelayMs: 0 });
 
   const result = await runtime.triggerRemoteHack('gridcorp_tower');
 
@@ -611,4 +613,81 @@ test('triggerHack fisico tambem respeita a trava de nivel (mesma regra do remoto
 
   assert.equal(result.levelBlocked, true);
   assert.equal(result.requiredLevel, 3);
+});
+
+test('hackear (fisico ou remoto) leva o tempo de verdade configurado (hackDelayMs), bloqueando o movimento ate o fim', async () => {
+  const mapManager = makeFakeMapManager({ mapId: 'player_home', col: 6, row: 2 });
+  const controller = makeFakeController();
+  const runtime = new HackRuntime({
+    mapManager,
+    controller,
+    playerStats: createPlayerStats(1),
+    rng: () => 0,
+    hackDelayMs: 5000,
+    delayFn: () => new Promise((resolve) => setTimeout(resolve, 0)),
+  });
+
+  assert.equal(runtime.isMovementBlocked, false);
+  const resultPromise = runtime.triggerRemoteHack('gridcorp_tower');
+  assert.equal(runtime.isHacking, true);
+  assert.equal(runtime.isMovementBlocked, true, 'hackeando tambem bloqueia movimento, igual minerar');
+  assert.ok(runtime.hackRemainingMs > 0, 'ainda falta tempo pro hack terminar');
+
+  await resultPromise;
+  assert.equal(runtime.isHacking, false);
+  assert.equal(runtime.isMovementBlocked, false);
+  assert.equal(runtime.hackRemainingMs, 0);
+});
+
+test('hack bloqueado por energia nao espera o hackDelayMs todo (nao faz sentido segurar so pra dizer que faltou energia)', async () => {
+  const mapManager = makeFakeMapManager({ mapId: 'player_home', col: 6, row: 2 });
+  const controller = makeFakeController();
+  const energyMeter = new EnergyMeter({ regenPerSecond: 0 });
+  energyMeter.spend(energyMeter.max - 5); // so 5, menos que o custo do gridcorp_tower (comum, 30)
+  const runtime = new HackRuntime({
+    mapManager,
+    controller,
+    playerStats: createPlayerStats(1),
+    energyMeter,
+    rng: () => 0,
+    hackDelayMs: 999999, // bem alto de proposito - se esperasse, o teste travaria/estouraria o timeout
+  });
+
+  const result = await runtime.triggerRemoteHack('gridcorp_tower');
+
+  assert.equal(result.energyBlocked, true);
+  assert.equal(runtime.isHacking, false);
+});
+
+test('buyPet compra o gato parado no PC, cobrando do ledger', () => {
+  const mapManager = makeFakeMapManager({ mapId: 'player_home', col: 6, row: 2 });
+  const controller = makeFakeController();
+  const ledger = new ByteLedger();
+  ledger.record({ type: 'gain', amount: PET_COST_BYTE });
+  const runtime = new HackRuntime({ mapManager, controller, playerStats: createPlayerStats(1), ledger });
+
+  const result = runtime.buyPet('gato_laranja');
+
+  assert.equal(result.success, true);
+  assert.equal(runtime.byteBalance, 0);
+  assert.equal(runtime.pets.find((p) => p.id === 'gato_laranja').owned, true);
+});
+
+test('buyPet e recusado fora do PC, e sem BYTE suficiente', () => {
+  const ledger = new ByteLedger();
+  const farFromPc = new HackRuntime({
+    mapManager: makeFakeMapManager({ mapId: 'player_home', col: 8, row: 8 }),
+    controller: makeFakeController(),
+    playerStats: createPlayerStats(1),
+    ledger,
+  });
+  assert.equal(farFromPc.buyPet('gato_laranja').reason, 'fora_do_pc');
+
+  const brokeAtPc = new HackRuntime({
+    mapManager: makeFakeMapManager({ mapId: 'player_home', col: 6, row: 2 }),
+    controller: makeFakeController(),
+    playerStats: createPlayerStats(1),
+    ledger,
+  });
+  assert.equal(brokeAtPc.buyPet('gato_laranja').reason, 'byte_insuficiente');
 });
