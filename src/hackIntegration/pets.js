@@ -1,11 +1,14 @@
 // Bichinho de estimacao: puramente decorativo, sem efeito nenhum no
 // jogo (nao ajuda a minerar, nao da bonus - so um "tenho ou nao tenho"
-// mostrado na tela do PC). Comeca com um unico pet disponivel (o gato) -
-// a lista existe pra dar espaco de sobra pra adicionar mais depois sem
-// reestruturar nada, mesmo espirito de HIRABLE_WORKERS em workers.js.
+// mostrado na tela do PC). A lista existe pra dar espaco de sobra pra
+// adicionar mais depois sem reestruturar nada, mesmo espirito de
+// HIRABLE_WORKERS em workers.js.
 export const PET_COST_BYTE = 100;
 
-export const PETS = [{ id: 'gato', name: 'Gato' }];
+export const PETS = [
+  { id: 'gato_laranja', name: 'Gato Laranja' },
+  { id: 'gato_cinza', name: 'Gato Cinza' },
+];
 
 export const PET_PURCHASE_REASON = {
   ALREADY_OWNED: 'ja_possui',

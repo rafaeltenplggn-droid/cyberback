@@ -666,11 +666,11 @@ test('buyPet compra o gato parado no PC, cobrando do ledger', () => {
   ledger.record({ type: 'gain', amount: PET_COST_BYTE });
   const runtime = new HackRuntime({ mapManager, controller, playerStats: createPlayerStats(1), ledger });
 
-  const result = runtime.buyPet('gato');
+  const result = runtime.buyPet('gato_laranja');
 
   assert.equal(result.success, true);
   assert.equal(runtime.byteBalance, 0);
-  assert.equal(runtime.pets.find((p) => p.id === 'gato').owned, true);
+  assert.equal(runtime.pets.find((p) => p.id === 'gato_laranja').owned, true);
 });
 
 test('buyPet e recusado fora do PC, e sem BYTE suficiente', () => {
@@ -681,7 +681,7 @@ test('buyPet e recusado fora do PC, e sem BYTE suficiente', () => {
     playerStats: createPlayerStats(1),
     ledger,
   });
-  assert.equal(farFromPc.buyPet('gato').reason, 'fora_do_pc');
+  assert.equal(farFromPc.buyPet('gato_laranja').reason, 'fora_do_pc');
 
   const brokeAtPc = new HackRuntime({
     mapManager: makeFakeMapManager({ mapId: 'player_home', col: 6, row: 2 }),
@@ -689,5 +689,5 @@ test('buyPet e recusado fora do PC, e sem BYTE suficiente', () => {
     playerStats: createPlayerStats(1),
     ledger,
   });
-  assert.equal(brokeAtPc.buyPet('gato').reason, 'byte_insuficiente');
+  assert.equal(brokeAtPc.buyPet('gato_laranja').reason, 'byte_insuficiente');
 });

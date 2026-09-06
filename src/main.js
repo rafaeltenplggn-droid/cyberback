@@ -258,22 +258,24 @@ function startGame(characterId) {
     }
   }
 
-  const PET_ICONS = { gato: '🐈' };
+  const PET_PORTRAITS = { gato_laranja: 'pet_gato_laranja.png', gato_cinza: 'pet_gato_cinza.png' };
+  const petPortraits = {};
 
   /**
-   * Desenha a aba LOJA: por enquanto so o gato, puramente decorativo (nao
-   * muda nada no jogo, e nao tem sprite proprio ainda dentro do quarto -
-   * so um icone aqui na loja mesmo, ate ter arte de verdade).
+   * Desenha a aba LOJA: puramente decorativo (nao muda nada no jogo, e nao
+   * tem sprite proprio ainda dentro do quarto - so o retrato aqui na loja).
    */
   function pcRenderPets() {
     pcPetsEl.innerHTML = '';
     for (const pet of hackRuntime.pets) {
+      if (!petPortraits[pet.id]) {
+        petPortraits[pet.id] = loadPropImage(PET_PORTRAITS[pet.id]);
+      }
       const card = document.createElement('div');
       card.className = 'pc-worker-card';
 
-      const icon = document.createElement('div');
+      const icon = petPortraits[pet.id].cloneNode();
       icon.className = 'pc-pet-icon';
-      icon.textContent = PET_ICONS[pet.id] ?? '🐾';
 
       const name = document.createElement('div');
       name.className = 'pc-worker-name';
