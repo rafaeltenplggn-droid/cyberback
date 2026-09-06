@@ -3,6 +3,8 @@
 <head>
   <meta charset="utf-8" />
   <title>CYBER - hack integration</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&family=VT323&family=IBM+Plex+Mono:wght@400;500&display=swap">
   <style>
     html, body {
       margin: 0;
@@ -75,6 +77,187 @@
       padding: 0 10px 10px;
       opacity: 0.8;
     }
+
+    /* ---------- Tela de invasao: abre por cima do jogo durante um hack
+       (predio) ou a mineracao do PC de casa. Visual de monitor CRT,
+       ver o mockup interativo que validou esse estilo antes de entrar
+       no jogo de verdade. ---------- */
+    #pc-screen {
+      position: fixed;
+      inset: 0;
+      z-index: 10;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(2, 3, 6, 0.86);
+      font-family: 'Rajdhani', monospace;
+    }
+    #pc-screen[hidden] { display: none; }
+
+    .pc-monitor {
+      width: min(680px, 92vw);
+      background: linear-gradient(160deg, #262e3a, #14181f 30%, #090b0f);
+      border-radius: 16px;
+      padding: 14px 14px 18px;
+      box-shadow: 0 30px 70px -30px rgba(0, 0, 0, 0.85);
+    }
+
+    .pc-tabs {
+      display: flex;
+      gap: 6px;
+      padding: 0 2px 10px;
+    }
+    .pc-tab {
+      appearance: none;
+      border: 1px solid #333c48;
+      background: #10141a;
+      color: #9fb4c0;
+      font-family: 'Rajdhani', sans-serif;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      font-size: 12px;
+      padding: 6px 14px;
+      border-radius: 6px 6px 0 0;
+      cursor: pointer;
+    }
+    .pc-tab[data-active="true"] {
+      color: #eaf6f2;
+      background: #1b222c;
+      border-color: #4dffb8;
+    }
+
+    .pc-screen-box {
+      position: relative;
+      background: radial-gradient(120% 140% at 50% 0%, #0a1f19, #061410 60%);
+      border-radius: 8px;
+      overflow: hidden;
+      min-height: 320px;
+      box-shadow: inset 0 0 40px rgba(0, 0, 0, 0.65), inset 0 0 90px rgba(0, 0, 0, 0.5);
+    }
+    .pc-screen-box::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      background: repeating-linear-gradient(to bottom, rgba(0, 0, 0, 0.18) 0px, rgba(0, 0, 0, 0.18) 1px, transparent 2px, transparent 3px);
+      mix-blend-mode: multiply;
+    }
+
+    .pc-panel { padding: 18px 20px; height: 100%; }
+    .pc-panel[hidden] { display: none; }
+
+    #pc-panel-terminal:not([hidden]) {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      font-family: 'VT323', monospace;
+      color: #6dffc9;
+      text-shadow: 0 0 6px rgba(109, 255, 201, 0.45);
+      font-size: 19px;
+      min-height: 320px;
+    }
+    .pc-head {
+      display: flex;
+      justify-content: space-between;
+      font-size: 16px;
+      color: #2e6b58;
+      border-bottom: 1px solid rgba(109, 255, 201, 0.18);
+      padding-bottom: 6px;
+    }
+    #pc-log {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      overflow: hidden;
+    }
+    #pc-log .line { opacity: 0; animation: pc-reveal 90ms ease forwards; }
+    #pc-log .line.warn { color: #ffcf6b; text-shadow: 0 0 6px rgba(255, 207, 107, 0.4); }
+    #pc-log .line.fail { color: #ff5d6a; text-shadow: 0 0 6px rgba(255, 93, 106, 0.4); }
+    #pc-log .line.hi { color: #cfffe9; }
+    @keyframes pc-reveal {
+      from { opacity: 0; transform: translateY(2px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .pc-bar-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 15px;
+      color: #2e6b58;
+    }
+    .pc-bar-track {
+      flex: 1;
+      height: 10px;
+      border: 1px solid #2e6b58;
+      background: rgba(109, 255, 201, 0.06);
+      position: relative;
+    }
+    .pc-bar-fill {
+      position: absolute;
+      inset: 1px;
+      width: 0%;
+      background: repeating-linear-gradient(90deg, #6dffc9, #6dffc9 4px, transparent 4px, transparent 7px);
+      transition: width 260ms linear;
+    }
+
+    #pc-panel-equipe { min-height: 320px; }
+    .pc-workers {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+      gap: 10px;
+    }
+    .pc-worker-card {
+      background: #0b0e13;
+      border: 1px solid #262e3a;
+      border-radius: 8px;
+      padding: 10px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      text-align: center;
+    }
+    .pc-worker-card img {
+      width: 84px;
+      height: 84px;
+      object-fit: cover;
+      border-radius: 6px;
+      image-rendering: pixelated;
+      background: #05070a;
+    }
+    .pc-worker-name {
+      font-weight: 700;
+      color: #eaf6f2;
+      font-size: 13px;
+    }
+    .pc-worker-btn {
+      appearance: none;
+      border: 1px solid #4dffb8;
+      background: rgba(77, 255, 184, 0.08);
+      color: #eaf6f2;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 11px;
+      padding: 5px 10px;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+    .pc-worker-btn:disabled {
+      border-color: #333c48;
+      background: transparent;
+      color: #6a808c;
+      cursor: default;
+    }
+    .pc-worker-btn.hired { border-color: #b47bff; color: #b47bff; background: rgba(180, 123, 255, 0.08); }
+
+    .pc-hint {
+      text-align: center;
+      padding-top: 10px;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 11px;
+      color: #536873;
+      letter-spacing: 0.08em;
+    }
   </style>
 </head>
 <body>
@@ -88,6 +271,33 @@
     <div id="hack-status"></div>
     <div id="shop-status"></div>
     <div id="worker-status"></div>
+  </div>
+
+  <div id="pc-screen" hidden>
+    <div class="pc-monitor">
+      <div class="pc-tabs">
+        <button type="button" class="pc-tab" id="pc-tab-terminal" data-active="true">TERMINAL</button>
+        <button type="button" class="pc-tab" id="pc-tab-equipe" hidden>EQUIPE</button>
+      </div>
+      <div class="pc-screen-box">
+        <div class="pc-panel" id="pc-panel-terminal">
+          <div class="pc-head">
+            <span id="pc-head-target">ALVO: --</span>
+            <span id="pc-head-tier">TIER: --</span>
+          </div>
+          <div id="pc-log"></div>
+          <div class="pc-bar-row">
+            <span id="pc-bar-label">STATUS</span>
+            <div class="pc-bar-track"><div class="pc-bar-fill" id="pc-bar-fill"></div></div>
+            <span id="pc-bar-val">--</span>
+          </div>
+        </div>
+        <div class="pc-panel" id="pc-panel-equipe" hidden>
+          <div class="pc-workers" id="pc-workers"></div>
+        </div>
+      </div>
+      <div class="pc-hint">ESC fecha a tela (o que estiver rodando continua em segundo plano)</div>
+    </div>
   </div>
 
   <details id="help">
