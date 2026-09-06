@@ -6,9 +6,11 @@ import { isAdjacentToBuilding } from './hackableBuildings.js';
 
 export const PLAYER_HOME_MAP_ID = 'player_home';
 
-// Casam com os props reais de maps/player_home.json (mesma origem/footprint).
-export const HOME_PC_LOCATION = { originX: 3, originY: 3, footprintW: 1, footprintH: 1 };
-export const HOME_BED_LOCATION = { originX: 6, originY: 3, footprintW: 1, footprintH: 1 };
+// Coordenadas calibradas visualmente pra baterem com a mesa/PC e a cama
+// na arte de fundo de maps/player_home.json (nao ha mais props visuais -
+// ver secao "Sector 7 Background Art" / interiores no CYBER_SPEC.md).
+export const HOME_PC_LOCATION = { originX: 7, originY: 2, footprintW: 1, footprintH: 1 };
+export const HOME_BED_LOCATION = { originX: 11, originY: 4, footprintW: 1, footprintH: 1 };
 
 /**
  * Retorna 'pc', 'bed' ou null dependendo de onde o personagem esta parado
