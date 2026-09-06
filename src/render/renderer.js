@@ -197,44 +197,49 @@ export class Renderer {
   }
 
   // Recorte fixo (no espaco original do PNG 320x320) que isola cabeca +
-  // orelhas do resto do corpo do pet - ver assets/props/pet_gato_*_body.png
-  // (corpo, com esse recorte apagado) e pet_gato_*_head.png (so o recorte).
-  // Mesmo recorte pras duas variantes de gato, pois ambas vem da mesma
-  // pose/composicao original. O pivo fica na borda esquerda da cabeca
-  // (onde ela encosta no corpo), entao a orelha (bem mais longe do pivo)
-  // e o que mais se mexe quando gira - da o efeito de "orelha balancando"
-  // sem precisar recortar a orelha sozinha (fragil, testado e descartado).
+  // orelha do resto do corpo do pet - ver assets/props/pet_gato_*_body.png
+  // (corpo, com esse recorte de cabeca apagado). Mesmo recorte pras duas
+  // variantes de gato, pois ambas vem da mesma pose/composicao original.
   static PET_HEAD_BOX = { x: 190, y: 80, w: 118, h: 182 };
-  static PET_HEAD_PIVOT = { x: 190, y: 171 };
   static PET_SPRITE_SIZE = 320;
 
   /**
    * Desenha um pet decorativo (puramente cosmetico) ancorado no
-   * bottom-center do tile, igual drawProp. `wiggleAngleRad` gira so a
-   * cabeca/orelha em torno do pivo - o corpo fica parado.
+   * bottom-center do tile, igual drawProp. Cabeca fica parada (junto do
+   * corpo); so a orelha (ear/earPivot, coordenadas relativas ao recorte
+   * de cabeca - ver PET_ROOM_SPRITES em main.js) gira em torno do pivo,
+   * onde ela encosta na cabeca.
    */
-  drawPet(originCol, originRow, bodyImage, headImage, artHeightPx, wiggleAngleRad, xOffsetPx = 0) {
-    if (!isImageReady(bodyImage) || !isImageReady(headImage)) return;
+  drawPet(originCol, originRow, sprites, artHeightPx, wiggleAngleRad, xOffsetPx = 0, yOffsetPx = 0) {
+    const { body, headBase, ear, earPivot } = sprites;
+    if (!isImageReady(body) || !isImageReady(headBase) || !isImageReady(ear.image)) return;
     const ctx = this.ctx;
     const anchorX = this.originX + (originCol + 0.5) * TILE_SIZE + xOffsetPx;
-    const anchorY = this.originY + (originRow + 1) * TILE_SIZE;
+    const anchorY = this.originY + (originRow + 1) * TILE_SIZE + yOffsetPx;
 
     const scale = artHeightPx / Renderer.PET_SPRITE_SIZE;
     const fullSize = Renderer.PET_SPRITE_SIZE * scale;
     const drawX = anchorX - fullSize / 2;
     const drawY = anchorY - fullSize;
 
-    ctx.drawImage(bodyImage, drawX, drawY, fullSize, fullSize);
+    ctx.drawImage(body, drawX, drawY, fullSize, fullSize);
 
     const { x: headX, y: headY, w: headW, h: headH } = Renderer.PET_HEAD_BOX;
-    const pivot = Renderer.PET_HEAD_PIVOT;
-    const pivotScreenX = drawX + pivot.x * scale;
-    const pivotScreenY = drawY + pivot.y * scale;
+    ctx.drawImage(headBase, drawX + headX * scale, drawY + headY * scale, headW * scale, headH * scale);
+
+    // earPivot/ear.box vem em coordenadas locais do recorte de cabeca -
+    // soma o offset do PET_HEAD_BOX pra virar coordenada da sprite inteira.
+    const pivotFullX = headX + earPivot.x;
+    const pivotFullY = headY + earPivot.y;
+    const pivotScreenX = drawX + pivotFullX * scale;
+    const pivotScreenY = drawY + pivotFullY * scale;
 
     ctx.save();
     ctx.translate(pivotScreenX, pivotScreenY);
     ctx.rotate(wiggleAngleRad);
-    ctx.drawImage(headImage, (headX - pivot.x) * scale, (headY - pivot.y) * scale, headW * scale, headH * scale);
+    const earOffsetX = (headX + ear.box.x - pivotFullX) * scale;
+    const earOffsetY = (headY + ear.box.y - pivotFullY) * scale;
+    ctx.drawImage(ear.image, earOffsetX, earOffsetY, ear.box.w * scale, ear.box.h * scale);
     ctx.restore();
   }
 

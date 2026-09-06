@@ -20,15 +20,36 @@ import { PLAYER_HOME_MAP_ID, HOME_BED_LOCATION } from './hackIntegration/homeLoc
 
 const STARTING_BYTE_BALANCE = 100;
 
-// Corpo/cabeca separados pra cada pet adotado poder "balancar a orelha"
-// sem depender de sprite-sheet de verdade - ver Renderer.drawPet.
+// Corpo/cabeca (sem orelha)/orelha em sprites separados pra so a orelha
+// balancar sozinha, sem depender de sprite-sheet de verdade - ver
+// Renderer.drawPet. earBox/earPivot sao relativos ao recorte de cabeca
+// (Renderer.PET_HEAD_BOX), calibrados a mao pra cada variante de gato
+// (a pose base e a mesma, mas o recorte exato da orelha muda um pouco
+// entre as duas artes).
 const PET_ROOM_SPRITES = {
-  gato_laranja: { body: 'pet_gato_laranja_body.png', head: 'pet_gato_laranja_head.png' },
-  gato_cinza: { body: 'pet_gato_cinza_body.png', head: 'pet_gato_cinza_head.png' },
+  gato_laranja: {
+    body: 'pet_gato_laranja_body.png',
+    headBase: 'pet_gato_laranja_head_base.png',
+    ear: 'pet_gato_laranja_ear.png',
+    earBox: { x: 58, y: 35, w: 39, h: 61 },
+    earPivot: { x: 77.5, y: 96 },
+  },
+  gato_cinza: {
+    body: 'pet_gato_cinza_body.png',
+    headBase: 'pet_gato_cinza_head_base.png',
+    ear: 'pet_gato_cinza_ear.png',
+    earBox: { x: 63, y: 43, w: 32, h: 57 },
+    earPivot: { x: 79, y: 100 },
+  },
 };
 const PET_ROOM_ART_HEIGHT_PX = 46;
-const PET_EAR_WIGGLE_MAX_RAD = 0.12;
-const PET_EAR_WIGGLE_PERIOD_MS = 1400;
+const PET_EAR_WIGGLE_MAX_RAD = 0.35;
+const PET_EAR_WIGGLE_PERIOD_MS = 1000;
+// Deslocamento em pixels de tela pra tirar o pet da borda da cama (perto
+// do travesseiro, onde fica o tile de interacao) e por mais perto do meio
+// do colchao - calibrado a olho contra o fundo (player_home_interior.png).
+const PET_BED_OFFSET_X_PX = 34;
+const PET_BED_OFFSET_Y_PX = 18;
 
 const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
@@ -356,19 +377,29 @@ function startGame(characterId) {
     const startOffset = -((ownedPets.length - 1) * spacingPx) / 2;
 
     ownedPets.forEach((pet, index) => {
-      const sprites = PET_ROOM_SPRITES[pet.id];
-      if (!sprites) return;
+      const config = PET_ROOM_SPRITES[pet.id];
+      if (!config) return;
       if (!petRoomImages[pet.id]) {
         petRoomImages[pet.id] = {
-          body: loadPropImage(sprites.body),
-          head: loadPropImage(sprites.head),
+          body: loadPropImage(config.body),
+          headBase: loadPropImage(config.headBase),
+          ear: { image: loadPropImage(config.ear), box: config.earBox },
+          earPivot: config.earPivot,
         };
       }
-      const { body, head } = petRoomImages[pet.id];
+      const sprites = petRoomImages[pet.id];
       const phase = index * 2.1;
       const angle = PET_EAR_WIGGLE_MAX_RAD * Math.sin((nowMs / PET_EAR_WIGGLE_PERIOD_MS) * Math.PI * 2 + phase);
-      const xOffsetPx = startOffset + index * spacingPx;
-      mapRenderer.drawPet(HOME_BED_LOCATION.originX, HOME_BED_LOCATION.originY, body, head, PET_ROOM_ART_HEIGHT_PX, angle, xOffsetPx);
+      const xOffsetPx = PET_BED_OFFSET_X_PX + startOffset + index * spacingPx;
+      mapRenderer.drawPet(
+        HOME_BED_LOCATION.originX,
+        HOME_BED_LOCATION.originY,
+        sprites,
+        PET_ROOM_ART_HEIGHT_PX,
+        angle,
+        xOffsetPx,
+        PET_BED_OFFSET_Y_PX
+      );
     });
   }
 
