@@ -20,33 +20,33 @@ import { PLAYER_HOME_MAP_ID, HOME_BED_LOCATION } from './hackIntegration/homeLoc
 
 const STARTING_BYTE_BALANCE = 100;
 
-// Corpo/cabeca (sem orelha)/orelha em sprites separados pra so a orelha
-// balancar sozinha, sem depender de sprite-sheet de verdade - ver
-// Renderer.drawPet. earBox/earPivot sao relativos ao recorte de cabeca
-// (Renderer.PET_HEAD_BOX), calibrados a mao pra cada variante de gato
-// (a pose base e a mesma, mas o recorte exato da orelha muda um pouco
-// entre as duas artes).
+// Corpo (sprite 320x320 inteira, com uma orelha apagada) + orelha em
+// sprites separados pra so ela balancar sozinha, sem depender de
+// sprite-sheet de verdade - ver Renderer.drawPet. earBox/earPivot sao
+// coordenadas na MESMA sprite 320x320, calibrados a mao pra cada gato -
+// cada arte tem sua propria orelha "escolhida" pra balancar (a outra,
+// quando existe, fica parada, ja desenhada dentro do proprio body).
 const PET_ROOM_SPRITES = {
   gato_laranja: {
     body: 'pet_gato_laranja_body.png',
-    headBase: 'pet_gato_laranja_head_base.png',
     ear: 'pet_gato_laranja_ear.png',
-    earBox: { x: 58, y: 35, w: 39, h: 61 },
-    earPivot: { x: 77.5, y: 96 },
+    earBox: { x: 248, y: 115, w: 39, h: 61 },
+    earPivot: { x: 267.5, y: 176 },
   },
   gato_cinza: {
     body: 'pet_gato_cinza_body.png',
-    headBase: 'pet_gato_cinza_head_base.png',
     ear: 'pet_gato_cinza_ear.png',
-    earBox: { x: 63, y: 43, w: 32, h: 57 },
-    earPivot: { x: 79, y: 100 },
+    earBox: { x: 253, y: 123, w: 32, h: 57 },
+    earPivot: { x: 269, y: 180 },
   },
   gato_sphynx: {
+    // Sphynx tem as duas orelhas visiveis na arte (unico dos tres); a
+    // orelha grande da direita fica parada (dentro do body), e a
+    // pequena da esquerda e a que balanca.
     body: 'pet_gato_sphynx_body.png',
-    headBase: 'pet_gato_sphynx_head_base.png',
     ear: 'pet_gato_sphynx_ear.png',
-    earBox: { x: 50, y: 18, w: 55, h: 87 },
-    earPivot: { x: 77.5, y: 105 },
+    earBox: { x: 19, y: 140, w: 31, h: 70 },
+    earPivot: { x: 50, y: 175 },
   },
 };
 const PET_ROOM_ART_HEIGHT_PX = 46;
@@ -393,8 +393,8 @@ function startGame(characterId) {
       if (!petRoomImages[pet.id]) {
         petRoomImages[pet.id] = {
           body: loadPropImage(config.body),
-          headBase: loadPropImage(config.headBase),
-          ear: { image: loadPropImage(config.ear), box: config.earBox },
+          ear: loadPropImage(config.ear),
+          earBox: config.earBox,
           earPivot: config.earPivot,
         };
       }
