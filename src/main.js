@@ -45,12 +45,12 @@ const PET_ROOM_SPRITES = {
     body: 'pet_gato_sphynx_body.png',
     headBase: 'pet_gato_sphynx_head_base.png',
     ear: 'pet_gato_sphynx_ear.png',
-    earBox: { x: 37, y: 18, w: 73, h: 114 },
-    earPivot: { x: 73.5, y: 132 },
+    earBox: { x: 50, y: 18, w: 55, h: 87 },
+    earPivot: { x: 77.5, y: 105 },
   },
 };
 const PET_ROOM_ART_HEIGHT_PX = 46;
-const PET_EAR_WIGGLE_MAX_RAD = 0.1;
+const PET_EAR_WIGGLE_MAX_RAD = 0.06;
 const PET_EAR_WIGGLE_PERIOD_MS = 1300;
 // Deslocamento em pixels de tela pra tirar o pet da borda da cama (perto
 // do travesseiro, onde fica o tile de interacao) e por mais perto do meio
