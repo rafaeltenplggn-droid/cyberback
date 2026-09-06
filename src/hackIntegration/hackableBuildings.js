@@ -3,14 +3,16 @@
 // target fixo de teste do hack-loop.
 //
 // Tier de cada um (progressao de dificuldade/recompensa, do mais fraco pro
-// mais forte): ghost_row_market (comum) < nullpoint_bar (incomum) <
-// gridcorp_tower (raro).
+// mais forte): gridcorp_tower (comum) < nullpoint_bar (incomum) <
+// ghost_row_market/BLACKNET (raro) - a BLACKNET e o mercado negro que
+// compra a informacao roubada (ver informationLedger.js), entao e o alvo
+// mais protegido/dificil dos tres.
 export const HACKABLE_BUILDINGS = [
   {
     id: 'gridcorp_tower',
     mapId: 'district_07',
     building: { originX: 16, originY: 0, footprintW: 8, footprintH: 5 },
-    target: { id: 'gridcorp_tower_test', tier: 'raro' },
+    target: { id: 'gridcorp_tower_test', tier: 'comum' },
   },
   {
     id: 'nullpoint_bar',
@@ -22,7 +24,7 @@ export const HACKABLE_BUILDINGS = [
     id: 'ghost_row_market',
     mapId: 'district_07',
     building: { originX: 8, originY: 0, footprintW: 8, footprintH: 5 },
-    target: { id: 'ghost_row_market_test', tier: 'comum' },
+    target: { id: 'ghost_row_market_test', tier: 'raro' },
   },
 ];
 

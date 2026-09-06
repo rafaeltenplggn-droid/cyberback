@@ -176,3 +176,41 @@ imagem.
 
 Os outros 4 interiores (BAR, BLACKNET, CORP, DATA TERMINAL) continuam em
 blockout 10x10 generico ate ganharem sua propria arte, numa sprint por vez.
+
+## Economia: Informacao e BLACKNET
+
+Hackear um predio (gridcorp_tower, nullpoint_bar, ghost_row_market) nao
+credita BYTE direto no ledger mais - `fence()` (`src/hackloop/fence.js`)
+continua rodando exatamente igual (calcula o valor do loot), mas o
+resultado vira uma unidade de Informacao em vez de BYTE, com raridade
+determinada pelo tier do predio (`infoRarityForTier`, ver
+`src/hackIntegration/informationLedger.js`): comum -> comum, incomum ->
+rara, raro -> epica. `InformationLedger` guarda so a contagem por
+raridade (sem log de entradas, ao contrario do ByteLedger).
+
+Tiers dos 3 predios hackaveis (`src/hackIntegration/hackableBuildings.js`):
+gridcorp_tower (comum) < nullpoint_bar (incomum) < ghost_row_market/
+BLACKNET (raro, o mais dificil - e o mercado negro, faz sentido ser o
+alvo mais protegido).
+
+A Informacao so vira BYTE de verdade na BLACKNET (dentro do
+ghost_row_interior): um ponto de venda logico
+(`BLACKNET_SELL_LOCATION` em `src/hackIntegration/blacknetLocations.js`,
+ainda sem prop visual - blockout) vende todo o estoque de uma vez
+(`InformationLedger.sellAll()`), ao preco por raridade em
+`INFO_SELL_PRICE_BYTE` (comum 8, rara 25, epica 60 - valores baixos de
+proposito, informacao e um item farmavel).
+
+O PC de casa (player_home) nao vende mais recarga de energia - virou um
+ponto de "minerar informacao" (`src/hackIntegration/infoMining.js`):
+chance fixa de sucesso (`INFO_MINING_SUCCESS_CHANCE`, sem gastar energia
+nem trace), e quando da certo sempre rende 1 unidade de Informacao
+comum (a fonte facil/barata; informacao melhor so vem hackeando os
+predios de verdade). A tecla continua sendo B, so a acao mudou.
+
+Energia agora so recupera de duas formas: dormindo na cama do quarto
+(de graca, cooldown de 2 minutos, sem mudanca) ou comprando um
+energetico no balcao/atendente do bar (`src/hackIntegration/drinkShop.js`,
+tecla D, preco `DRINK_COST_BYTE`) - o drink deixou de dar um buff
+temporario de breachSpeed e virou a fonte "premium" de energia
+(`DrinkBuffTracker` foi removido do projeto).

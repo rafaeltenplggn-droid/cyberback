@@ -11,10 +11,8 @@ import { TraceMeter } from './hackloop/trace.js';
 import { EnergyMeter } from './hackloop/energy.js';
 import { ByteLedger } from './hackloop/byteLedger.js';
 import { HackRuntime } from './hackIntegration/hackRuntime.js';
-import { ENERGY_REFILL_COST_BYTE } from './hackIntegration/energyShop.js';
 import { SLEEP_ENERGY_RESTORE } from './hackIntegration/sleepAction.js';
 import { DRINK_COST_BYTE } from './hackIntegration/drinkShop.js';
-import { DRINK_BUFF_AMOUNT, DRINK_BUFF_DURATION_MS } from './hackIntegration/drinkBuff.js';
 
 const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
@@ -90,12 +88,11 @@ function startGame(characterId) {
 
     const stats = hackRuntime.playerStats;
     const xpNeeded = xpRequiredForLevel(stats.level);
-    const buffText = hackRuntime.drinkBuffTracker.isActive()
-      ? ` | DRINK ATIVO (+${DRINK_BUFF_AMOUNT} breachSpeed, ${Math.ceil(hackRuntime.drinkBuffTracker.remainingMs() / 1000)}s)`
-      : '';
+    const info = hackRuntime.informationCounts;
+    const infoText = ` | informacao: ${hackRuntime.informationTotal} (comum ${info.comum}, rara ${info.rara}, epica ${info.epica})`;
     playerStatusEl.textContent =
       `nivel ${stats.level} | xp ${stats.xp}/${xpNeeded} | energia: ${hackRuntime.energyValue.toFixed(0)}/${hackRuntime.energyMax} | BYTE: ${hackRuntime.byteBalance} | ` +
-      `breachSpeed ${stats.breachSpeed} | stealth ${stats.stealth} | lootYield ${stats.lootYield} | traceResistance ${stats.traceResistance}${buffText}`;
+      `breachSpeed ${stats.breachSpeed} | stealth ${stats.stealth} | lootYield ${stats.lootYield} | traceResistance ${stats.traceResistance}${infoText}`;
   }
 
   let hackingBuildingId = null;
@@ -107,19 +104,18 @@ function startGame(characterId) {
       return;
     }
     if (lastHackResult) {
-      const { target, recon, breach, exfiltrate, fence, energyBlocked, energySpent, drinkBuffActive } = lastHackResult;
-      const buffTag = drinkBuffActive ? ' (com drink)' : '';
+      const { target, recon, breach, exfiltrate, informationGained, energyBlocked, energySpent } = lastHackResult;
       if (energyBlocked) {
         hackStatusEl.textContent = `ultimo hack (${target.id}, tier ${target.tier}): SEM ENERGIA (atual: ${hackRuntime.energyValue.toFixed(0)}/${hackRuntime.energyMax}) | espera recarregar | estimativa que o recon deu: ${recon.estimatedLoot.min}-${recon.estimatedLoot.max}`;
         return;
       }
       if (!breach.success) {
-        hackStatusEl.textContent = `ultimo hack (${target.id}, tier ${target.tier}): FALHA no breach${buffTag} (chance ${(breach.chance * 100).toFixed(0)}%) | energia gasta: ${energySpent} | trace: ${traceMeter.value.toFixed(1)} | estimativa que o recon deu: ${recon.estimatedLoot.min}-${recon.estimatedLoot.max}`;
+        hackStatusEl.textContent = `ultimo hack (${target.id}, tier ${target.tier}): FALHA no breach (chance ${(breach.chance * 100).toFixed(0)}%) | energia gasta: ${energySpent} | trace: ${traceMeter.value.toFixed(1)} | estimativa que o recon deu: ${recon.estimatedLoot.min}-${recon.estimatedLoot.max}`;
         return;
       }
       hackStatusEl.textContent =
-        `ultimo hack (${target.id}, tier ${target.tier}): SUCESSO${buffTag} | loot bruto: ${exfiltrate.rawAmount} | loot final: ${exfiltrate.loot.amount}` +
-        `${exfiltrate.overTime ? ' (estourou o tempo)' : ''} | BYTE ganho: ${fence.byteAmount} | XP ganho: ${lastHackResult.xpGained}` +
+        `ultimo hack (${target.id}, tier ${target.tier}): SUCESSO | loot bruto: ${exfiltrate.rawAmount} | loot final: ${exfiltrate.loot.amount}` +
+        `${exfiltrate.overTime ? ' (estourou o tempo)' : ''} | informacao obtida: ${informationGained?.rarity ?? '-'} | XP ganho: ${lastHackResult.xpGained}` +
         `${lastHackResult.leveledUp ? ' | SUBIU DE NIVEL!' : ''} | energia gasta: ${energySpent} | trace: ${traceMeter.value.toFixed(1)}`;
       return;
     }
@@ -127,11 +123,13 @@ function startGame(characterId) {
     hackStatusEl.textContent = nearby ? `[ESPACO/ENTER] hackear ${nearby.id}` : 'nenhum predio hackavel por perto';
   }
 
-  let lastShopResult = null;
+  let lastMineResult = null;
   let lastSleepResult = null;
   let lastNearbyHome = null;
   let lastDrinkResult = null;
   let lastNearbyBar = null;
+  let lastSellResult = null;
+  let lastNearbyBlacknet = null;
 
   function updateShopStatus() {
     const nearby = hackRuntime.nearbyHomeInteractable();
@@ -139,7 +137,7 @@ function startGame(characterId) {
       // saiu/entrou de perto do PC ou da cama: o resultado anterior nao vale
       // mais como "recem-aconteceu", senao ele fica preso na tela pra sempre
       // (o jogador ve uma compra/sono de minutos atras como se fosse agora).
-      lastShopResult = null;
+      lastMineResult = null;
       lastSleepResult = null;
       lastNearbyHome = nearby;
     }
@@ -150,6 +148,12 @@ function startGame(characterId) {
       lastNearbyBar = nearbyBar;
     }
 
+    const nearbyBlacknet = hackRuntime.nearbyBlacknetInteractable();
+    if (nearbyBlacknet !== lastNearbyBlacknet) {
+      lastSellResult = null;
+      lastNearbyBlacknet = nearbyBlacknet;
+    }
+
     if (nearbyBar === 'stool') {
       shopStatusEl.textContent = hackRuntime.isSitting ? '[C] levantar do banco' : '[C] sentar no banco (so cosmetico)';
       return;
@@ -158,11 +162,11 @@ function startGame(characterId) {
     if (nearbyBar === 'counter' || nearbyBar === 'bartender') {
       const label = nearbyBar === 'bartender' ? 'atendente do bar' : 'balcao do bar';
       if (!lastDrinkResult) {
-        shopStatusEl.textContent = `[D] ${label}: pedir um drink por ${DRINK_COST_BYTE} BYTE (+${DRINK_BUFF_AMOUNT} breachSpeed por ${DRINK_BUFF_DURATION_MS / 1000}s)`;
+        shopStatusEl.textContent = `[D] ${label}: pedir um energetico por ${DRINK_COST_BYTE} BYTE (recarrega a energia)`;
       } else if (lastDrinkResult.success) {
-        shopStatusEl.textContent = `[D] ${label}: drink servido por ${lastDrinkResult.byteSpent} BYTE`;
-      } else if (lastDrinkResult.reason === 'buff_ativo') {
-        shopStatusEl.textContent = `[D] ${label}: ja esta com um drink ativo (${Math.ceil(hackRuntime.drinkBuffTracker.remainingMs() / 1000)}s restantes)`;
+        shopStatusEl.textContent = `[D] ${label}: energetico servido por ${lastDrinkResult.byteSpent} BYTE, energia recarregada`;
+      } else if (lastDrinkResult.reason === 'energia_cheia') {
+        shopStatusEl.textContent = `[D] ${label}: energia ja esta cheia`;
       } else if (lastDrinkResult.reason === 'byte_insuficiente') {
         shopStatusEl.textContent = `[D] ${label}: BYTE insuficiente (precisa de ${DRINK_COST_BYTE}, tem ${hackRuntime.byteBalance})`;
       } else {
@@ -171,17 +175,26 @@ function startGame(characterId) {
       return;
     }
 
-    if (nearby === 'pc') {
-      if (!lastShopResult) {
-        shopStatusEl.textContent = `[B] Mercado Negro: recarregar energia por ${ENERGY_REFILL_COST_BYTE} BYTE`;
-      } else if (lastShopResult.success) {
-        shopStatusEl.textContent = `[B] Mercado Negro: recarga comprada por ${lastShopResult.byteSpent} BYTE`;
-      } else if (lastShopResult.reason === 'energia_cheia') {
-        shopStatusEl.textContent = '[B] Mercado Negro: energia ja esta cheia';
-      } else if (lastShopResult.reason === 'byte_insuficiente') {
-        shopStatusEl.textContent = `[B] Mercado Negro: BYTE insuficiente (precisa de ${ENERGY_REFILL_COST_BYTE}, tem ${hackRuntime.byteBalance})`;
+    if (nearbyBlacknet === 'sell') {
+      if (!lastSellResult) {
+        shopStatusEl.textContent = `[V] BLACKNET: vender toda a informacao (estoque: ${hackRuntime.informationTotal})`;
+      } else if (lastSellResult.success) {
+        shopStatusEl.textContent = `[V] BLACKNET: vendido por ${lastSellResult.byteEarned} BYTE`;
+      } else if (lastSellResult.reason === 'sem_informacao') {
+        shopStatusEl.textContent = '[V] BLACKNET: nada pra vender ainda';
       } else {
-        shopStatusEl.textContent = '[B] Mercado Negro: nao foi possivel comprar agora';
+        shopStatusEl.textContent = '[V] BLACKNET: nao foi possivel vender agora';
+      }
+      return;
+    }
+
+    if (nearby === 'pc') {
+      if (!lastMineResult) {
+        shopStatusEl.textContent = '[B] minerar informacao (chance de sucesso)';
+      } else if (lastMineResult.success) {
+        shopStatusEl.textContent = `[B] minerou com sucesso: +1 informacao ${lastMineResult.rarity}`;
+      } else {
+        shopStatusEl.textContent = '[B] minerou sem sucesso, tenta de novo';
       }
       return;
     }
@@ -205,8 +218,8 @@ function startGame(characterId) {
     shopStatusEl.textContent = '';
   }
 
-  function handleBuyEnergyRefill() {
-    lastShopResult = hackRuntime.buyEnergyRefill();
+  function handleMineInformation() {
+    lastMineResult = hackRuntime.mineInformation();
     updateShopStatus();
   }
 
@@ -217,6 +230,11 @@ function startGame(characterId) {
 
   function handleBuyDrink() {
     lastDrinkResult = hackRuntime.buyDrink();
+    updateShopStatus();
+  }
+
+  function handleSellInformation() {
+    lastSellResult = hackRuntime.sellInformation();
     updateShopStatus();
   }
 
@@ -278,7 +296,7 @@ function startGame(characterId) {
     }
     if (event.key === 'b' || event.key === 'B') {
       event.preventDefault();
-      handleBuyEnergyRefill();
+      handleMineInformation();
       return;
     }
     if (event.key === 's' || event.key === 'S') {
@@ -289,6 +307,11 @@ function startGame(characterId) {
     if (event.key === 'd' || event.key === 'D') {
       event.preventDefault();
       handleBuyDrink();
+      return;
+    }
+    if (event.key === 'v' || event.key === 'V') {
+      event.preventDefault();
+      handleSellInformation();
       return;
     }
     if (event.key === 'c' || event.key === 'C') {
