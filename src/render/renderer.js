@@ -20,12 +20,18 @@ export class Renderer {
    * `propImages` (opcional) e um objeto { [nomeDoArquivo]: HTMLImageElement }
    * - ver src/render/propAssets.js. Prop sem entrada carregada/pronta ali
    * cai sozinho no retangulo placeholder de sempre (isImageReady).
+   *
+   * `backgroundImages` (opcional) e o mesmo esquema pra fundo de mapa
+   * inteiro (ver src/render/backgroundAssets.js e map.background no
+   * mapa.json) - usado pelo Sector 7 exterior, que usa o Visual Master
+   * oficial como fundo unico em vez de tiles individuais.
    */
-  constructor(ctx, { originX, originY }, { propImages } = {}) {
+  constructor(ctx, { originX, originY }, { propImages, backgroundImages } = {}) {
     this.ctx = ctx;
     this.originX = originX;
     this.originY = originY;
     this.propImages = propImages ?? {};
+    this.backgroundImages = backgroundImages ?? {};
   }
 
   clear(width, height) {
@@ -42,7 +48,18 @@ export class Renderer {
     ctx.fillRect(x - TILE_SIZE / 2, y - TILE_SIZE / 2, TILE_SIZE, TILE_SIZE);
   }
 
+  // Com map.background definido e a imagem carregada/pronta, desenha ela
+  // esticada pra cobrir o mapa inteiro (map.width/height * TILE_SIZE) no
+  // lugar dos tiles individuais - o mapa ja vem com rua/calcada/predios
+  // desenhados na propria arte. Sem background pronto, cai no render de
+  // tiles de sempre (placeholder ou Ground Kit).
   drawMap(map) {
+    const background = map.background ? this.backgroundImages[map.background] : null;
+    if (isImageReady(background)) {
+      this.ctx.drawImage(background, this.originX, this.originY, map.width * TILE_SIZE, map.height * TILE_SIZE);
+      return;
+    }
+
     for (let row = 0; row < map.height; row++) {
       for (let col = 0; col < map.width; col++) {
         this.drawTile(col, row, map.tiles[row][col]);

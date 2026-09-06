@@ -60,49 +60,30 @@ O codigo de mapas, salas e props e desta branch, feat/maps-rooms. O codigo de pe
 src/core/topdown.js (projecao ativa - ver Projection Lock) e src/render/renderer.js sao utilitarios compartilhados. Quem precisa de grid<->tela sempre importa e reaproveita esses arquivos, nunca reimplementa a logica de projecao ou o loop de render por conta propria.
 
 ## Mapa district_07
-Grid de 24 colunas por 16 linhas (x de 0 a 23, y de 0 a 15) - layout
-"Sector 7 Replica Blockout", reconstruido pra seguir o Visual Master
-oficial (rua horizontal + rua vertical formando cruzamento, 3 predios em
-cima, 2 embaixo). Ponto e chao/calcada (tile 0), igual e rua (tile 1),
-cerquilha e footprint de predio bloqueado, D e porta, L e streetlamp_cyan
-sem colisao, P e planter_green sem colisao, C e crate_stack_magenta com
-colisao:
+Grid de 24 colunas por 16 linhas (x de 0 a 23, y de 0 a 15). Desde a sprint
+"Sector 7 Background Art" (ver secao abaixo), o exterior usa a arte final
+(Visual Master oficial) como fundo de mapa inteiro em vez de tiles
+individuais - `map.background` aponta pro arquivo em `assets/backgrounds/`.
+`tiles` continua existindo no mapa.json (tudo zero) so porque o parser
+exige a matriz, mas nao e desenhado quando ha background.
 
-```
-. # # # # . . . # # # # . . . . . # # # # . . .
-. # # # # . . . # # # # . . . . . # # # # . . .
-. # # # # . . . # # # # . . . . . # # # # . . .
-. D . . . . . . D . . . . P . . . D . . . . . .
-. . . . . . . . . . . . . . . . . . . . . . . .
-. . . . . . . . . . L . . . L . . . . . . . . .
-= = = = = = = = = = = = = = = = = = = = = = = =
-= = = = = = = = = = = = = = = = = = = = = = = =
-. . . . L . . . . . . . . . . . . L . . . . . .
-. . D . . . . . . . . . . . . . . D . . . . C .
-. # # # . . . . . . . . . . . . . # # # . . . .
-. # # # . . . . . . . . . . . . . # # # . . . .
-. # # # . . . . . . . . . . . . . # # # . . . .
-. . . . . . . . . . . . . . . . . . . . . . . .
-. . . . . . . . . . . . . . . . . . . . . . . .
-. . . . . . . . . . . . . . . . . . . . . . . .
-```
-(`=` marca a rua horizontal nas linhas 7-8; as colunas 12-13, marcadas com
-`.` nesse diagrama simplificado, sao a rua vertical que atravessa o mapa
-inteiro de cima a baixo)
+Footprints de colisao (nao ha mais props visuais - a arte ja vem pronta no
+fundo):
+- BAR (nullpoint_bar), origem x0 y0, footprint 8x5
+- BLACKNET (ghost_row_market), origem x8 y0, footprint 8x5
+- CORP (gridcorp_tower), origem x16 y0, footprint 8x5
+- MY HOME (player_home_building), origem x4 y9, footprint 6x4
+- DATA TERMINAL (data_terminal_building), origem x16 y9, footprint 5x4
+- predio de cenario sem porta (ao lado da MY HOME), origem x0 y9, footprint 4x5
+- bordas do mapa: coluna 0 inteira, coluna 23 inteira, linha 15 inteira (fim da tela)
 
-Props com collision_footprint true, ancorados no canto superior esquerdo do footprint:
-- nullpoint_bar (BAR, asset shop_mid), origem x1 y1, footprint 4x3
-- ghost_row_market (BLACKNET), origem x8 y1, footprint 4x3
-- gridcorp_tower (CORP), origem x17 y1, footprint 4x3
-- player_home_building (MY HOME), origem x2 y11, footprint 3x3
-- data_terminal_building (DATA TERMINAL), origem x17 y11, footprint 3x3
-
-Portas do district_07:
-- x1 y4, target_map nullpoint_interior (BAR), spawn_x 5, spawn_y 7
-- x8 y4, target_map ghost_row_interior (BLACKNET), spawn_x 5, spawn_y 7
-- x17 y4, target_map gridcorp_interior (CORP), spawn_x 5, spawn_y 7
-- x2 y10, target_map player_home (MY HOME), spawn_x 5, spawn_y 7
-- x17 y10, target_map data_terminal_interior (DATA TERMINAL), spawn_x 5, spawn_y 7
+Portas do district_07 (calibradas visualmente pra baterem com a entrada de
+cada predio na imagem de fundo):
+- x4 y5, target_map nullpoint_interior (BAR), spawn_x 5, spawn_y 7
+- x11 y5, target_map ghost_row_interior (BLACKNET), spawn_x 5, spawn_y 7
+- x18 y5, target_map gridcorp_interior (CORP), spawn_x 5, spawn_y 7
+- x7 y13, target_map player_home (MY HOME), spawn_x 5, spawn_y 7
+- x18 y13, target_map data_terminal_interior (DATA TERMINAL), spawn_x 5, spawn_y 7
 
 ## World Structure Lock
 
@@ -132,10 +113,9 @@ district_07 foi redesenhado de 16x12 pra 24x16 pra reproduzir o layout do
 Visual Master oficial (imagem de referencia do exterior do Sector 7):
 3 predios numa fileira de cima (BAR, BLACKNET, CORP) e 2 numa fileira de
 baixo (MY HOME, DATA TERMINAL), com uma rua horizontal principal e uma rua
-vertical formando um cruzamento no meio do mapa - ver diagrama acima.
-Ainda e blockout (sem art pass final, sem iluminacao, sem chuva): o que
-mudou e so layout/posicao/footprint/colisao/portas, pra bater com a
-composicao da imagem.
+vertical formando um cruzamento no meio do mapa. Nessa sprint ainda era
+blockout (tiles/props placeholder) - a arte final veio na sprint seguinte,
+ver "Sector 7 Background Art" abaixo.
 
 Como as posicoes dos 3 predios hackaveis mudaram, `HACKABLE_BUILDINGS`
 (`src/hackIntegration/hackableBuildings.js`) foi atualizado pra apontar
@@ -143,3 +123,28 @@ pras novas coordenadas - so as coordenadas, o mecanismo de hack (tier,
 target, adjacencia) continua o mesmo. As portas de saida dos 5 interiores
 tambem foram reapontadas pro spawn correto em frente a cada predio na
 nova posicao.
+
+## Sector 7 Background Art
+
+O exterior do district_07 usa a imagem do Visual Master oficial como fundo
+de mapa inteiro (`assets/backgrounds/sector7_exterior.png`, referenciada
+por `map.background` no mapa.json), em vez de compor a cena com tiles e
+props individuais. `Renderer.drawMap` desenha essa imagem esticada pra
+cobrir `map.width * TILE_SIZE` x `map.height * TILE_SIZE` quando o mapa
+tem `background` e a imagem ja carregou; sem isso (ou por enquanto em
+qualquer outro mapa), cai no render de tiles de sempre.
+
+Colisao e portas foram recalibradas medindo a posicao real de cada predio
+na imagem (grid de 24x16 sobreposto pra conferencia visual) - nao usam
+mais props pra desenhar retangulo placeholder, so a matriz de colisao
+bloqueia o footprint de cada predio (ver coordenadas na secao "Mapa
+district_07" acima). `district_07.json` nao tem mais props (lista vazia);
+postes, decoracao e NPCs parados que aparecem na imagem sao so parte do
+fundo, nao objetos separados.
+
+NPCs dinamicos/interativos futuros devem ser desenhados como sprites
+separados por cima do fundo (mesmo mecanismo do personagem principal),
+nunca bakeados na imagem - permite reposicionar/animar sem reeditar a
+arte. O trade-off aceito: reposicionar um predio dessa cena exige editar a
+imagem de novo, nao só o mapa.json - so vale a pena pra uma composicao ja
+aprovada como definitiva, como e o caso do Sector 7.

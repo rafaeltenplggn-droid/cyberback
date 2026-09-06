@@ -8,7 +8,7 @@ import { ENERGY_COST_PER_TIER } from '../src/hackIntegration/energyCosts.js';
 import { SLEEP_COOLDOWN_MS } from '../src/hackIntegration/sleepAction.js';
 import { DRINK_COST_BYTE } from '../src/hackIntegration/drinkShop.js';
 
-function makeFakeMapManager({ mapId = 'district_07', col = 0, row = 1 } = {}) {
+function makeFakeMapManager({ mapId = 'district_07', col = 3, row = 5 } = {}) {
   return { currentMap: { id: mapId }, playerCol: col, playerRow: row };
 }
 
@@ -36,8 +36,8 @@ test('fora de alcance: canTriggerHack e false e triggerHack nao dispara nada', (
 
 test('em alcance de cada um dos 3 predios, o hack dispara com o target certo', async () => {
   const adjacentCells = {
-    gridcorp_tower: { col: 16, row: 1 },
-    nullpoint_bar: { col: 0, row: 1 },
+    gridcorp_tower: { col: 15, row: 2 },
+    nullpoint_bar: { col: 3, row: 5 },
     ghost_row_market: { col: 7, row: 1 },
   };
 
@@ -55,7 +55,7 @@ test('em alcance de cada um dos 3 predios, o hack dispara com o target certo', a
 });
 
 test('mapa errado (fora do district_07) nunca dispara o hack, mesmo com as mesmas coordenadas', () => {
-  const mapManager = makeFakeMapManager({ mapId: 'gridcorp_interior', col: 0, row: 1 });
+  const mapManager = makeFakeMapManager({ mapId: 'gridcorp_interior', col: 3, row: 5 });
   const controller = makeFakeController();
   const runtime = new HackRuntime({ mapManager, controller, playerStats: createPlayerStats(1) });
 
@@ -63,7 +63,7 @@ test('mapa errado (fora do district_07) nunca dispara o hack, mesmo com as mesma
 });
 
 test('personagem em movimento (tween em andamento) nao pode disparar o hack', () => {
-  const mapManager = makeFakeMapManager({ col: 0, row: 1 });
+  const mapManager = makeFakeMapManager({ col: 3, row: 5 });
   const controller = makeFakeController({ isMoving: true });
   const runtime = new HackRuntime({ mapManager, controller, playerStats: createPlayerStats(1) });
 
@@ -71,7 +71,7 @@ test('personagem em movimento (tween em andamento) nao pode disparar o hack', ()
 });
 
 test('movimento fica bloqueado durante o hack e libera de novo quando termina (sucesso)', async () => {
-  const mapManager = makeFakeMapManager({ col: 0, row: 1 });
+  const mapManager = makeFakeMapManager({ col: 3, row: 5 });
   const controller = makeFakeController();
   const runtime = new HackRuntime({ mapManager, controller, playerStats: createPlayerStats(1), rng: () => 0 });
 
@@ -93,7 +93,7 @@ test('movimento fica bloqueado durante o hack e libera de novo quando termina (s
 });
 
 test('movimento fica bloqueado durante o hack e libera de novo quando termina (falha)', async () => {
-  const mapManager = makeFakeMapManager({ col: 0, row: 1 });
+  const mapManager = makeFakeMapManager({ col: 3, row: 5 });
   const controller = makeFakeController();
   const runtime = new HackRuntime({ mapManager, controller, playerStats: createPlayerStats(1), rng: () => 0.999999 });
 
@@ -106,7 +106,7 @@ test('movimento fica bloqueado durante o hack e libera de novo quando termina (f
 });
 
 test('playerStats e byteBalance ficam disponiveis no runtime e evoluem depois de um hack bem sucedido', async () => {
-  const mapManager = makeFakeMapManager({ col: 0, row: 1 });
+  const mapManager = makeFakeMapManager({ col: 3, row: 5 });
   const controller = makeFakeController();
   const ledger = new ByteLedger();
   const runtime = new HackRuntime({
@@ -127,7 +127,7 @@ test('playerStats e byteBalance ficam disponiveis no runtime e evoluem depois de
 });
 
 test('sem ledger, byteBalance e null (o runtime nao inventa um saldo)', () => {
-  const mapManager = makeFakeMapManager({ col: 0, row: 1 });
+  const mapManager = makeFakeMapManager({ col: 3, row: 5 });
   const controller = makeFakeController();
   const runtime = new HackRuntime({ mapManager, controller, playerStats: createPlayerStats(1) });
 
@@ -135,7 +135,7 @@ test('sem ledger, byteBalance e null (o runtime nao inventa um saldo)', () => {
 });
 
 test('energyValue/energyMax ficam disponiveis e caem depois de um hack', async () => {
-  const mapManager = makeFakeMapManager({ col: 16, row: 1 });
+  const mapManager = makeFakeMapManager({ col: 15, row: 2 });
   const controller = makeFakeController();
   const energyMeter = new EnergyMeter({ regenPerSecond: 0 });
   const runtime = new HackRuntime({ mapManager, controller, playerStats: createPlayerStats(1), energyMeter, rng: () => 0 });
@@ -145,12 +145,12 @@ test('energyValue/energyMax ficam disponiveis e caem depois de um hack', async (
 
   await runtime.triggerHack();
 
-  // (16,1) e adjacente ao gridcorp_tower, tier raro
+  // (15,2) e adjacente ao gridcorp_tower, tier raro
   assert.equal(runtime.energyValue, energyMeter.max - ENERGY_COST_PER_TIER.raro);
 });
 
 test('sem energyMeter, energyValue/energyMax sao null', () => {
-  const mapManager = makeFakeMapManager({ col: 0, row: 1 });
+  const mapManager = makeFakeMapManager({ col: 3, row: 5 });
   const controller = makeFakeController();
   const runtime = new HackRuntime({ mapManager, controller, playerStats: createPlayerStats(1) });
 
@@ -159,7 +159,7 @@ test('sem energyMeter, energyValue/energyMax sao null', () => {
 });
 
 test('sem energia suficiente, o hack roda mas nao tenta o breach (energyBlocked)', async () => {
-  const mapManager = makeFakeMapManager({ col: 0, row: 1 });
+  const mapManager = makeFakeMapManager({ col: 3, row: 5 });
   const controller = makeFakeController();
   const energyMeter = new EnergyMeter({ regenPerSecond: 0 });
   energyMeter.spend(energyMeter.max - 5); // so 5, menos que o custo do gridcorp_tower (raro, 30)
@@ -196,7 +196,7 @@ test('buyEnergyRefill e recusado fora do PC (outro mapa, ou longe dele dentro do
   energyMeter.spend(50);
 
   const inDistrict = new HackRuntime({
-    mapManager: makeFakeMapManager({ mapId: 'district_07', col: 0, row: 1 }),
+    mapManager: makeFakeMapManager({ mapId: 'district_07', col: 3, row: 5 }),
     controller: makeFakeController(),
     playerStats: createPlayerStats(1),
     energyMeter,
@@ -242,7 +242,7 @@ test('sleep recupera energia parado perto da cama, mas so fora do cooldown', () 
 });
 
 test('sleep e recusado fora da cama', () => {
-  const mapManager = makeFakeMapManager({ mapId: 'district_07', col: 0, row: 1 });
+  const mapManager = makeFakeMapManager({ mapId: 'district_07', col: 3, row: 5 });
   const controller = makeFakeController();
   const energyMeter = new EnergyMeter({ regenPerSecond: 0 });
   const runtime = new HackRuntime({ mapManager, controller, playerStats: createPlayerStats(1), energyMeter });
@@ -378,7 +378,7 @@ test('sentado, o personagem levanta sozinho quando o jogo detecta que ele se afa
 });
 
 test('nao da pra disparar um segundo hack enquanto o primeiro ainda esta rodando', async () => {
-  const mapManager = makeFakeMapManager({ col: 0, row: 1 });
+  const mapManager = makeFakeMapManager({ col: 3, row: 5 });
   const controller = makeFakeController();
   const runtime = new HackRuntime({ mapManager, controller, playerStats: createPlayerStats(1), rng: () => 0 });
 

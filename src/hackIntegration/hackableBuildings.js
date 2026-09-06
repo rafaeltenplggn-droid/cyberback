@@ -9,19 +9,19 @@ export const HACKABLE_BUILDINGS = [
   {
     id: 'gridcorp_tower',
     mapId: 'district_07',
-    building: { originX: 17, originY: 1, footprintW: 4, footprintH: 3 },
+    building: { originX: 16, originY: 0, footprintW: 8, footprintH: 5 },
     target: { id: 'gridcorp_tower_test', tier: 'raro' },
   },
   {
     id: 'nullpoint_bar',
     mapId: 'district_07',
-    building: { originX: 1, originY: 1, footprintW: 4, footprintH: 3 },
+    building: { originX: 0, originY: 0, footprintW: 8, footprintH: 5 },
     target: { id: 'nullpoint_bar_test', tier: 'incomum' },
   },
   {
     id: 'ghost_row_market',
     mapId: 'district_07',
-    building: { originX: 8, originY: 1, footprintW: 4, footprintH: 3 },
+    building: { originX: 8, originY: 0, footprintW: 8, footprintH: 5 },
     target: { id: 'ghost_row_market_test', tier: 'comum' },
   },
 ];

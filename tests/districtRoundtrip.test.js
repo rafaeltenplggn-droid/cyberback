@@ -17,68 +17,77 @@ function makeManager() {
   return new MapManager({ loadMapJson });
 }
 
-test('district_07.json tem 24x16 e as 5 portas para os interiores', async () => {
+test('district_07.json tem 24x16, fundo real (Visual Master) e as 5 portas para os interiores', async () => {
   const raw = await loadMapJson('district_07');
   const map = parseMap(raw);
   assert.equal(map.width, 24);
   assert.equal(map.height, 16);
+  assert.equal(map.background, 'sector7_exterior.png');
 
-  const nullpointDoor = map.getDoorAt(1, 4);
+  const nullpointDoor = map.getDoorAt(4, 5);
   assert.equal(nullpointDoor.target_map, 'nullpoint_interior');
   assert.deepEqual([nullpointDoor.spawn_x, nullpointDoor.spawn_y], [5, 7]);
 
-  const ghostRowDoor = map.getDoorAt(8, 4);
+  const ghostRowDoor = map.getDoorAt(11, 5);
   assert.equal(ghostRowDoor.target_map, 'ghost_row_interior');
   assert.deepEqual([ghostRowDoor.spawn_x, ghostRowDoor.spawn_y], [5, 7]);
 
-  const gridcorpDoor = map.getDoorAt(17, 4);
+  const gridcorpDoor = map.getDoorAt(18, 5);
   assert.equal(gridcorpDoor.target_map, 'gridcorp_interior');
   assert.deepEqual([gridcorpDoor.spawn_x, gridcorpDoor.spawn_y], [5, 7]);
 
-  const homeDoor = map.getDoorAt(2, 10);
+  const homeDoor = map.getDoorAt(7, 13);
   assert.equal(homeDoor.target_map, 'player_home');
   assert.deepEqual([homeDoor.spawn_x, homeDoor.spawn_y], [5, 7]);
 
-  const dataTerminalDoor = map.getDoorAt(17, 10);
+  const dataTerminalDoor = map.getDoorAt(18, 13);
   assert.equal(dataTerminalDoor.target_map, 'data_terminal_interior');
   assert.deepEqual([dataTerminalDoor.spawn_x, dataTerminalDoor.spawn_y], [5, 7]);
 });
 
-test('predios do district_07 bloqueiam o footprint inteiro, streetlamp e planter nao bloqueiam', async () => {
+test('predios do district_07 bloqueiam o footprint que bate com a arte de fundo', async () => {
   const map = parseMap(await loadMapJson('district_07'));
 
-  // nullpoint_bar (BAR), origem 1,1, 4x3
-  assert.equal(map.isBlocked(1, 1), true);
-  assert.equal(map.isBlocked(4, 3), true);
-  // ghost_row_market (BLACKNET), origem 8,1, 4x3
-  assert.equal(map.isBlocked(8, 1), true);
-  assert.equal(map.isBlocked(11, 3), true);
-  // gridcorp_tower (CORP), origem 17,1, 4x3
-  assert.equal(map.isBlocked(17, 1), true);
-  assert.equal(map.isBlocked(20, 3), true);
-  // player_home_building (MY HOME), origem 2,11, 3x3
-  assert.equal(map.isBlocked(2, 11), true);
-  assert.equal(map.isBlocked(4, 13), true);
-  // data_terminal_building, origem 17,11, 3x3
-  assert.equal(map.isBlocked(17, 11), true);
-  assert.equal(map.isBlocked(19, 13), true);
-  // crate_stack_magenta em 21,9, com colisao
-  assert.equal(map.isBlocked(21, 9), true);
+  // nullpoint_bar (BAR), origem 0,0, 8x5
+  assert.equal(map.isBlocked(0, 0), true);
+  assert.equal(map.isBlocked(7, 4), true);
+  // ghost_row_market (BLACKNET), origem 8,0, 8x5
+  assert.equal(map.isBlocked(8, 0), true);
+  assert.equal(map.isBlocked(15, 4), true);
+  // gridcorp_tower (CORP), origem 16,0, 8x5
+  assert.equal(map.isBlocked(16, 0), true);
+  assert.equal(map.isBlocked(23, 4), true);
+  // player_home_building (MY HOME), origem 4,9, 6x4
+  assert.equal(map.isBlocked(4, 9), true);
+  assert.equal(map.isBlocked(9, 12), true);
+  // data_terminal_building, origem 16,9, 5x4
+  assert.equal(map.isBlocked(16, 9), true);
+  assert.equal(map.isBlocked(20, 12), true);
+  // predio de cenario sem porta, origem 0,9, 4x5
+  assert.equal(map.isBlocked(0, 9), true);
+  // borda do mapa (fim da tela): col0, col23 e a ultima linha
+  assert.equal(map.isBlocked(0, 7), true);
+  assert.equal(map.isBlocked(23, 7), true);
+  assert.equal(map.isBlocked(12, 15), true);
 
-  assert.equal(map.isBlocked(10, 6), false); // streetlamp_cyan
-  assert.equal(map.isBlocked(14, 3), false); // planter_green
+  // calcada em frente aos predios, livre
+  assert.equal(map.isBlocked(4, 5), false); // porta do BAR
+  assert.equal(map.isBlocked(11, 5), false); // porta do BLACKNET
+  assert.equal(map.isBlocked(18, 5), false); // porta do CORP
+  assert.equal(map.isBlocked(7, 13), false); // porta da MY HOME
+  assert.equal(map.isBlocked(18, 13), false); // porta do DATA TERMINAL
 });
 
 for (const [interiorId, exteriorDoor] of [
-  ['nullpoint_interior', { x: 1, y: 4 }],
-  ['ghost_row_interior', { x: 8, y: 4 }],
-  ['gridcorp_interior', { x: 17, y: 4 }],
-  ['player_home', { x: 2, y: 10 }],
-  ['data_terminal_interior', { x: 17, y: 10 }],
+  ['nullpoint_interior', { x: 4, y: 5 }],
+  ['ghost_row_interior', { x: 11, y: 5 }],
+  ['gridcorp_interior', { x: 18, y: 5 }],
+  ['player_home', { x: 7, y: 13 }],
+  ['data_terminal_interior', { x: 18, y: 13 }],
 ]) {
   test(`district_07 -> ${interiorId} -> district_07 sem travar em nenhum ponto`, async () => {
     const manager = makeManager();
-    await manager.loadMap('district_07', 5, 5);
+    await manager.loadMap('district_07', 12, 8);
 
     const enterResult = await manager.tryMove(exteriorDoor.x, exteriorDoor.y);
     assert.equal(enterResult.moved, true);
@@ -102,7 +111,7 @@ for (const [interiorId, exteriorDoor] of [
   });
 }
 
-test('os quatro interiores sao salas 10x10 com borda solida e a porta de saida aberta', async () => {
+test('os cinco interiores sao salas 10x10 com borda solida e a porta de saida aberta', async () => {
   for (const id of ['gridcorp_interior', 'nullpoint_interior', 'ghost_row_interior', 'player_home', 'data_terminal_interior']) {
     const map = parseMap(await loadMapJson(id));
     assert.equal(map.width, 10);
@@ -130,12 +139,12 @@ test('player_home tem o PC e a cama bloqueados, no lugar certo, e o spawn de vol
   assert.equal(map.isBlocked(6, 3), true, 'cama bloqueia a celula dela');
 
   const door = map.getDoorAt(5, 9);
-  assert.equal(door.spawn_x, 2);
-  assert.equal(door.spawn_y, 9);
+  assert.equal(door.spawn_x, 7);
+  assert.equal(door.spawn_y, 14);
 
   const districtMap = parseMap(await loadMapJson('district_07'));
-  assert.equal(districtMap.isBlocked(2, 9), false, 'spawn de volta e chao livre, nao a propria porta');
-  assert.equal(districtMap.getDoorAt(2, 9), null, 'spawn de volta nao e, ele mesmo, outra porta');
+  assert.equal(districtMap.isBlocked(7, 14), false, 'spawn de volta e chao livre, nao a propria porta');
+  assert.equal(districtMap.getDoorAt(7, 14), null, 'spawn de volta nao e, ele mesmo, outra porta');
 });
 
 test('nullpoint_interior tem o balcao do bar bloqueado, e o nullpoint_bar continua hackavel normalmente', async () => {
@@ -143,6 +152,6 @@ test('nullpoint_interior tem o balcao do bar bloqueado, e o nullpoint_bar contin
   assert.equal(map.isBlocked(3, 3), true, 'balcao do bar bloqueia a celula dele');
 
   const districtMap = parseMap(await loadMapJson('district_07'));
-  assert.equal(districtMap.isBlocked(1, 1), true, 'nullpoint_bar (predio exterior) continua com colisao normal');
-  assert.equal(districtMap.getDoorAt(1, 4).target_map, 'nullpoint_interior');
+  assert.equal(districtMap.isBlocked(0, 0), true, 'nullpoint_bar (predio exterior) continua com colisao normal');
+  assert.equal(districtMap.getDoorAt(4, 5).target_map, 'nullpoint_interior');
 });

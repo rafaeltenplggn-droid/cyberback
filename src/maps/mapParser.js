@@ -87,6 +87,7 @@ export function parseMap(raw) {
     tileset: raw.tileset,
     width,
     height,
+    background: raw.background ?? null,
     tiles: raw.tiles,
     doors,
     props,
