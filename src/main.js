@@ -85,6 +85,106 @@ function startGame(characterId) {
   const shopStatusEl = document.getElementById('shop-status');
   const workerStatusEl = document.getElementById('worker-status');
 
+  // ---------- Tela de invasao (PC screen) ----------
+  // Overlay visual mostrado durante um hack de predio ou a mineracao do
+  // PC de casa, no lugar do jogador so ver o texto discreto do HUD. Pura
+  // camada de apresentacao: nao muda em nada as regras/numeros do jogo,
+  // so anima o que ja estava acontecendo por baixo (ver hackRuntime.js).
+  const pcScreenEl = document.getElementById('pc-screen');
+  const pcTabTerminalEl = document.getElementById('pc-tab-terminal');
+  const pcTabEquipeEl = document.getElementById('pc-tab-equipe');
+  const pcPanelTerminalEl = document.getElementById('pc-panel-terminal');
+  const pcPanelEquipeEl = document.getElementById('pc-panel-equipe');
+  const pcHeadTargetEl = document.getElementById('pc-head-target');
+  const pcHeadTierEl = document.getElementById('pc-head-tier');
+  const pcLogEl = document.getElementById('pc-log');
+  const pcBarLabelEl = document.getElementById('pc-bar-label');
+  const pcBarFillEl = document.getElementById('pc-bar-fill');
+  const pcBarValEl = document.getElementById('pc-bar-val');
+  const pcWorkersEl = document.getElementById('pc-workers');
+
+  const workerPortraits = {};
+
+  function wait(ms) {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+  }
+
+  function pcScreenSetTab(tab) {
+    const showEquipe = tab === 'equipe';
+    pcTabTerminalEl.dataset.active = String(!showEquipe);
+    pcTabEquipeEl.dataset.active = String(showEquipe);
+    pcPanelTerminalEl.hidden = showEquipe;
+    pcPanelEquipeEl.hidden = !showEquipe;
+  }
+
+  function pcScreenOpen({ showEquipeTab }) {
+    pcScreenEl.hidden = false;
+    pcTabEquipeEl.hidden = !showEquipeTab;
+    pcScreenSetTab('terminal');
+  }
+
+  function pcScreenClose() {
+    pcScreenEl.hidden = true;
+  }
+
+  function pcLogClear() {
+    pcLogEl.innerHTML = '';
+  }
+
+  function pcLogPush(text, cls = '') {
+    const line = document.createElement('div');
+    line.className = `line ${cls}`;
+    line.textContent = text;
+    pcLogEl.appendChild(line);
+    while (pcLogEl.children.length > 9) pcLogEl.removeChild(pcLogEl.firstChild);
+  }
+
+  function pcSetHead(targetLabel, tierLabel) {
+    pcHeadTargetEl.textContent = `ALVO: ${targetLabel}`;
+    pcHeadTierEl.textContent = `TIER: ${tierLabel}`;
+  }
+
+  function pcSetBar(percent, label, valueText) {
+    pcBarLabelEl.textContent = label;
+    pcBarFillEl.style.width = `${Math.max(0, Math.min(100, percent))}%`;
+    pcBarValEl.textContent = valueText;
+  }
+
+  /** Desenha a aba EQUIPE: um card por trabalhador contratavel, com retrato e botao de contratar/status. */
+  function pcRenderWorkers() {
+    pcWorkersEl.innerHTML = '';
+    for (const worker of hackRuntime.hirableWorkers) {
+      if (!workerPortraits[worker.id]) {
+        workerPortraits[worker.id] = loadPortraitImage(worker.id);
+      }
+      const card = document.createElement('div');
+      card.className = 'pc-worker-card';
+
+      const img = workerPortraits[worker.id].cloneNode();
+      const name = document.createElement('div');
+      name.className = 'pc-worker-name';
+      name.textContent = worker.name;
+
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'pc-worker-btn';
+      if (worker.hired) {
+        btn.textContent = 'contratado';
+        btn.classList.add('hired');
+        btn.disabled = true;
+      } else {
+        btn.textContent = `contratar (${WORKER_HIRE_COST_BYTE} BYTE)`;
+        btn.addEventListener('click', () => {
+          handleHireWorker(worker.id);
+          pcRenderWorkers();
+        });
+      }
+
+      card.append(img, name, btn);
+      pcWorkersEl.appendChild(card);
+    }
+  }
+
   function updateStatus() {
     const sittingText = hackRuntime.isSitting ? ' | sentado no banco' : '';
     statusEl.textContent = `mapa: ${mapManager.currentMap.id} | posicao: (${mapManager.playerCol}, ${mapManager.playerRow}) | direcao: ${controller.direction} | pose: ${controller.pose} | trace: ${traceMeter.value.toFixed(1)}${sittingText}`;
@@ -265,11 +365,58 @@ function startGame(characterId) {
     workerStatusEl.textContent = lines.join('\n');
   }
 
+  const MINING_FLAVOR_LINES = [
+    '> escaneando redes abertas...',
+    '> testando credenciais fracas...',
+    '> filtrando trafego de rede...',
+    '> tentando burlar firewall...',
+    '> compilando pacotes de dados...',
+  ];
+
   async function handleMineInformation() {
     if (hackRuntime.isMining) return;
     updateShopStatus();
-    lastMineResult = await hackRuntime.mineInformation();
+
+    pcScreenOpen({ showEquipeTab: true });
+    pcRenderWorkers();
+    pcLogClear();
+    pcSetHead('PC DE CASA', 'MINERACAO');
+    pcSetBar(0, 'MINERANDO', '30s');
+    pcLogPush('> conectando ao PC...', 'ok');
+
+    const resultPromise = hackRuntime.mineInformation();
+    const totalMs = hackRuntime.miningRemainingMs || 30000;
+    let flavorIndex = 0;
+    const intervalId = setInterval(() => {
+      const remaining = hackRuntime.miningRemainingMs;
+      const pct = (1 - remaining / totalMs) * 100;
+      pcSetBar(pct, 'MINERANDO', `${Math.ceil(remaining / 1000)}s`);
+      if (!hackRuntime.isMining) {
+        clearInterval(intervalId);
+        return;
+      }
+      if (Math.random() < 0.4) {
+        pcLogPush(MINING_FLAVOR_LINES[flavorIndex % MINING_FLAVOR_LINES.length], 'ok');
+        flavorIndex += 1;
+      }
+    }, 2500);
+
+    const result = await resultPromise;
+    clearInterval(intervalId);
+    lastMineResult = result;
     updateShopStatus();
+
+    if (result.reason === 'sem_energia') {
+      pcLogPush('> ENERGIA INSUFICIENTE', 'fail');
+    } else if (result.success) {
+      pcSetBar(100, 'CONCLUIDO', '100%');
+      pcLogPush(`> +1 informacao ${result.rarity.toUpperCase()}`, 'hi');
+    } else {
+      pcSetBar(100, 'CONCLUIDO', '100%');
+      pcLogPush('> nenhuma informacao encontrada dessa vez', 'fail');
+    }
+    await wait(2000);
+    pcScreenClose();
   }
 
   function handleSleep() {
@@ -291,6 +438,7 @@ function startGame(characterId) {
     const result = hackRuntime.hireWorker(workerId);
     lastHireResult = { workerId, result };
     updateWorkerStatus();
+    if (!pcScreenEl.hidden && !pcTabEquipeEl.hidden) pcRenderWorkers();
   }
 
   function handleToggleSit() {
@@ -299,15 +447,56 @@ function startGame(characterId) {
     updateShopStatus();
   }
 
+  /**
+   * Sequencia cosmetica de uns 1.5s pra tela de invasao nao parecer
+   * instantanea - o hack de verdade (recon/breach/exfiltrate/fence, ver
+   * hackSession.js) resolve rapido demais pra acompanhar visualmente, e
+   * essa animacao roda em paralelo com ele (Promise.all em handleAction),
+   * sem mudar em nada o tempo/energia/chance reais do hack.
+   */
+  async function runHackAnimation(target) {
+    pcLogPush(`> conectando a ${target.id}...`, 'ok');
+    await wait(280);
+    pcSetBar(20, 'RECON', '20%');
+    pcLogPush('> [RECON] mapeando defesas', 'ok');
+    await wait(320);
+    pcSetBar(55, 'BREACH', '55%');
+    pcLogPush('> [BREACH] tentando quebrar a seguranca', 'ok');
+    await wait(420);
+    pcSetBar(85, 'BREACH', '85%');
+    await wait(320);
+    pcSetBar(100, 'BREACH', '100%');
+  }
+
   async function handleAction() {
     const nearby = hackRuntime.nearbyHackableBuilding();
     if (!nearby) return;
     hackingBuildingId = nearby.id;
     updateHackStatus();
-    const result = await hackRuntime.triggerHack();
+
+    pcScreenOpen({ showEquipeTab: false });
+    pcLogClear();
+    pcSetHead(nearby.id.toUpperCase(), nearby.target.tier.toUpperCase());
+    pcSetBar(0, 'STATUS', '--');
+
+    const [result] = await Promise.all([hackRuntime.triggerHack(), runHackAnimation(nearby)]);
     lastHackResult = result;
     hackingBuildingId = null;
     updateHackStatus();
+
+    if (result.energyBlocked) {
+      pcLogPush('> ENERGIA INSUFICIENTE', 'fail');
+    } else if (!result.breach.success) {
+      pcLogPush('> [BREACH] FALHOU - conexao derrubada', 'fail');
+    } else {
+      pcLogPush('> [BREACH] acesso concedido', 'hi');
+      pcLogPush('> [EXFILTRATE] copiando arquivos...', 'ok');
+      pcLogPush('> [FENCE] convertendo em informacao', 'ok');
+      pcLogPush(`> +1 informacao ${result.informationGained.rarity.toUpperCase()}`, 'hi');
+    }
+    pcLogPush('> conexao encerrada', 'ok');
+    await wait(2200);
+    pcScreenClose();
   }
 
   const MOVE_KEYS = { ArrowUp: 'up', ArrowDown: 'down', ArrowLeft: 'left', ArrowRight: 'right' };
@@ -378,8 +567,16 @@ function startGame(characterId) {
       event.preventDefault();
       const worker = hackRuntime.hirableWorkers[Number(event.key) - 1];
       if (worker) handleHireWorker(worker.id);
+      return;
+    }
+    if (event.key === 'Escape' && !pcScreenEl.hidden) {
+      event.preventDefault();
+      pcScreenClose();
     }
   });
+
+  pcTabTerminalEl.addEventListener('click', () => pcScreenSetTab('terminal'));
+  pcTabEquipeEl.addEventListener('click', () => pcScreenSetTab('equipe'));
 
   window.addEventListener('keyup', (event) => {
     const direction = MOVE_KEYS[event.key];

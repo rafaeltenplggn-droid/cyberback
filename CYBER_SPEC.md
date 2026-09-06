@@ -251,3 +251,32 @@ energetico no balcao/atendente do bar (`src/hackIntegration/drinkShop.js`,
 tecla D, preco `DRINK_COST_BYTE`) - o drink deixou de dar um buff
 temporario de breachSpeed e virou a fonte "premium" de energia
 (`DrinkBuffTracker` foi removido do projeto).
+
+## Tela de invasao (PC screen)
+
+Hackear um predio (ESPACO/ENTER) ou minerar no PC de casa (tecla B) abre
+um overlay visual por cima do jogo - `#pc-screen` em `index.html`, todo
+controlado em `src/main.js` (nenhuma logica de jogo mora ali, so
+apresentacao: le o que `HackRuntime`/`HackSession` ja calculam e anima).
+Visual de monitor CRT (scanlines, fonte `VT323` estilo terminal antigo,
+`Rajdhani`/`IBM Plex Mono` pro resto da UI) - validado antes com um
+mockup interativo mostrado ao usuario.
+
+Duas abas: **TERMINAL** (sempre visivel - log de linhas indo aparecendo
+uma a uma, barra de progresso, alvo/tier no cabecalho) e **EQUIPE** (so
+aparece durante a mineracao no PC, nunca num hack de predio - e onde o
+jogador contrata os trabalhadores, ver secao anterior; cada card mostra o
+retrato do personagem via `loadPortraitImage`, nome, e um botao de
+contratar/status "contratado"). ESC fecha a tela a qualquer momento, mas
+e so cosmetico - o hack/mineracao em andamento continua rodando por
+baixo (o resultado real nao depende da tela estar aberta).
+
+Hackear um predio resolve rapido demais nos bastidores pra acompanhar
+visualmente (breach() nao tem delay real, so um numero simulado) -
+`runHackAnimation()` toca uma sequencia cosmetica de ~1.5s em paralelo
+(`Promise.all` com `hackRuntime.triggerHack()`) so pra nao parecer
+instantaneo, sem mudar nada do tempo/energia/chance reais. Minerar no PC
+ja leva ~30s de verdade (ver secao anterior), entao a tela so acompanha o
+`miningRemainingMs` de verdade (`setInterval` atualizando a barra +
+linhas de "sabor" aleatorias tipo "escaneando redes abertas...") em vez
+de fingir um tempo proprio.
