@@ -7,20 +7,22 @@
 // predio hackavel adjacente a posicao atual?" e dispara o hack pra ele.
 import { HackSession } from './hackSession.js';
 import { findHackableBuildingAt, HACKABLE_BUILDINGS } from './hackableBuildings.js';
-import { buyEnergyRefill as buyEnergyRefillAction } from './energyShop.js';
 import { nearbyHomeInteractable as nearbyHomeInteractableAt } from './homeLocations.js';
 import { SleepTracker } from './sleepAction.js';
 import { nearbyBarInteractable as nearbyBarInteractableAt, BAR_HACKABLE_BUILDING_ID } from './barLocations.js';
-import { DrinkBuffTracker } from './drinkBuff.js';
+import { nearbyBlacknetInteractable as nearbyBlacknetInteractableAt } from './blacknetLocations.js';
 import { buyDrink as buyDrinkAction } from './drinkShop.js';
+import { InformationLedger } from './informationLedger.js';
+import { mineInformation as mineInformationAction } from './infoMining.js';
 
 export class HackRuntime {
   constructor({ mapManager, controller, playerStats, traceMeter, energyMeter, ledger, rng, now } = {}) {
     this.mapManager = mapManager;
     this.controller = controller;
     this.ledger = ledger;
-    const drinkBuffTracker = new DrinkBuffTracker(now ? { now } : undefined);
-    this.hackSession = new HackSession({ playerStats, traceMeter, energyMeter, drinkBuffTracker, ledger, rng });
+    this.rng = rng ?? Math.random;
+    this.informationLedger = new InformationLedger();
+    this.hackSession = new HackSession({ playerStats, traceMeter, energyMeter, informationLedger: this.informationLedger, rng });
     this.sleepTracker = new SleepTracker(now ? { now } : undefined);
     this._sitting = false;
   }
@@ -105,16 +107,21 @@ export class HackRuntime {
     return nearbyHomeInteractableAt(this.mapManager);
   }
 
-  /** Compra uma recarga de energia com BYTE. So funciona parado ao lado do PC, no player_home. */
-  buyEnergyRefill() {
+  /** Contagem atual de Informacao por raridade, e o total (ver informationLedger.js). */
+  get informationCounts() {
+    return this.informationLedger.counts;
+  }
+
+  get informationTotal() {
+    return this.informationLedger.total;
+  }
+
+  /** Minera informacao (chance fixa de sucesso). So funciona parado ao lado do PC, no player_home. */
+  mineInformation() {
     if (this.nearbyHomeInteractable() !== 'pc') {
-      return { success: false, reason: 'fora_do_pc', byteSpent: 0 };
+      return { success: false, reason: 'fora_do_pc' };
     }
-    const energyMeter = this.hackSession.energyMeter;
-    if (!energyMeter || !this.ledger) {
-      return { success: false, reason: 'loja_indisponivel', byteSpent: 0 };
-    }
-    return buyEnergyRefillAction({ energyMeter, ledger: this.ledger });
+    return mineInformationAction({ informationLedger: this.informationLedger, rng: this.rng });
   }
 
   /** Dorme na cama: recupera energia de graca, mas so fora do cooldown. So funciona parado ao lado da cama. */
@@ -136,20 +143,40 @@ export class HackRuntime {
     return nearbyBarInteractableAt(this.mapManager);
   }
 
-  get drinkBuffTracker() {
-    return this.hackSession.drinkBuffTracker;
-  }
-
-  /** Compra um drink: da um bonus temporario de breachSpeed. Funciona parado ao lado do balcao ou do atendente (mesma loja, dois pontos de acesso). */
+  /** Compra um energetico: recarrega a energia com BYTE. Funciona parado ao lado do balcao ou do atendente (mesma loja, dois pontos de acesso). */
   buyDrink() {
     const nearby = this.nearbyBarInteractable();
     if (nearby !== 'counter' && nearby !== 'bartender') {
       return { success: false, reason: 'fora_do_balcao', byteSpent: 0 };
     }
-    if (!this.ledger) {
+    const energyMeter = this.hackSession.energyMeter;
+    if (!energyMeter || !this.ledger) {
       return { success: false, reason: 'loja_indisponivel', byteSpent: 0 };
     }
-    return buyDrinkAction({ buffTracker: this.drinkBuffTracker, ledger: this.ledger });
+    return buyDrinkAction({ energyMeter, ledger: this.ledger });
+  }
+
+  /** 'sell' ou null - se o personagem esta parado no ponto de venda dentro da BLACKNET (ghost_row_interior). */
+  nearbyBlacknetInteractable() {
+    if (this.isMovementBlocked) return null;
+    if (this.controller.isMoving) return null;
+    return nearbyBlacknetInteractableAt(this.mapManager);
+  }
+
+  /** Vende todo o estoque de Informacao por BYTE. So funciona parado no ponto de venda, dentro da BLACKNET. */
+  sellInformation() {
+    if (this.nearbyBlacknetInteractable() !== 'sell') {
+      return { success: false, reason: 'fora_da_blacknet', byteEarned: 0, sold: {} };
+    }
+    if (!this.ledger) {
+      return { success: false, reason: 'loja_indisponivel', byteEarned: 0, sold: {} };
+    }
+    const { byteEarned, sold } = this.informationLedger.sellAll();
+    if (byteEarned === 0) {
+      return { success: false, reason: 'sem_informacao', byteEarned: 0, sold: {} };
+    }
+    this.ledger.record({ type: 'gain', amount: byteEarned, meta: { source: 'blacknet_sell' } });
+    return { success: true, reason: null, byteEarned, sold };
   }
 
   get isSitting() {

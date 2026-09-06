@@ -4,9 +4,9 @@ import { isAdjacentToBuilding, findHackableBuildingAt, HACKABLE_BUILDINGS } from
 
 test('HACKABLE_BUILDINGS lista os 3 predios de district_07 com os tiers combinados', () => {
   const byId = Object.fromEntries(HACKABLE_BUILDINGS.map((b) => [b.id, b]));
-  assert.equal(byId.gridcorp_tower.target.tier, 'raro');
+  assert.equal(byId.gridcorp_tower.target.tier, 'comum');
   assert.equal(byId.nullpoint_bar.target.tier, 'incomum');
-  assert.equal(byId.ghost_row_market.target.tier, 'comum');
+  assert.equal(byId.ghost_row_market.target.tier, 'raro'); // BLACKNET, o mercado negro - o mais dificil
   for (const entry of HACKABLE_BUILDINGS) {
     assert.equal(entry.mapId, 'district_07');
   }

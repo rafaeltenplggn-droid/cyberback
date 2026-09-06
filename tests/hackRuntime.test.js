@@ -105,7 +105,7 @@ test('movimento fica bloqueado durante o hack e libera de novo quando termina (f
   assert.equal(runtime.isMovementBlocked, false, 'movimento libera mesmo quando o hack falha');
 });
 
-test('playerStats e byteBalance ficam disponiveis no runtime e evoluem depois de um hack bem sucedido', async () => {
+test('playerStats evolui e a informacao aparece no informationLedger depois de um hack bem sucedido (BYTE nao muda mais direto)', async () => {
   const mapManager = makeFakeMapManager({ col: 3, row: 5 });
   const controller = makeFakeController();
   const ledger = new ByteLedger();
@@ -119,11 +119,13 @@ test('playerStats e byteBalance ficam disponiveis no runtime e evoluem depois de
 
   assert.equal(runtime.playerStats.xp, 0);
   assert.equal(runtime.byteBalance, 0);
+  assert.equal(runtime.informationTotal, 0);
 
   await runtime.triggerHack();
 
   assert.ok(runtime.playerStats.xp > 0, 'xp sobe depois de um hack bem sucedido');
-  assert.ok(runtime.byteBalance > 0, 'BYTE ganho aparece no saldo do ledger');
+  assert.equal(runtime.byteBalance, 0, 'hackear predio nao credita BYTE direto mais');
+  assert.equal(runtime.informationTotal, 1, 'informacao aparece no estoque');
 });
 
 test('sem ledger, byteBalance e null (o runtime nao inventa um saldo)', () => {
@@ -145,8 +147,8 @@ test('energyValue/energyMax ficam disponiveis e caem depois de um hack', async (
 
   await runtime.triggerHack();
 
-  // (15,2) e adjacente ao gridcorp_tower, tier raro
-  assert.equal(runtime.energyValue, energyMeter.max - ENERGY_COST_PER_TIER.raro);
+  // (15,2) e adjacente ao gridcorp_tower, tier comum
+  assert.equal(runtime.energyValue, energyMeter.max - ENERGY_COST_PER_TIER.comum);
 });
 
 test('sem energyMeter, energyValue/energyMax sao null', () => {
@@ -172,48 +174,44 @@ test('sem energia suficiente, o hack roda mas nao tenta o breach (energyBlocked)
   assert.equal(runtime.isMovementBlocked, false, 'movimento libera normalmente mesmo bloqueado por energia');
 });
 
-test('buyEnergyRefill compra a recarga quando parado perto do PC no player_home', async () => {
+test('mineInformation rende informacao comum quando parado perto do PC no player_home (chance de sucesso)', () => {
   const mapManager = makeFakeMapManager({ mapId: 'player_home', col: 2, row: 3 }); // oeste do PC (origem 3,3)
   const controller = makeFakeController();
-  const energyMeter = new EnergyMeter({ regenPerSecond: 0 });
-  const ledger = new ByteLedger();
-  ledger.record({ type: 'gain', amount: 100 });
-  const runtime = new HackRuntime({ mapManager, controller, playerStats: createPlayerStats(1), energyMeter, ledger });
+  const runtime = new HackRuntime({ mapManager, controller, playerStats: createPlayerStats(1), rng: () => 0 });
 
   assert.equal(runtime.nearbyHomeInteractable(), 'pc');
-  energyMeter.spend(50); // 50/100
-  const result = runtime.buyEnergyRefill();
+  const result = runtime.mineInformation();
 
   assert.equal(result.success, true);
-  assert.equal(runtime.energyValue, energyMeter.max);
-  assert.ok(runtime.byteBalance < 100, 'BYTE foi descontado');
+  assert.equal(result.rarity, 'comum');
+  assert.equal(runtime.informationCounts.comum, 1);
 });
 
-test('buyEnergyRefill e recusado fora do PC (outro mapa, ou longe dele dentro do player_home)', () => {
-  const energyMeter = new EnergyMeter({ regenPerSecond: 0 });
-  const ledger = new ByteLedger();
-  ledger.record({ type: 'gain', amount: 100 });
-  energyMeter.spend(50);
+test('mineInformation pode falhar (rng alto) sem conceder informacao nenhuma', () => {
+  const mapManager = makeFakeMapManager({ mapId: 'player_home', col: 2, row: 3 });
+  const controller = makeFakeController();
+  const runtime = new HackRuntime({ mapManager, controller, playerStats: createPlayerStats(1), rng: () => 0.999999 });
 
+  const result = runtime.mineInformation();
+
+  assert.equal(result.success, false);
+  assert.equal(runtime.informationTotal, 0);
+});
+
+test('mineInformation e recusado fora do PC (outro mapa, ou longe dele dentro do player_home)', () => {
   const inDistrict = new HackRuntime({
     mapManager: makeFakeMapManager({ mapId: 'district_07', col: 3, row: 5 }),
     controller: makeFakeController(),
     playerStats: createPlayerStats(1),
-    energyMeter,
-    ledger,
   });
-  assert.equal(inDistrict.buyEnergyRefill().reason, 'fora_do_pc');
+  assert.equal(inDistrict.mineInformation().reason, 'fora_do_pc');
 
   const farFromPc = new HackRuntime({
     mapManager: makeFakeMapManager({ mapId: 'player_home', col: 8, row: 8 }),
     controller: makeFakeController(),
     playerStats: createPlayerStats(1),
-    energyMeter,
-    ledger,
   });
-  assert.equal(farFromPc.buyEnergyRefill().reason, 'fora_do_pc');
-
-  assert.equal(energyMeter.value, 50, 'nenhuma das tentativas recusadas mexeu na energia');
+  assert.equal(farFromPc.mineInformation().reason, 'fora_do_pc');
 });
 
 test('sleep recupera energia parado perto da cama, mas so fora do cooldown', () => {
@@ -252,33 +250,37 @@ test('sleep e recusado fora da cama', () => {
   assert.equal(result.reason, 'fora_da_cama');
 });
 
-test('buyDrink compra o drink e ativa o buff quando parado perto do balcao do bar', () => {
+test('buyDrink compra o energetico e recarrega a energia quando parado perto do balcao do bar', () => {
   const mapManager = makeFakeMapManager({ mapId: 'nullpoint_interior', col: 2, row: 3 }); // oeste do balcao (origem 3,3)
   const controller = makeFakeController();
   const ledger = new ByteLedger();
   ledger.record({ type: 'gain', amount: 100 });
-  const runtime = new HackRuntime({ mapManager, controller, playerStats: createPlayerStats(1), ledger });
+  const energyMeter = new EnergyMeter({ regenPerSecond: 0 });
+  const runtime = new HackRuntime({ mapManager, controller, playerStats: createPlayerStats(1), ledger, energyMeter });
 
   assert.equal(runtime.nearbyBarInteractable(), 'counter');
-  assert.equal(runtime.drinkBuffTracker.isActive(), false);
+  energyMeter.spend(50); // 50/100
 
   const result = runtime.buyDrink();
 
   assert.equal(result.success, true);
   assert.equal(result.byteSpent, DRINK_COST_BYTE);
-  assert.equal(runtime.drinkBuffTracker.isActive(), true);
+  assert.equal(runtime.energyValue, energyMeter.max);
   assert.equal(runtime.byteBalance, 100 - DRINK_COST_BYTE);
 });
 
 test('buyDrink e recusado fora do balcao (outro mapa, ou longe dele dentro do bar)', () => {
   const ledger = new ByteLedger();
   ledger.record({ type: 'gain', amount: 100 });
+  const energyMeter = new EnergyMeter({ regenPerSecond: 0 });
+  energyMeter.spend(50);
 
   const inDistrict = new HackRuntime({
     mapManager: makeFakeMapManager({ mapId: 'district_07', col: 9, row: 4 }),
     controller: makeFakeController(),
     playerStats: createPlayerStats(1),
     ledger,
+    energyMeter,
   });
   assert.equal(inDistrict.buyDrink().reason, 'fora_do_balcao');
 
@@ -287,6 +289,7 @@ test('buyDrink e recusado fora do balcao (outro mapa, ou longe dele dentro do ba
     controller: makeFakeController(),
     playerStats: createPlayerStats(1),
     ledger,
+    energyMeter,
   });
   assert.equal(farFromCounter.buyDrink().reason, 'fora_do_balcao');
 
@@ -321,7 +324,9 @@ test('parado perto do atendente do bar, nearbyBarInteractable retorna "bartender
   const controller = makeFakeController();
   const ledger = new ByteLedger();
   ledger.record({ type: 'gain', amount: 100 });
-  const runtime = new HackRuntime({ mapManager, controller, playerStats: createPlayerStats(1), ledger });
+  const energyMeter = new EnergyMeter({ regenPerSecond: 0 });
+  energyMeter.spend(50);
+  const runtime = new HackRuntime({ mapManager, controller, playerStats: createPlayerStats(1), ledger, energyMeter });
 
   assert.equal(runtime.nearbyBarInteractable(), 'bartender');
   assert.equal(runtime.nearbyHackableBuilding(), null);
@@ -331,7 +336,7 @@ test('parado perto do atendente do bar, nearbyBarInteractable retorna "bartender
   const result = runtime.buyDrink();
   assert.equal(result.success, true);
   assert.equal(result.byteSpent, DRINK_COST_BYTE);
-  assert.equal(runtime.drinkBuffTracker.isActive(), true);
+  assert.equal(runtime.energyValue, energyMeter.max);
 });
 
 test('toggleSit senta parado perto do banco, levanta de qualquer lugar, e levanta sozinho ao se afastar', () => {
@@ -388,4 +393,42 @@ test('nao da pra disparar um segundo hack enquanto o primeiro ainda esta rodando
 
   await first;
   assert.equal(runtime.canTriggerHack(), true, 'depois de terminar, um novo hack pode ser disparado');
+});
+
+test('sellInformation vende o estoque por BYTE quando parado no ponto de venda da BLACKNET', () => {
+  const mapManager = makeFakeMapManager({ mapId: 'ghost_row_interior', col: 4, row: 5 }); // oeste do ponto de venda (origem 5,5)
+  const controller = makeFakeController();
+  const ledger = new ByteLedger();
+  const runtime = new HackRuntime({ mapManager, controller, playerStats: createPlayerStats(1), ledger });
+
+  runtime.informationLedger.add('comum', 2);
+  assert.equal(runtime.nearbyBlacknetInteractable(), 'sell');
+
+  const result = runtime.sellInformation();
+
+  assert.equal(result.success, true);
+  assert.ok(result.byteEarned > 0);
+  assert.equal(runtime.byteBalance, result.byteEarned);
+  assert.equal(runtime.informationTotal, 0, 'estoque zerado depois da venda');
+});
+
+test('sellInformation e recusado fora do ponto de venda, e com o estoque vazio', () => {
+  const ledger = new ByteLedger();
+
+  const farFromSellPoint = new HackRuntime({
+    mapManager: makeFakeMapManager({ mapId: 'ghost_row_interior', col: 1, row: 8 }),
+    controller: makeFakeController(),
+    playerStats: createPlayerStats(1),
+    ledger,
+  });
+  farFromSellPoint.informationLedger.add('comum');
+  assert.equal(farFromSellPoint.sellInformation().reason, 'fora_da_blacknet');
+
+  const emptyStock = new HackRuntime({
+    mapManager: makeFakeMapManager({ mapId: 'ghost_row_interior', col: 4, row: 5 }),
+    controller: makeFakeController(),
+    playerStats: createPlayerStats(1),
+    ledger,
+  });
+  assert.equal(emptyStock.sellInformation().reason, 'sem_informacao');
 });
