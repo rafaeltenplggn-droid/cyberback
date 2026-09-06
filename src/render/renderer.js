@@ -93,6 +93,8 @@ export class Renderer {
     const ctx = this.ctx;
     ctx.save();
     ctx.globalCompositeOperation = 'lighter';
+    const prevSmoothing = ctx.imageSmoothingEnabled;
+    ctx.imageSmoothingEnabled = false;
     for (const r of reflections) {
       const { x, y } = gridToScreen(r.x, r.y, this.originX, this.originY);
       const radiusPx = r.radius * TILE_SIZE;
@@ -102,14 +104,44 @@ export class Renderer {
       const amplitude = r.amplitude ?? 0.06;
       const alpha = baseAlpha + amplitude * Math.sin((nowMs / periodMs) * Math.PI * 2 + phase);
 
-      const gradient = ctx.createRadialGradient(x, y, 0, x, y, radiusPx);
-      gradient.addColorStop(0, hexToRgba(r.color, Math.max(alpha, 0)));
-      gradient.addColorStop(1, hexToRgba(r.color, 0));
-
-      ctx.fillStyle = gradient;
-      ctx.fillRect(x - radiusPx, y - radiusPx, radiusPx * 2, radiusPx * 2);
+      const glow = this._pixelGlow(r.color, Math.max(alpha, 0));
+      const size = radiusPx * 2;
+      ctx.drawImage(glow, x - radiusPx, y - radiusPx, size, size);
     }
+    ctx.imageSmoothingEnabled = prevSmoothing;
     ctx.restore();
+  }
+
+  // Poca de luz "em pixels" em vez do gradiente radial liso de antes -
+  // desenha um circulo em baixa resolucao (PIXEL_GLOW_RES x RES) e deixa o
+  // proprio drawImage (com imageSmoothingEnabled=false) fazer o upscale sem
+  // suavizar, bem no espirito do resto da arte pixel-art. Cacheado por
+  // cor+alpha (arredondado) pra nao recriar canvas a cada frame.
+  _pixelGlow(color, alpha) {
+    const RES = 10;
+    const rounded = Math.round(alpha * 50) / 50;
+    if (!this._glowCache) this._glowCache = new Map();
+    const key = `${color}|${rounded}`;
+    const cached = this._glowCache.get(key);
+    if (cached) return cached;
+
+    const canvas = document.createElement('canvas');
+    canvas.width = RES;
+    canvas.height = RES;
+    const c = canvas.getContext('2d');
+    const center = RES / 2;
+    for (let py = 0; py < RES; py++) {
+      for (let px = 0; px < RES; px++) {
+        const dx = px + 0.5 - center;
+        const dy = py + 0.5 - center;
+        const dist = Math.sqrt(dx * dx + dy * dy) / center;
+        if (dist > 1) continue;
+        c.fillStyle = hexToRgba(color, Math.max(rounded * (1 - dist), 0));
+        c.fillRect(px, py, 1, 1);
+      }
+    }
+    this._glowCache.set(key, canvas);
+    return canvas;
   }
 
   // Props e personagem sao desenhados juntos, ordenados por profundidade
