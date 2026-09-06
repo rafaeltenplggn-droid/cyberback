@@ -94,13 +94,24 @@ export class Renderer {
     ctx.save();
     ctx.globalCompositeOperation = 'lighter';
     for (const r of reflections) {
-      const { x, y } = gridToScreen(r.x, r.y, this.originX, this.originY);
+      const { x: baseX, y: baseY } = gridToScreen(r.x, r.y, this.originX, this.originY);
       const radiusPx = r.radius * TILE_SIZE;
       const phase = r.phase ?? 0;
       const periodMs = r.periodMs ?? 3000;
       const baseAlpha = r.baseAlpha ?? 0.12;
       const amplitude = r.amplitude ?? 0.06;
       const alpha = baseAlpha + amplitude * Math.sin((nowMs / periodMs) * Math.PI * 2 + phase);
+
+      // Deriva de posicao: o proprio reflexo balanca alguns pixels, tipo
+      // agua tremulando, em vez de so a opacidade mudar no lugar fixo.
+      // Periodo/fase levemente diferentes nos eixos x/y (e do pulso de
+      // opacidade) pra nao parecer um "respirar" mecanico e sim organico.
+      const driftPx = r.driftPx ?? 5;
+      const driftPeriodMs = r.driftPeriodMs ?? periodMs * 1.4;
+      const dx = driftPx * Math.sin((nowMs / driftPeriodMs) * Math.PI * 2 + phase);
+      const dy = driftPx * 0.6 * Math.cos((nowMs / driftPeriodMs) * Math.PI * 2 + phase * 0.7);
+      const x = baseX + dx;
+      const y = baseY + dy;
 
       const gradient = ctx.createRadialGradient(x, y, 0, x, y, radiusPx);
       gradient.addColorStop(0, hexToRgba(r.color, Math.max(alpha, 0)));
