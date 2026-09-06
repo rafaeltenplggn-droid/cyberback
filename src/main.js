@@ -57,6 +57,20 @@ const PET_EAR_WIGGLE_PERIOD_MS = 1300;
 // do colchao - calibrado a olho contra o fundo (player_home_interior.png).
 const PET_BED_OFFSET_X_PX = 34;
 const PET_BED_OFFSET_Y_PX = 18;
+// De vez em quando o pet se espreguica: um squash/stretch rapido em cima
+// da MESMA arte (sem pose nova de verdade) - fica a maior parte do tempo
+// parado (so a orelha mexe) e, a cada PET_STRETCH_PERIOD_MS, estica por
+// PET_STRETCH_DURATION_MS antes de voltar ao normal.
+const PET_STRETCH_PERIOD_MS = 16000;
+const PET_STRETCH_DURATION_MS = 1100;
+
+/** {sx,sy} do momento (1,1 na maior parte do tempo) - ver PET_ROOM_SPRITES/drawPet. */
+function petStretchScale(nowMs, phaseMs) {
+  const t = (nowMs + phaseMs) % PET_STRETCH_PERIOD_MS;
+  if (t > PET_STRETCH_DURATION_MS) return { sx: 1, sy: 1 };
+  const ease = Math.sin((t / PET_STRETCH_DURATION_MS) * Math.PI);
+  return { sx: 1 - 0.05 * ease, sy: 1 + 0.07 * ease };
+}
 
 const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
@@ -402,6 +416,7 @@ function startGame(characterId) {
       const phase = index * 2.1;
       const angle = PET_EAR_WIGGLE_MAX_RAD * Math.sin((nowMs / PET_EAR_WIGGLE_PERIOD_MS) * Math.PI * 2 + phase);
       const xOffsetPx = PET_BED_OFFSET_X_PX + startOffset + index * spacingPx;
+      const stretch = petStretchScale(nowMs, index * 5300);
       mapRenderer.drawPet(
         HOME_BED_LOCATION.originX,
         HOME_BED_LOCATION.originY,
@@ -409,7 +424,8 @@ function startGame(characterId) {
         PET_ROOM_ART_HEIGHT_PX,
         angle,
         xOffsetPx,
-        PET_BED_OFFSET_Y_PX
+        PET_BED_OFFSET_Y_PX,
+        stretch
       );
     });
   }

@@ -254,12 +254,26 @@ export class Renderer {
    * onde ela encosta na cabeca. A outra orelha (se houver) fica parada,
    * ja desenhada dentro do proprio `body`.
    */
-  drawPet(originCol, originRow, sprites, artHeightPx, wiggleAngleRad, xOffsetPx = 0, yOffsetPx = 0) {
+  /**
+   * `bodyScale` ({sx,sy}, opcional) espreguica o pet inteiro (corpo +
+   * orelha juntos) em torno do proprio anchor (base onde encosta na
+   * cama) - ver stretchScale() em main.js. So mais uma variacao
+   * procedural em cima da MESMA arte (sem sprite-sheet novo), mesmo
+   * espirito do balanco da orelha.
+   */
+  drawPet(originCol, originRow, sprites, artHeightPx, wiggleAngleRad, xOffsetPx = 0, yOffsetPx = 0, bodyScale = null) {
     const { body, ear, earBox, earPivot } = sprites;
     if (!isImageReady(body) || !isImageReady(ear)) return;
     const ctx = this.ctx;
     const anchorX = this.originX + (originCol + 0.5) * TILE_SIZE + xOffsetPx;
     const anchorY = this.originY + (originRow + 1) * TILE_SIZE + yOffsetPx;
+
+    ctx.save();
+    if (bodyScale) {
+      ctx.translate(anchorX, anchorY);
+      ctx.scale(bodyScale.sx, bodyScale.sy);
+      ctx.translate(-anchorX, -anchorY);
+    }
 
     const scale = artHeightPx / Renderer.PET_SPRITE_SIZE;
     const fullSize = Renderer.PET_SPRITE_SIZE * scale;
@@ -277,6 +291,8 @@ export class Renderer {
     const earOffsetX = (earBox.x - earPivot.x) * scale;
     const earOffsetY = (earBox.y - earPivot.y) * scale;
     ctx.drawImage(ear, earOffsetX, earOffsetY, earBox.w * scale, earBox.h * scale);
+    ctx.restore();
+
     ctx.restore();
   }
 
