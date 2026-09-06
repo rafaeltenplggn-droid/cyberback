@@ -102,6 +102,10 @@ function startGame(characterId) {
   const pcBarFillEl = document.getElementById('pc-bar-fill');
   const pcBarValEl = document.getElementById('pc-bar-val');
   const pcWorkersEl = document.getElementById('pc-workers');
+  const pcMenuEl = document.getElementById('pc-menu');
+  const pcRunEl = document.getElementById('pc-run');
+  const pcMenuMineBtn = document.getElementById('pc-menu-mine');
+  const pcMenuTargetsEl = document.getElementById('pc-menu-targets');
 
   const workerPortraits = {};
 
@@ -125,6 +129,67 @@ function startGame(characterId) {
 
   function pcScreenClose() {
     pcScreenEl.hidden = true;
+  }
+
+  /** Mostra o menu de acoes (minerar / hackear remoto) no lugar do terminal em execucao. */
+  function pcScreenShowMenu() {
+    pcMenuEl.hidden = false;
+    pcRunEl.hidden = true;
+  }
+
+  /** Mostra o terminal em execucao (log + barra) no lugar do menu. */
+  function pcScreenShowRun() {
+    pcMenuEl.hidden = true;
+    pcRunEl.hidden = false;
+  }
+
+  /**
+   * Desenha o menu de acoes disponiveis no PC: minerar, e a lista dos 3
+   * predios pra hackear remoto (com o nivel minimo de cada um). So
+   * habilita os botoes quando nao ha nada em andamento (isMovementBlocked).
+   */
+  function renderPcMenu() {
+    const busy = hackRuntime.isMovementBlocked;
+    const energyCost = hackRuntime.energyMax != null ? Math.round(hackRuntime.energyMax * INFO_MINING_ENERGY_COST_RATIO) : null;
+    pcMenuMineBtn.textContent = `[Minerar] informacao no PC (~30s, chance de sucesso, gasta ${energyCost} de energia)`;
+    pcMenuMineBtn.disabled = busy;
+
+    pcMenuTargetsEl.innerHTML = '';
+    for (const entryTarget of hackRuntime.remoteHackTargets) {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'pc-menu-btn';
+      if (entryTarget.locked) {
+        btn.textContent = `${entryTarget.id.toUpperCase()} (tier ${entryTarget.tier}) - requer nivel ${entryTarget.requiredLevel}`;
+        btn.disabled = true;
+      } else {
+        btn.textContent = `[Hackear] ${entryTarget.id.toUpperCase()} (tier ${entryTarget.tier})`;
+        btn.disabled = busy;
+        btn.addEventListener('click', () => startRemoteHack(entryTarget.id));
+      }
+      pcMenuTargetsEl.appendChild(btn);
+    }
+  }
+
+  /**
+   * Escreve no log/barra o desfecho de um hack (fisico ou remoto) -
+   * compartilhado entre handleAction() e startRemoteHack() pra nao
+   * duplicar a mesma logica de "o que mostrar pra cada tipo de resultado".
+   */
+  function pcRevealHackResult(result) {
+    if (result.levelBlocked) {
+      pcLogPush(`> NIVEL INSUFICIENTE (precisa nivel ${result.requiredLevel}, tem ${result.playerLevel})`, 'fail');
+    } else if (result.energyBlocked) {
+      pcLogPush('> ENERGIA INSUFICIENTE', 'fail');
+    } else if (!result.breach.success) {
+      pcLogPush('> [BREACH] FALHOU - conexao derrubada', 'fail');
+    } else {
+      pcLogPush('> [BREACH] acesso concedido', 'hi');
+      pcLogPush('> [EXFILTRATE] copiando arquivos...', 'ok');
+      pcLogPush('> [FENCE] convertendo em informacao', 'ok');
+      pcLogPush(`> +1 informacao ${result.informationGained.rarity.toUpperCase()}`, 'hi');
+    }
+    pcLogPush('> conexao encerrada', 'ok');
   }
 
   function pcLogClear() {
@@ -207,7 +272,11 @@ function startGame(characterId) {
       return;
     }
     if (lastHackResult) {
-      const { target, recon, breach, exfiltrate, informationGained, energyBlocked, energySpent } = lastHackResult;
+      const { target, recon, breach, exfiltrate, informationGained, energyBlocked, energySpent, levelBlocked, requiredLevel, playerLevel } = lastHackResult;
+      if (levelBlocked) {
+        hackStatusEl.textContent = `ultimo hack (${target.id}, tier ${target.tier}): NIVEL INSUFICIENTE (precisa nivel ${requiredLevel}, tem ${playerLevel})`;
+        return;
+      }
       if (energyBlocked) {
         hackStatusEl.textContent = `ultimo hack (${target.id}, tier ${target.tier}): SEM ENERGIA (atual: ${hackRuntime.energyValue.toFixed(0)}/${hackRuntime.energyMax}) | espera recarregar | estimativa que o recon deu: ${recon.estimatedLoot.min}-${recon.estimatedLoot.max}`;
         return;
@@ -299,7 +368,7 @@ function startGame(characterId) {
         const secs = Math.ceil(hackRuntime.miningRemainingMs / 1000);
         shopStatusEl.textContent = `[B] minerando... ${secs}s`;
       } else if (!lastMineResult) {
-        shopStatusEl.textContent = `[B] minerar informacao (~30s, chance de sucesso, gasta ${energyCost} de energia)`;
+        shopStatusEl.textContent = '[B] abrir o PC (minerar ou hackear remoto)';
       } else if (lastMineResult.success) {
         shopStatusEl.textContent = `[B] minerou com sucesso: +1 informacao ${lastMineResult.rarity} (energia gasta: ${lastMineResult.energySpent})`;
       } else if (lastMineResult.reason === 'sem_energia') {
@@ -373,12 +442,26 @@ function startGame(characterId) {
     '> compilando pacotes de dados...',
   ];
 
-  async function handleMineInformation() {
+  /**
+   * Abre a tela do PC no MENU (nao comeca nada sozinho) - o jogador
+   * escolhe minerar ou hackear um dos predios remoto, e so ai a acao
+   * comeca de verdade (startMining/startRemoteHack). So funciona parado
+   * no PC, no player_home.
+   */
+  function handleOpenPc() {
+    if (hackRuntime.nearbyHomeInteractable() !== 'pc') return;
+    if (hackRuntime.isMovementBlocked) return;
+    pcScreenOpen({ showEquipeTab: true });
+    renderPcMenu();
+    pcRenderWorkers();
+    pcScreenShowMenu();
+  }
+
+  async function startMining() {
     if (hackRuntime.isMining) return;
     updateShopStatus();
 
-    pcScreenOpen({ showEquipeTab: true });
-    pcRenderWorkers();
+    pcScreenShowRun();
     pcLogClear();
     pcSetHead('PC DE CASA', 'MINERACAO');
     pcSetBar(0, 'MINERANDO', '30s');
@@ -416,7 +499,33 @@ function startGame(characterId) {
       pcLogPush('> nenhuma informacao encontrada dessa vez', 'fail');
     }
     await wait(2000);
-    pcScreenClose();
+    if (pcScreenEl.hidden) return;
+    renderPcMenu();
+    pcScreenShowMenu();
+  }
+
+  /** Hackeia um dos 3 predios remotamente, direto do menu do PC (ver hackRuntime.triggerRemoteHack). */
+  async function startRemoteHack(buildingId) {
+    const target = hackRuntime.remoteHackTargets.find((t) => t.id === buildingId);
+    if (!target || target.locked) return;
+
+    pcScreenShowRun();
+    pcLogClear();
+    pcSetHead(buildingId.toUpperCase(), target.tier.toUpperCase());
+    pcSetBar(0, 'STATUS', '--');
+
+    const [result] = await Promise.all([
+      hackRuntime.triggerRemoteHack(buildingId),
+      runHackAnimation({ id: buildingId }),
+    ]);
+    lastHackResult = result;
+    updateHackStatus();
+    pcRevealHackResult(result);
+
+    await wait(2200);
+    if (pcScreenEl.hidden) return;
+    renderPcMenu();
+    pcScreenShowMenu();
   }
 
   function handleSleep() {
@@ -475,6 +584,7 @@ function startGame(characterId) {
     updateHackStatus();
 
     pcScreenOpen({ showEquipeTab: false });
+    pcScreenShowRun();
     pcLogClear();
     pcSetHead(nearby.id.toUpperCase(), nearby.target.tier.toUpperCase());
     pcSetBar(0, 'STATUS', '--');
@@ -483,18 +593,8 @@ function startGame(characterId) {
     lastHackResult = result;
     hackingBuildingId = null;
     updateHackStatus();
+    pcRevealHackResult(result);
 
-    if (result.energyBlocked) {
-      pcLogPush('> ENERGIA INSUFICIENTE', 'fail');
-    } else if (!result.breach.success) {
-      pcLogPush('> [BREACH] FALHOU - conexao derrubada', 'fail');
-    } else {
-      pcLogPush('> [BREACH] acesso concedido', 'hi');
-      pcLogPush('> [EXFILTRATE] copiando arquivos...', 'ok');
-      pcLogPush('> [FENCE] convertendo em informacao', 'ok');
-      pcLogPush(`> +1 informacao ${result.informationGained.rarity.toUpperCase()}`, 'hi');
-    }
-    pcLogPush('> conexao encerrada', 'ok');
     await wait(2200);
     pcScreenClose();
   }
@@ -540,7 +640,7 @@ function startGame(characterId) {
     }
     if (event.key === 'b' || event.key === 'B') {
       event.preventDefault();
-      handleMineInformation();
+      handleOpenPc();
       return;
     }
     if (event.key === 's' || event.key === 'S') {
@@ -577,6 +677,7 @@ function startGame(characterId) {
 
   pcTabTerminalEl.addEventListener('click', () => pcScreenSetTab('terminal'));
   pcTabEquipeEl.addEventListener('click', () => pcScreenSetTab('equipe'));
+  pcMenuMineBtn.addEventListener('click', () => startMining());
 
   window.addEventListener('keyup', (event) => {
     const direction = MOVE_KEYS[event.key];

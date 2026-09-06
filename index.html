@@ -146,16 +146,40 @@
     .pc-panel { padding: 18px 20px; height: 100%; }
     .pc-panel[hidden] { display: none; }
 
-    #pc-panel-terminal:not([hidden]) {
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
+    #pc-panel-terminal {
       font-family: 'VT323', monospace;
       color: #6dffc9;
       text-shadow: 0 0 6px rgba(109, 255, 201, 0.45);
       font-size: 19px;
       min-height: 320px;
     }
+    #pc-menu:not([hidden]) { display: flex; flex-direction: column; gap: 8px; }
+    #pc-run:not([hidden]) { display: flex; flex-direction: column; gap: 10px; height: 100%; }
+
+    .pc-menu-title {
+      font-family: 'Rajdhani', sans-serif;
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      color: #2e6b58;
+    }
+    .pc-menu-title-spaced { margin-top: 10px; }
+    .pc-menu-btn {
+      appearance: none;
+      text-align: left;
+      border: 1px solid rgba(109, 255, 201, 0.3);
+      background: rgba(109, 255, 201, 0.05);
+      color: #cfffe9;
+      font-family: 'VT323', monospace;
+      font-size: 18px;
+      padding: 8px 12px;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+    .pc-menu-btn:hover:not(:disabled) { border-color: #6dffc9; background: rgba(109, 255, 201, 0.12); }
+    .pc-menu-btn:disabled { color: #536873; border-color: #2a3138; cursor: default; opacity: 0.6; }
+    #pc-menu-targets { display: flex; flex-direction: column; gap: 6px; }
+
     .pc-head {
       display: flex;
       justify-content: space-between;
@@ -281,15 +305,23 @@
       </div>
       <div class="pc-screen-box">
         <div class="pc-panel" id="pc-panel-terminal">
-          <div class="pc-head">
-            <span id="pc-head-target">ALVO: --</span>
-            <span id="pc-head-tier">TIER: --</span>
+          <div id="pc-menu">
+            <div class="pc-menu-title">ACOES DISPONIVEIS</div>
+            <button type="button" class="pc-menu-btn" id="pc-menu-mine"></button>
+            <div class="pc-menu-title pc-menu-title-spaced">HACKEAR REMOTO</div>
+            <div id="pc-menu-targets"></div>
           </div>
-          <div id="pc-log"></div>
-          <div class="pc-bar-row">
-            <span id="pc-bar-label">STATUS</span>
-            <div class="pc-bar-track"><div class="pc-bar-fill" id="pc-bar-fill"></div></div>
-            <span id="pc-bar-val">--</span>
+          <div id="pc-run" hidden>
+            <div class="pc-head">
+              <span id="pc-head-target">ALVO: --</span>
+              <span id="pc-head-tier">TIER: --</span>
+            </div>
+            <div id="pc-log"></div>
+            <div class="pc-bar-row">
+              <span id="pc-bar-label">STATUS</span>
+              <div class="pc-bar-track"><div class="pc-bar-fill" id="pc-bar-fill"></div></div>
+              <span id="pc-bar-val">--</span>
+            </div>
           </div>
         </div>
         <div class="pc-panel" id="pc-panel-equipe" hidden>
@@ -302,7 +334,7 @@
 
   <details id="help">
     <summary>Ajuda / controles</summary>
-    <p>Setas do teclado movem o personagem (grid, 4 direcoes, sem diagonal). Retangulos cinza sao props/predios ainda sem arte final. Ponto ciano e uma porta: ao pisar nela o mapa inteiro troca e o personagem reaparece no spawn do destino. Chegando perto de qualquer predio hackavel em district_07 (gridcorp_tower - comum, nullpoint_bar - incomum, ghost_row_market/BLACKNET - raro, o mais dificil), ESPACO ou ENTER disparam um hack de teste contra ele; enquanto o hack roda o movimento fica bloqueado. Hack bem sucedido rende XP (sobe de nivel e os stats crescem) e uma unidade de Informacao (raridade de acordo com o tier do predio: comum/rara/epica). Cada tentativa de hack gasta energia (mesmo se falhar); sem energia suficiente pro tier do predio, o hack nem tenta - a energia so recupera dormindo ou comprando um energetico no bar (nao recarrega sozinha nem tem loja no PC de casa). O personagem tem um quarto (player_home), acessivel por uma porta em district_07: perto do PC, tecla B tenta minerar informacao (leva uns 30 segundos, chance de sucesso, sempre rende comum quando da certo, gasta energia mesmo se falhar); ainda perto do PC, teclas 1/2/3 contratam os outros personagens do elenco por BYTE - uma vez contratados, eles minerm informacao sozinhos, em tempo real, pelo resto da partida, sem gastar a energia do jogador; perto da cama, tecla S deixa o personagem dormir, recuperando energia de graca, mas so uma vez a cada 2 minutos. O nullpoint_bar (fora, hackavel normalmente) tem um balcao dentro dele: perto do balcao, tecla D compra um energetico por BYTE que recarrega a energia ate o maximo. Ainda dentro do bar: perto do banco, tecla C senta/levanta (so cosmetico, sem efeito no jogo); perto do laptop, ESPACO ou ENTER hackeiam o proprio nullpoint_bar remotamente, sem precisar sair do bar. Atras do balcao tem um atendente (NPC): perto dele, tecla D tambem compra o energetico, exatamente como no balcao (mesma loja, dois pontos de acesso). Dentro da BLACKNET (ghost_row_interior), tecla V vende toda a Informacao acumulada por BYTE (preco por raridade: comum 8, rara 25, epica 60).</p>
+    <p>Setas do teclado movem o personagem (grid, 4 direcoes, sem diagonal). Retangulos cinza sao props/predios ainda sem arte final. Ponto ciano e uma porta: ao pisar nela o mapa inteiro troca e o personagem reaparece no spawn do destino. Chegando perto de qualquer predio hackavel em district_07 (gridcorp_tower - comum, nullpoint_bar - incomum, ghost_row_market/BLACKNET - raro, o mais dificil), ESPACO ou ENTER disparam um hack de teste contra ele; enquanto o hack roda o movimento fica bloqueado. Hack bem sucedido rende XP (sobe de nivel e os stats crescem) e uma unidade de Informacao (raridade de acordo com o tier do predio: comum/rara/epica). Cada tentativa de hack gasta energia (mesmo se falhar); sem energia suficiente pro tier do predio, o hack nem tenta - a energia so recupera dormindo ou comprando um energetico no bar (nao recarrega sozinha nem tem loja no PC de casa). Cada predio so pode ser hackeado a partir de um nivel minimo (comum 1, incomum 3, raro 5) - abaixo disso o hack e recusado, fisico ou remoto. O personagem tem um quarto (player_home), acessivel por uma porta em district_07: perto do PC, tecla B abre a tela do PC com um menu de acoes - minerar informacao (leva uns 30 segundos, chance de sucesso, sempre rende comum quando da certo, gasta energia mesmo se falhar) ou hackear qualquer um dos 3 predios remotamente, sem precisar andar ate la (respeitando a mesma trava de nivel); ainda no PC, a aba EQUIPE deixa contratar os outros personagens do elenco por BYTE - uma vez contratados, eles minerm informacao sozinhos, em tempo real, pelo resto da partida, sem gastar a energia do jogador (tambem da pra contratar pelas teclas 1/2/3 fora do menu); perto da cama, tecla S deixa o personagem dormir, recuperando energia de graca, mas so uma vez a cada 2 minutos. O nullpoint_bar (fora, hackavel normalmente) tem um balcao dentro dele: perto do balcao, tecla D compra um energetico por BYTE que recarrega a energia ate o maximo. Ainda dentro do bar: perto do banco, tecla C senta/levanta (so cosmetico, sem efeito no jogo); perto do laptop, ESPACO ou ENTER hackeiam o proprio nullpoint_bar remotamente, sem precisar sair do bar. Atras do balcao tem um atendente (NPC): perto dele, tecla D tambem compra o energetico, exatamente como no balcao (mesma loja, dois pontos de acesso). Dentro da BLACKNET (ghost_row_interior), tecla V vende toda a Informacao acumulada por BYTE (preco por raridade: comum 8, rara 25, epica 60).</p>
   </details>
 
   <script type="module" src="src/main.js"></script>
