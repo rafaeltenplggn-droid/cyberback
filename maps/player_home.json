@@ -44,5 +44,8 @@
   "props": [],
   "reflections": [
     { "x": 7.5, "y": 3.1, "radius": 1.2, "color": "#3ad6ff", "periodMs": 2400, "phase": 0, "baseAlpha": 0.025, "amplitude": 0.015 }
+  ],
+  "dustMotes": [
+    { "x": 13.4, "y": 2.6, "spreadX": 0.5, "riseTiles": 1.6, "count": 5, "color": "#ffdca8", "periodMs": 7000, "size": 1.6, "maxAlpha": 0.4 }
   ]
 }

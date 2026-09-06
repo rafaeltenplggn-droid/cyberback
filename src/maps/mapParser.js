@@ -89,6 +89,7 @@ export function parseMap(raw) {
     height,
     background: raw.background ?? null,
     reflections: Array.isArray(raw.reflections) ? raw.reflections : [],
+    dustMotes: Array.isArray(raw.dustMotes) ? raw.dustMotes : [],
     tiles: raw.tiles,
     doors,
     props,

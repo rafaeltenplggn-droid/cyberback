@@ -144,6 +144,53 @@ export class Renderer {
     return canvas;
   }
 
+  // Poeira flutuando num feixe de luz (ex: abajur do quarto) - ver
+  // map.dustMotes no mapa.json. Cada particula sobe devagar e desaparece
+  // (fade in/out) ao cruzar o topo do seu proprio percurso, sem precisar
+  // guardar estado entre frames: a posicao/opacidade de cada uma e 100%
+  // funcao de nowMs e do indice dela (mesmo espirito das reflexoes -
+  // deterministico, cada particula com uma fase propria pra nao "piscarem"
+  // juntas). Desenhado por cima de props/personagem, pra flutuar no ar.
+  drawDustMotes(map, nowMs) {
+    const specs = map.dustMotes;
+    if (!specs || specs.length === 0) return;
+
+    const ctx = this.ctx;
+    ctx.save();
+    const prevSmoothing = ctx.imageSmoothingEnabled;
+    ctx.imageSmoothingEnabled = false;
+    for (const spec of specs) {
+      const {
+        x,
+        y,
+        spreadX = 0.5,
+        riseTiles = 1.6,
+        count = 5,
+        color = '#ffdca8',
+        periodMs = 7000,
+        size = 1.5,
+        maxAlpha = 0.5,
+      } = spec;
+      for (let i = 0; i < count; i++) {
+        const phase = i / count;
+        const t = (((nowMs / periodMs) + phase) % 1 + 1) % 1;
+        const riseY = y - t * riseTiles;
+        const driftX = x + Math.sin(nowMs / 1400 + i * 2.4) * (spreadX * 0.5);
+        const fade = Math.sin(t * Math.PI);
+        const alpha = fade * maxAlpha;
+        if (alpha <= 0.01) continue;
+
+        const { x: sx, y: sy } = gridToScreen(driftX, riseY, this.originX, this.originY);
+        ctx.fillStyle = color;
+        ctx.globalAlpha = alpha;
+        ctx.fillRect(sx, sy, size, size);
+      }
+    }
+    ctx.globalAlpha = 1;
+    ctx.imageSmoothingEnabled = prevSmoothing;
+    ctx.restore();
+  }
+
   // Props e personagem sao desenhados juntos, ordenados por profundidade
   // (linha mais ao sul do footprint de cada um) - quem estiver mais ao
   // norte desenha primeiro (fica atras), quem estiver mais ao sul desenha

@@ -869,6 +869,7 @@ function startGame(characterId) {
       characterRenderer.draw({ col, row, direction: controller.direction, pose: controller.pose });
     });
     drawOwnedPets(nowMs);
+    mapRenderer.drawDustMotes(mapManager.currentMap, nowMs);
     updateStatus();
     updateHackStatus();
     updateShopStatus();
