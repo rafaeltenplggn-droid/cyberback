@@ -12,11 +12,13 @@ export const BAR_MAP_ID = 'nullpoint_interior';
 // exportado aqui pra quem usa 'laptop' nao precisar repetir a string solta.
 export const BAR_HACKABLE_BUILDING_ID = 'nullpoint_bar';
 
-// Casam com os props reais de maps/nullpoint_interior.json (mesma origem/footprint).
-export const BAR_COUNTER_LOCATION = { originX: 3, originY: 3, footprintW: 1, footprintH: 1 };
-export const BAR_STOOL_LOCATION = { originX: 3, originY: 6, footprintW: 1, footprintH: 1 };
-export const BAR_LAPTOP_LOCATION = { originX: 6, originY: 3, footprintW: 1, footprintH: 1 };
-export const BAR_NPC_LOCATION = { originX: 3, originY: 2, footprintW: 1, footprintH: 1 };
+// Coordenadas calibradas visualmente pra baterem com o balcao/banquinhos
+// na arte de fundo de maps/nullpoint_interior.json (nao ha mais props
+// visuais aqui - mesmo esquema do player_home, ver homeLocations.js).
+export const BAR_COUNTER_LOCATION = { originX: 8, originY: 4, footprintW: 1, footprintH: 1 };
+export const BAR_STOOL_LOCATION = { originX: 5, originY: 4, footprintW: 1, footprintH: 1 };
+export const BAR_LAPTOP_LOCATION = { originX: 11, originY: 4, footprintW: 1, footprintH: 1 };
+export const BAR_NPC_LOCATION = { originX: 8, originY: 7, footprintW: 1, footprintH: 1 };
 
 /** Retorna 'counter', 'stool', 'laptop', 'bartender' ou null, dependendo de onde o personagem esta parado dentro do bar. */
 export function nearbyBarInteractable(mapManager) {

@@ -26,7 +26,7 @@ test('district_07.json tem 24x16, fundo real (Visual Master) e as 5 portas para 
 
   const nullpointDoor = map.getDoorAt(4, 5);
   assert.equal(nullpointDoor.target_map, 'nullpoint_interior');
-  assert.deepEqual([nullpointDoor.spawn_x, nullpointDoor.spawn_y], [5, 7]);
+  assert.deepEqual([nullpointDoor.spawn_x, nullpointDoor.spawn_y], [8, 8]);
 
   const ghostRowDoor = map.getDoorAt(11, 5);
   assert.equal(ghostRowDoor.target_map, 'ghost_row_interior');
@@ -111,8 +111,8 @@ for (const [interiorId, exteriorDoor] of [
   });
 }
 
-test('os quatro interiores ainda em blockout sao salas 10x10 com borda solida e a porta de saida aberta', async () => {
-  for (const id of ['gridcorp_interior', 'nullpoint_interior', 'ghost_row_interior', 'data_terminal_interior']) {
+test('os tres interiores ainda em blockout sao salas 10x10 com borda solida e a porta de saida aberta', async () => {
+  for (const id of ['gridcorp_interior', 'ghost_row_interior', 'data_terminal_interior']) {
     const map = parseMap(await loadMapJson(id));
     assert.equal(map.width, 10);
     assert.equal(map.height, 10);
@@ -155,9 +155,13 @@ test('player_home usa arte de fundo real, 16x12, com PC e cama bloqueados no lug
   assert.equal(districtMap.getDoorAt(7, 14), null, 'spawn de volta nao e, ele mesmo, outra porta');
 });
 
-test('nullpoint_interior tem o balcao do bar bloqueado, e o nullpoint_bar continua hackavel normalmente', async () => {
+test('nullpoint_interior usa arte de fundo real, 16x12, com o balcao bloqueado e a porta de saida aberta', async () => {
   const map = parseMap(await loadMapJson('nullpoint_interior'));
-  assert.equal(map.isBlocked(3, 3), true, 'balcao do bar bloqueia a celula dele');
+  assert.equal(map.width, 16);
+  assert.equal(map.height, 12);
+  assert.equal(map.background, 'nullpoint_bar_interior.png');
+  assert.equal(map.isBlocked(8, 3), true, 'balcao do bar bloqueia a celula dele');
+  assert.equal(map.isBlocked(8, 9), false, 'porta de saida nao pode bloquear');
 
   const districtMap = parseMap(await loadMapJson('district_07'));
   assert.equal(districtMap.isBlocked(0, 0), true, 'nullpoint_bar (predio exterior) continua com colisao normal');

@@ -299,7 +299,7 @@ test('sleep e recusado fora da cama', () => {
 });
 
 test('buyDrink compra o energetico e recarrega a energia quando parado perto do balcao do bar', () => {
-  const mapManager = makeFakeMapManager({ mapId: 'nullpoint_interior', col: 2, row: 3 }); // oeste do balcao (origem 3,3)
+  const mapManager = makeFakeMapManager({ mapId: 'nullpoint_interior', col: 7, row: 4 }); // oeste do balcao (origem 8,4)
   const controller = makeFakeController();
   const ledger = new ByteLedger();
   ledger.record({ type: 'gain', amount: 100 });
@@ -333,7 +333,7 @@ test('buyDrink e recusado fora do balcao (outro mapa, ou longe dele dentro do ba
   assert.equal(inDistrict.buyDrink().reason, 'fora_do_balcao');
 
   const farFromCounter = new HackRuntime({
-    mapManager: makeFakeMapManager({ mapId: 'nullpoint_interior', col: 8, row: 8 }),
+    mapManager: makeFakeMapManager({ mapId: 'nullpoint_interior', col: 3, row: 5 }),
     controller: makeFakeController(),
     playerStats: createPlayerStats(1),
     ledger,
@@ -345,7 +345,7 @@ test('buyDrink e recusado fora do balcao (outro mapa, ou longe dele dentro do ba
 });
 
 test('parado no laptop dentro do nullpoint_interior, nearbyHackableBuilding aponta pro nullpoint_bar', async () => {
-  const mapManager = makeFakeMapManager({ mapId: 'nullpoint_interior', col: 5, row: 3 }); // oeste do laptop (origem 6,3)
+  const mapManager = makeFakeMapManager({ mapId: 'nullpoint_interior', col: 10, row: 4 }); // oeste do laptop (origem 11,4)
   const controller = makeFakeController();
   const runtime = new HackRuntime({ mapManager, controller, playerStats: createPlayerStats(1), rng: () => 0, hackDelayMs: 0 });
 
@@ -368,7 +368,7 @@ test('longe do laptop, dentro do nullpoint_interior, nao disparava hack nenhum',
 });
 
 test('parado perto do atendente do bar, nearbyBarInteractable retorna "bartender" e so a compra de drink funciona (nao hackeia, nao senta)', () => {
-  const mapManager = makeFakeMapManager({ mapId: 'nullpoint_interior', col: 2, row: 2 }); // oeste do atendente (origem 3,2)
+  const mapManager = makeFakeMapManager({ mapId: 'nullpoint_interior', col: 7, row: 7 }); // oeste do atendente (origem 8,7)
   const controller = makeFakeController();
   const ledger = new ByteLedger();
   ledger.record({ type: 'gain', amount: 100 });
@@ -388,7 +388,7 @@ test('parado perto do atendente do bar, nearbyBarInteractable retorna "bartender
 });
 
 test('toggleSit senta parado perto do banco, levanta de qualquer lugar, e levanta sozinho ao se afastar', () => {
-  const mapManager = makeFakeMapManager({ mapId: 'nullpoint_interior', col: 2, row: 6 }); // oeste do banco (origem 3,6)
+  const mapManager = makeFakeMapManager({ mapId: 'nullpoint_interior', col: 4, row: 4 }); // oeste do banco (origem 5,4)
   const controller = makeFakeController();
   const runtime = new HackRuntime({ mapManager, controller, playerStats: createPlayerStats(1) });
 
@@ -416,7 +416,7 @@ test('toggleSit e recusado longe do banco', () => {
 });
 
 test('sentado, o personagem levanta sozinho quando o jogo detecta que ele se afastou do banco', () => {
-  const mapManager = makeFakeMapManager({ mapId: 'nullpoint_interior', col: 2, row: 6 });
+  const mapManager = makeFakeMapManager({ mapId: 'nullpoint_interior', col: 4, row: 4 });
   const controller = makeFakeController();
   const runtime = new HackRuntime({ mapManager, controller, playerStats: createPlayerStats(1) });
 

@@ -45,8 +45,8 @@
       "x": 4,
       "y": 5,
       "target_map": "nullpoint_interior",
-      "spawn_x": 5,
-      "spawn_y": 7
+      "spawn_x": 8,
+      "spawn_y": 8
     },
     {
       "x": 11,
