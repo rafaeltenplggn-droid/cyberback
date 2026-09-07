@@ -28,8 +28,8 @@ test('adjacente ao banco dentro do nullpoint_interior retorna "stool"', () => {
   assert.equal(nearbyBarInteractable(mapManager), 'stool');
 });
 
-test('adjacente ao laptop dentro do nullpoint_interior retorna "laptop"', () => {
-  const mapManager = makeFakeMapManager({ col: BAR_LAPTOP_LOCATION.originX - 1, row: BAR_LAPTOP_LOCATION.originY });
+test('na frente do laptop (ao sul dele) dentro do nullpoint_interior retorna "laptop"', () => {
+  const mapManager = makeFakeMapManager({ col: BAR_LAPTOP_LOCATION.originX, row: BAR_LAPTOP_LOCATION.originY + BAR_LAPTOP_LOCATION.footprintH });
   assert.equal(nearbyBarInteractable(mapManager), 'laptop');
 });
 

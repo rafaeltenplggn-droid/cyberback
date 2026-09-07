@@ -15,9 +15,24 @@ export const BAR_HACKABLE_BUILDING_ID = 'nullpoint_bar';
 // Coordenadas calibradas visualmente pra baterem com o balcao/banquinhos
 // na arte de fundo de maps/nullpoint_interior.json (nao ha mais props
 // visuais aqui - mesmo esquema do player_home, ver homeLocations.js).
+// "Counter" e o ponto generico de pedir na propria fileira dos bancos
+// (fileira 4) - o balcao em si (bandeja/prateleiras) fica na fileira 3,
+// bloqueada, entao o footprint fica sobre um dos bancos da arte (coluna 8)
+// e a interacao vem de qualquer lado aberto ao redor.
 export const BAR_COUNTER_LOCATION = { originX: 8, originY: 4, footprintW: 1, footprintH: 1 };
-export const BAR_STOOL_LOCATION = { originX: 5, originY: 4, footprintW: 1, footprintH: 1 };
-export const BAR_LAPTOP_LOCATION = { originX: 11, originY: 4, footprintW: 1, footprintH: 1 };
+
+// Banco calibrado pra bater com um banco de verdade da arte (ver
+// assets/backgrounds/nullpoint_bar_interior.png) - os bancos ficam nas
+// colunas 6 a 11 da fileira 4; usa a coluna 6 (a mais a esquerda, livre de
+// qualquer outro ponto de interacao).
+export const BAR_STOOL_LOCATION = { originX: 6, originY: 4, footprintW: 1, footprintH: 1 };
+
+// O laptop (tela ciana) fica desenhado EM CIMA do balcao, na mesma fileira
+// do atendente (fileira 3, coluna 10) - nao na fileira aberta dos bancos.
+// Mesma logica do atendente: so e alcancavel de frente (fileira 4, ao sul),
+// o resto da fileira 3 e parede/balcao solido, inalcancavel de qualquer jeito.
+export const BAR_LAPTOP_LOCATION = { originX: 10, originY: 3, footprintW: 1, footprintH: 1 };
+const BAR_LAPTOP_APPROACH_SIDES = ['south'];
 
 // Posicao exata do atendente na arte (o personagem desenhado atras do
 // balcao, ver assets/backgrounds/nullpoint_bar_interior.png - coluna 8,
@@ -34,7 +49,7 @@ export function nearbyBarInteractable(mapManager) {
   const { playerCol, playerRow } = mapManager;
   if (isAdjacentToBuilding(playerCol, playerRow, BAR_COUNTER_LOCATION)) return 'counter';
   if (isAdjacentToBuilding(playerCol, playerRow, BAR_STOOL_LOCATION)) return 'stool';
-  if (isAdjacentToBuilding(playerCol, playerRow, BAR_LAPTOP_LOCATION)) return 'laptop';
+  if (isAdjacentToBuilding(playerCol, playerRow, BAR_LAPTOP_LOCATION, BAR_LAPTOP_APPROACH_SIDES)) return 'laptop';
   if (isAdjacentToBuilding(playerCol, playerRow, BAR_NPC_LOCATION, BAR_NPC_APPROACH_SIDES)) return 'bartender';
   return null;
 }

@@ -404,7 +404,7 @@ test('o buff do drink afeta o hack seguinte (breach/fence), mas nunca o playerSt
 
   mapManager.currentMap.id = 'nullpoint_interior';
   mapManager.playerCol = 10;
-  mapManager.playerRow = 4; // oeste do laptop, dispara o hack remoto do bar
+  mapManager.playerRow = 4; // na frente do laptop, dispara o hack remoto do bar
   const result = await runtime.triggerHack();
 
   assert.ok(result.breach, 'o hack rodou');
@@ -412,7 +412,7 @@ test('o buff do drink afeta o hack seguinte (breach/fence), mas nunca o playerSt
 });
 
 test('parado no laptop dentro do nullpoint_interior, nearbyHackableBuilding aponta pro nullpoint_bar', async () => {
-  const mapManager = makeFakeMapManager({ mapId: 'nullpoint_interior', col: 10, row: 4 }); // oeste do laptop (origem 11,4)
+  const mapManager = makeFakeMapManager({ mapId: 'nullpoint_interior', col: 10, row: 4 }); // na frente do laptop (origem 10,3)
   const controller = makeFakeController();
   const runtime = new HackRuntime({ mapManager, controller, playerStats: createPlayerStats(1), rng: () => 0, hackDelayMs: 0 });
 
@@ -455,7 +455,7 @@ test('parado perto do atendente do bar, nearbyBarInteractable retorna "bartender
 });
 
 test('toggleSit senta parado perto do banco, levanta de qualquer lugar, e levanta sozinho ao se afastar', () => {
-  const mapManager = makeFakeMapManager({ mapId: 'nullpoint_interior', col: 4, row: 4 }); // oeste do banco (origem 5,4)
+  const mapManager = makeFakeMapManager({ mapId: 'nullpoint_interior', col: 5, row: 4 }); // oeste do banco (origem 6,4)
   const controller = makeFakeController();
   const runtime = new HackRuntime({ mapManager, controller, playerStats: createPlayerStats(1) });
 
@@ -483,7 +483,7 @@ test('toggleSit e recusado longe do banco', () => {
 });
 
 test('sentado, o personagem levanta sozinho quando o jogo detecta que ele se afastou do banco', () => {
-  const mapManager = makeFakeMapManager({ mapId: 'nullpoint_interior', col: 4, row: 4 });
+  const mapManager = makeFakeMapManager({ mapId: 'nullpoint_interior', col: 5, row: 4 });
   const controller = makeFakeController();
   const runtime = new HackRuntime({ mapManager, controller, playerStats: createPlayerStats(1) });
 
@@ -781,7 +781,7 @@ test('tradeBite funciona parado no laptop do bar', () => {
   const ledger = new ByteLedger();
   ledger.record({ type: 'gain', amount: 100 });
   const runtime = new HackRuntime({
-    mapManager: makeFakeMapManager({ mapId: 'nullpoint_interior', col: 10, row: 4 }), // oeste do laptop (origem 11,4)
+    mapManager: makeFakeMapManager({ mapId: 'nullpoint_interior', col: 10, row: 4 }), // na frente do laptop (origem 10,3)
     controller: makeFakeController(),
     playerStats: createPlayerStats(1),
     ledger,
