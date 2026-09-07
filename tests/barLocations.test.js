@@ -33,9 +33,18 @@ test('adjacente ao laptop dentro do nullpoint_interior retorna "laptop"', () => 
   assert.equal(nearbyBarInteractable(mapManager), 'laptop');
 });
 
-test('adjacente ao atendente dentro do nullpoint_interior retorna "bartender"', () => {
-  const mapManager = makeFakeMapManager({ col: BAR_NPC_LOCATION.originX - 1, row: BAR_NPC_LOCATION.originY });
+test('na frente do atendente (ao sul dele) dentro do nullpoint_interior retorna "bartender"', () => {
+  const mapManager = makeFakeMapManager({ col: BAR_NPC_LOCATION.originX, row: BAR_NPC_LOCATION.originY + BAR_NPC_LOCATION.footprintH });
   assert.equal(nearbyBarInteractable(mapManager), 'bartender');
+});
+
+test('dos outros lados do atendente (nunca de frente) nao retorna "bartender"', () => {
+  const north = makeFakeMapManager({ col: BAR_NPC_LOCATION.originX, row: BAR_NPC_LOCATION.originY - 1 });
+  const west = makeFakeMapManager({ col: BAR_NPC_LOCATION.originX - 1, row: BAR_NPC_LOCATION.originY });
+  const east = makeFakeMapManager({ col: BAR_NPC_LOCATION.originX + BAR_NPC_LOCATION.footprintW, row: BAR_NPC_LOCATION.originY });
+  assert.notEqual(nearbyBarInteractable(north), 'bartender');
+  assert.notEqual(nearbyBarInteractable(west), 'bartender');
+  assert.notEqual(nearbyBarInteractable(east), 'bartender');
 });
 
 test('longe de tudo, dentro do bar, retorna null', () => {

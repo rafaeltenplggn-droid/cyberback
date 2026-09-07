@@ -18,7 +18,15 @@ export const BAR_HACKABLE_BUILDING_ID = 'nullpoint_bar';
 export const BAR_COUNTER_LOCATION = { originX: 8, originY: 4, footprintW: 1, footprintH: 1 };
 export const BAR_STOOL_LOCATION = { originX: 5, originY: 4, footprintW: 1, footprintH: 1 };
 export const BAR_LAPTOP_LOCATION = { originX: 11, originY: 4, footprintW: 1, footprintH: 1 };
-export const BAR_NPC_LOCATION = { originX: 8, originY: 7, footprintW: 1, footprintH: 1 };
+
+// Posicao exata do atendente na arte (o personagem desenhado atras do
+// balcao, ver assets/backgrounds/nullpoint_bar_interior.png - coluna 8,
+// mesma do balcao, na fileira 3, colada na parede/prateleira atras dele).
+// So pode ser abordado por quem esta na fileira 4, direto na frente dele
+// (norte/leste/oeste caem dentro da propria parede da fileira 2-3,
+// inalcancaveis de qualquer forma, mas o lado fica explicito mesmo assim).
+export const BAR_NPC_LOCATION = { originX: 8, originY: 3, footprintW: 1, footprintH: 1 };
+const BAR_NPC_APPROACH_SIDES = ['south'];
 
 /** Retorna 'counter', 'stool', 'laptop', 'bartender' ou null, dependendo de onde o personagem esta parado dentro do bar. */
 export function nearbyBarInteractable(mapManager) {
@@ -27,6 +35,6 @@ export function nearbyBarInteractable(mapManager) {
   if (isAdjacentToBuilding(playerCol, playerRow, BAR_COUNTER_LOCATION)) return 'counter';
   if (isAdjacentToBuilding(playerCol, playerRow, BAR_STOOL_LOCATION)) return 'stool';
   if (isAdjacentToBuilding(playerCol, playerRow, BAR_LAPTOP_LOCATION)) return 'laptop';
-  if (isAdjacentToBuilding(playerCol, playerRow, BAR_NPC_LOCATION)) return 'bartender';
+  if (isAdjacentToBuilding(playerCol, playerRow, BAR_NPC_LOCATION, BAR_NPC_APPROACH_SIDES)) return 'bartender';
   return null;
 }

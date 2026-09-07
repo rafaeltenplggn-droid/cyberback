@@ -42,7 +42,7 @@
     ],
   "doors": [
     {
-      "x": 4,
+      "x": 3,
       "y": 5,
       "target_map": "nullpoint_interior",
       "spawn_x": 8,

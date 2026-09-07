@@ -33,8 +33,8 @@
     [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]
   ],
   "doors": [
-    { "x": 7, "y": 9, "target_map": "district_07", "spawn_x": 4, "spawn_y": 6 },
-    { "x": 8, "y": 9, "target_map": "district_07", "spawn_x": 4, "spawn_y": 6 }
+    { "x": 7, "y": 9, "target_map": "district_07", "spawn_x": 3, "spawn_y": 6 },
+    { "x": 8, "y": 9, "target_map": "district_07", "spawn_x": 3, "spawn_y": 6 }
   ],
   "props": [],
   "dustMotes": [

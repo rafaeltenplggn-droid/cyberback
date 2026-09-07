@@ -24,7 +24,7 @@ test('district_07.json tem 24x16, fundo real (Visual Master) e as 5 portas para 
   assert.equal(map.height, 16);
   assert.equal(map.background, 'sector7_exterior.png');
 
-  const nullpointDoor = map.getDoorAt(4, 5);
+  const nullpointDoor = map.getDoorAt(3, 5);
   assert.equal(nullpointDoor.target_map, 'nullpoint_interior');
   assert.deepEqual([nullpointDoor.spawn_x, nullpointDoor.spawn_y], [8, 8]);
 
@@ -71,7 +71,7 @@ test('predios do district_07 bloqueiam o footprint que bate com a arte de fundo'
   assert.equal(map.isBlocked(12, 15), true);
 
   // calcada em frente aos predios, livre
-  assert.equal(map.isBlocked(4, 5), false); // porta do BAR
+  assert.equal(map.isBlocked(3, 5), false); // porta do BAR
   assert.equal(map.isBlocked(11, 5), false); // porta do BLACKNET
   assert.equal(map.isBlocked(18, 5), false); // porta do CORP
   assert.equal(map.isBlocked(7, 13), false); // porta da MY HOME
@@ -79,7 +79,7 @@ test('predios do district_07 bloqueiam o footprint que bate com a arte de fundo'
 });
 
 for (const [interiorId, exteriorDoor] of [
-  ['nullpoint_interior', { x: 4, y: 5 }],
+  ['nullpoint_interior', { x: 3, y: 5 }],
   ['ghost_row_interior', { x: 11, y: 5 }],
   ['gridcorp_interior', { x: 18, y: 5 }],
   ['player_home', { x: 7, y: 13 }],
@@ -165,5 +165,5 @@ test('nullpoint_interior usa arte de fundo real, 16x12, com o balcao bloqueado e
 
   const districtMap = parseMap(await loadMapJson('district_07'));
   assert.equal(districtMap.isBlocked(0, 0), true, 'nullpoint_bar (predio exterior) continua com colisao normal');
-  assert.equal(districtMap.getDoorAt(4, 5).target_map, 'nullpoint_interior');
+  assert.equal(districtMap.getDoorAt(3, 5).target_map, 'nullpoint_interior');
 });

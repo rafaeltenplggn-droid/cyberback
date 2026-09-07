@@ -381,7 +381,7 @@ test('orderDrink e recusado fora do balcao (mesma regra de alcance do buyDrink)'
 });
 
 test('orderDrink funciona tambem parado perto do atendente (bartender)', () => {
-  const mapManager = makeFakeMapManager({ mapId: 'nullpoint_interior', col: 7, row: 7 }); // oeste do atendente (origem 8,7)
+  const mapManager = makeFakeMapManager({ mapId: 'nullpoint_interior', col: 8, row: 4 }); // na frente do atendente (origem 8,3)
   const ledger = new ByteLedger();
   ledger.record({ type: 'gain', amount: 100 });
   const runtime = new HackRuntime({ mapManager, controller: makeFakeController(), playerStats: createPlayerStats(1), ledger });
@@ -435,7 +435,7 @@ test('longe do laptop, dentro do nullpoint_interior, nao disparava hack nenhum',
 });
 
 test('parado perto do atendente do bar, nearbyBarInteractable retorna "bartender" e so a compra de drink funciona (nao hackeia, nao senta)', () => {
-  const mapManager = makeFakeMapManager({ mapId: 'nullpoint_interior', col: 7, row: 7 }); // oeste do atendente (origem 8,7)
+  const mapManager = makeFakeMapManager({ mapId: 'nullpoint_interior', col: 8, row: 4 }); // na frente do atendente (origem 8,3)
   const controller = makeFakeController();
   const ledger = new ByteLedger();
   ledger.record({ type: 'gain', amount: 100 });

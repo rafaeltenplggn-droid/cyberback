@@ -28,16 +28,22 @@ export const HACKABLE_BUILDINGS = [
   },
 ];
 
-/** Celulas ortogonalmente adjacentes ao footprint de um predio (nao inclui diagonais). */
-export function isAdjacentToBuilding(col, row, building) {
+/**
+ * Celulas ortogonalmente adjacentes ao footprint de um predio (nao inclui
+ * diagonais). `allowedSides` restringe de qual lado vale a adjacencia -
+ * por padrao qualquer um dos 4 (N/S/L/O), mas um NPC que fica de costas
+ * pra parede (ex: BAR_NPC_LOCATION) so deve ser abordavel de um lado
+ * especifico (o de frente pra ele), entao passa so esse lado.
+ */
+export function isAdjacentToBuilding(col, row, building, allowedSides = ['north', 'south', 'east', 'west']) {
   const { originX, originY, footprintW, footprintH } = building;
   const inColRange = col >= originX && col < originX + footprintW;
   const inRowRange = row >= originY && row < originY + footprintH;
 
-  const north = inColRange && row === originY - 1;
-  const south = inColRange && row === originY + footprintH;
-  const west = inRowRange && col === originX - 1;
-  const east = inRowRange && col === originX + footprintW;
+  const north = allowedSides.includes('north') && inColRange && row === originY - 1;
+  const south = allowedSides.includes('south') && inColRange && row === originY + footprintH;
+  const west = allowedSides.includes('west') && inRowRange && col === originX - 1;
+  const east = allowedSides.includes('east') && inRowRange && col === originX + footprintW;
 
   return north || south || west || east;
 }
