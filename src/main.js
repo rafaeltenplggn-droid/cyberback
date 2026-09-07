@@ -16,9 +16,11 @@ import { DRINK_COST_BYTE } from './hackIntegration/drinkShop.js';
 import { INFO_MINING_ENERGY_COST_RATIO } from './hackIntegration/infoMining.js';
 import { WORKER_HIRE_COST_BYTE } from './hackIntegration/workers.js';
 import { PET_COST_BYTE } from './hackIntegration/pets.js';
+import { BITE_TRADE_STAKE_BYTE, BITE_TRADE_PAYOUT_BYTE } from './hackIntegration/biteTrade.js';
 import { PLAYER_HOME_MAP_ID, HOME_BED_LOCATION } from './hackIntegration/homeLocations.js';
 
 const STARTING_BYTE_BALANCE = 100;
+const BAR_OWNER_NAME = 'Rook';
 
 // Corpo (sprite 320x320 inteira, com uma orelha apagada) + orelha em
 // sprites separados pra so ela balancar sozinha, sem depender de
@@ -151,9 +153,16 @@ function startGame(characterId) {
   const pcTabTerminalEl = document.getElementById('pc-tab-terminal');
   const pcTabEquipeEl = document.getElementById('pc-tab-equipe');
   const pcTabLojaEl = document.getElementById('pc-tab-loja');
+  const pcTabTradeEl = document.getElementById('pc-tab-trade');
   const pcPanelTerminalEl = document.getElementById('pc-panel-terminal');
   const pcPanelEquipeEl = document.getElementById('pc-panel-equipe');
   const pcPanelLojaEl = document.getElementById('pc-panel-loja');
+  const pcPanelTradeEl = document.getElementById('pc-panel-trade');
+  const pcTradePriceEl = document.getElementById('pc-trade-price');
+  const pcTradeChartEl = document.getElementById('pc-trade-chart');
+  const pcTradeUpBtn = document.getElementById('pc-trade-up');
+  const pcTradeDownBtn = document.getElementById('pc-trade-down');
+  const pcTradeResultEl = document.getElementById('pc-trade-result');
   const pcHeadTargetEl = document.getElementById('pc-head-target');
   const pcHeadTierEl = document.getElementById('pc-head-tier');
   const pcLogEl = document.getElementById('pc-log');
@@ -178,17 +187,27 @@ function startGame(characterId) {
     pcTabTerminalEl.dataset.active = String(tab === 'terminal');
     pcTabEquipeEl.dataset.active = String(tab === 'equipe');
     pcTabLojaEl.dataset.active = String(tab === 'loja');
+    pcTabTradeEl.dataset.active = String(tab === 'trade');
     pcPanelTerminalEl.hidden = tab !== 'terminal';
     pcPanelEquipeEl.hidden = tab !== 'equipe';
     pcPanelLojaEl.hidden = tab !== 'loja';
+    pcPanelTradeEl.hidden = tab !== 'trade';
+    if (tab === 'trade') renderTradePanel();
   }
 
-  /** showExtraTabs: true so no fluxo do PC de casa (menu) - EQUIPE e LOJA nao fazem sentido durante um hack de predio fisico/remoto. */
-  function pcScreenOpen({ showExtraTabs }) {
+  /**
+   * `tabs` lista quais abas ficam visiveis nessa sessao do PC - EQUIPE/LOJA
+   * so fazem sentido no fluxo do PC de casa (menu); TRADE aparece tanto no
+   * PC de casa quanto no laptop do bar (ver handleOpenBarTrade). `activeTab`
+   * e a aba que abre selecionada.
+   */
+  function pcScreenOpen({ tabs = ['terminal'], activeTab = 'terminal' }) {
     pcScreenEl.hidden = false;
-    pcTabEquipeEl.hidden = !showExtraTabs;
-    pcTabLojaEl.hidden = !showExtraTabs;
-    pcScreenSetTab('terminal');
+    pcTabTerminalEl.hidden = !tabs.includes('terminal');
+    pcTabEquipeEl.hidden = !tabs.includes('equipe');
+    pcTabLojaEl.hidden = !tabs.includes('loja');
+    pcTabTradeEl.hidden = !tabs.includes('trade');
+    pcScreenSetTab(activeTab);
   }
 
   function pcScreenClose() {
@@ -371,6 +390,93 @@ function startGame(characterId) {
     lastPetResult = { petId, result: hackRuntime.buyPet(petId) };
   }
 
+  let lastTradeResult = null;
+
+  /**
+   * Desenha a sparkline da BITE (linha simples ligando os pontos do
+   * historico) igual estilo pixel-art do resto da tela do PC - sem lib de
+   * grafico nenhuma, so canvas 2D puro.
+   */
+  function drawTradeChart(history) {
+    const ctx = pcTradeChartEl.getContext('2d');
+    const w = pcTradeChartEl.width;
+    const h = pcTradeChartEl.height;
+    ctx.clearRect(0, 0, w, h);
+    if (history.length < 2) return;
+
+    const min = Math.min(...history);
+    const max = Math.max(...history);
+    const range = max - min || 1;
+    const pad = 10;
+    const stepX = (w - pad * 2) / (history.length - 1);
+    const up = history[history.length - 1] >= history[0];
+
+    ctx.strokeStyle = up ? '#4dffb8' : '#ff5d6a';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    history.forEach((price, index) => {
+      const x = pad + index * stepX;
+      const y = pad + (1 - (price - min) / range) * (h - pad * 2);
+      if (index === 0) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
+    });
+    ctx.stroke();
+  }
+
+  /** Redesenha o painel TRADE inteiro (preco, cor, grafico) - chamado ao abrir a aba e a cada frame enquanto ela estiver visivel. */
+  function renderTradePanel() {
+    const history = hackRuntime.biteHistory;
+    const price = hackRuntime.bitePrice;
+    const prevPrice = history.length > 1 ? history[history.length - 2] : price;
+    const up = price >= prevPrice;
+
+    pcTradePriceEl.textContent = price.toFixed(2);
+    pcTradePriceEl.classList.toggle('up', up);
+    pcTradePriceEl.classList.toggle('down', !up);
+    drawTradeChart(history);
+
+    const canAfford = hackRuntime.byteBalance >= BITE_TRADE_STAKE_BYTE;
+    pcTradeUpBtn.disabled = !canAfford;
+    pcTradeDownBtn.disabled = !canAfford;
+
+    if (!lastTradeResult) {
+      pcTradeResultEl.textContent = canAfford
+        ? `aposta ${BITE_TRADE_STAKE_BYTE} BYTE, acerta e ganha ${BITE_TRADE_PAYOUT_BYTE} BYTE`
+        : `BYTE insuficiente (precisa de ${BITE_TRADE_STAKE_BYTE})`;
+      pcTradeResultEl.className = 'pc-trade-result';
+    }
+  }
+
+  function handleTrade(direction) {
+    const result = hackRuntime.tradeBite(direction);
+    if (!result.success) {
+      lastTradeResult = null;
+      renderTradePanel();
+      return;
+    }
+    lastTradeResult = result;
+    renderTradePanel();
+    if (result.correct) {
+      pcTradeResultEl.textContent = `ACERTOU! +${BITE_TRADE_PAYOUT_BYTE - BITE_TRADE_STAKE_BYTE} BYTE`;
+      pcTradeResultEl.className = 'pc-trade-result win';
+    } else {
+      pcTradeResultEl.textContent = `ERROU. -${BITE_TRADE_STAKE_BYTE} BYTE`;
+      pcTradeResultEl.className = 'pc-trade-result lose';
+    }
+  }
+
+  /**
+   * Abre a tela do PC so com a aba TRADE (sem terminal/equipe/loja, que
+   * nao fazem sentido no laptop do bar) - so funciona parado nele, dentro
+   * do nullpoint_interior.
+   */
+  function handleOpenBarTrade() {
+    if (hackRuntime.nearbyBarInteractable() !== 'laptop') return;
+    if (hackRuntime.isMovementBlocked) return;
+    lastTradeResult = null;
+    pcScreenOpen({ tabs: ['trade'], activeTab: 'trade' });
+  }
+
   function updateStatus() {
     const sittingText = hackRuntime.isSitting ? ' | sentado no banco' : '';
     statusEl.textContent = `mapa: ${mapManager.currentMap.id} | posicao: (${mapManager.playerCol}, ${mapManager.playerRow}) | direcao: ${controller.direction} | pose: ${controller.pose} | trace: ${traceMeter.value.toFixed(1)}${sittingText}`;
@@ -501,9 +607,12 @@ function startGame(characterId) {
     }
 
     if (nearbyBar === 'counter' || nearbyBar === 'bartender') {
-      const label = nearbyBar === 'bartender' ? 'atendente do bar' : 'balcao do bar';
+      const label = nearbyBar === 'bartender' ? `${BAR_OWNER_NAME} (dono do bar)` : 'balcao do bar';
       if (!lastDrinkResult) {
-        shopStatusEl.textContent = `[D] ${label}: pedir um energetico por ${DRINK_COST_BYTE} BYTE (recarrega a energia)`;
+        shopStatusEl.textContent =
+          nearbyBar === 'bartender'
+            ? `[D] ${label}: "aqui e casa, so nao fode com a clientela" - energetico por ${DRINK_COST_BYTE} BYTE`
+            : `[D] ${label}: pedir um energetico por ${DRINK_COST_BYTE} BYTE (recarrega a energia)`;
       } else if (lastDrinkResult.success) {
         shopStatusEl.textContent = `[D] ${label}: energetico servido por ${lastDrinkResult.byteSpent} BYTE, energia recarregada`;
       } else if (lastDrinkResult.reason === 'energia_cheia') {
@@ -618,7 +727,8 @@ function startGame(characterId) {
   function handleOpenPc() {
     if (hackRuntime.nearbyHomeInteractable() !== 'pc') return;
     if (hackRuntime.isMovementBlocked) return;
-    pcScreenOpen({ showExtraTabs: true });
+    lastTradeResult = null;
+    pcScreenOpen({ tabs: ['terminal', 'equipe', 'loja', 'trade'], activeTab: 'terminal' });
     renderPcMenu();
     pcRenderWorkers();
     pcRenderPets();
@@ -768,7 +878,7 @@ function startGame(characterId) {
     hackingBuildingId = nearby.id;
     updateHackStatus();
 
-    pcScreenOpen({ showExtraTabs: false });
+    pcScreenOpen({ tabs: ['terminal'], activeTab: 'terminal' });
     pcScreenShowRun();
     pcLogClear();
     pcSetHead(nearby.id.toUpperCase(), nearby.target.tier.toUpperCase());
@@ -849,6 +959,11 @@ function startGame(characterId) {
       handleToggleSit();
       return;
     }
+    if (event.key === 't' || event.key === 'T') {
+      event.preventDefault();
+      handleOpenBarTrade();
+      return;
+    }
     if (event.key === '1' || event.key === '2' || event.key === '3') {
       event.preventDefault();
       const worker = hackRuntime.hirableWorkers[Number(event.key) - 1];
@@ -864,7 +979,10 @@ function startGame(characterId) {
   pcTabTerminalEl.addEventListener('click', () => pcScreenSetTab('terminal'));
   pcTabEquipeEl.addEventListener('click', () => pcScreenSetTab('equipe'));
   pcTabLojaEl.addEventListener('click', () => pcScreenSetTab('loja'));
+  pcTabTradeEl.addEventListener('click', () => pcScreenSetTab('trade'));
   pcMenuMineBtn.addEventListener('click', () => startMining());
+  pcTradeUpBtn.addEventListener('click', () => handleTrade('up'));
+  pcTradeDownBtn.addEventListener('click', () => handleTrade('down'));
 
   window.addEventListener('keyup', (event) => {
     const direction = MOVE_KEYS[event.key];
@@ -890,6 +1008,7 @@ function startGame(characterId) {
     updateHackStatus();
     updateShopStatus();
     updateWorkerStatus();
+    if (!pcScreenEl.hidden && !pcPanelTradeEl.hidden) renderTradePanel();
   }
 
   let lastTime = performance.now();

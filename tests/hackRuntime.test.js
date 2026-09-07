@@ -10,6 +10,7 @@ import { DRINK_COST_BYTE } from '../src/hackIntegration/drinkShop.js';
 import { INFO_MINING_ENERGY_COST_RATIO } from '../src/hackIntegration/infoMining.js';
 import { HIRABLE_WORKERS, WORKER_HIRE_COST_BYTE, WORKER_WORK_INTERVAL_MS } from '../src/hackIntegration/workers.js';
 import { PET_COST_BYTE } from '../src/hackIntegration/pets.js';
+import { BITE_TRADE_STAKE_BYTE, BITE_TRADE_PAYOUT_BYTE } from '../src/hackIntegration/biteTrade.js';
 
 function makeFakeMapManager({ mapId = 'district_07', col = 3, row = 5 } = {}) {
   return { currentMap: { id: mapId }, playerCol: col, playerRow: row };
@@ -690,4 +691,67 @@ test('buyPet e recusado fora do PC, e sem BYTE suficiente', () => {
     ledger,
   });
   assert.equal(brokeAtPc.buyPet('gato_laranja').reason, 'byte_insuficiente');
+});
+
+test('tradeBite funciona parado no PC de casa, cobrando/pagando pelo ledger', () => {
+  const ledger = new ByteLedger();
+  ledger.record({ type: 'gain', amount: 100 });
+  const runtime = new HackRuntime({
+    mapManager: makeFakeMapManager({ mapId: 'player_home', col: 6, row: 2 }), // oeste do PC (origem 7,2)
+    controller: makeFakeController(),
+    playerStats: createPlayerStats(1),
+    ledger,
+    rng: () => 1, // sempre sobe
+  });
+
+  const result = runtime.tradeBite('up');
+  assert.equal(result.success, true);
+  assert.equal(result.correct, true);
+  assert.equal(runtime.byteBalance, 100 - BITE_TRADE_STAKE_BYTE + BITE_TRADE_PAYOUT_BYTE);
+  assert.ok(runtime.biteHistory.length >= 2, 'o trade ja gerou um candle novo, refletido no historico');
+});
+
+test('tradeBite funciona parado no laptop do bar', () => {
+  const ledger = new ByteLedger();
+  ledger.record({ type: 'gain', amount: 100 });
+  const runtime = new HackRuntime({
+    mapManager: makeFakeMapManager({ mapId: 'nullpoint_interior', col: 10, row: 4 }), // oeste do laptop (origem 11,4)
+    controller: makeFakeController(),
+    playerStats: createPlayerStats(1),
+    ledger,
+    rng: () => 0, // sempre desce
+  });
+
+  const result = runtime.tradeBite('down');
+  assert.equal(result.success, true);
+  assert.equal(result.correct, true);
+});
+
+test('tradeBite e recusado fora do PC/laptop, sem cobrar nada', () => {
+  const ledger = new ByteLedger();
+  ledger.record({ type: 'gain', amount: 100 });
+  const runtime = new HackRuntime({
+    mapManager: makeFakeMapManager({ mapId: 'district_07', col: 3, row: 5 }),
+    controller: makeFakeController(),
+    playerStats: createPlayerStats(1),
+    ledger,
+  });
+
+  const result = runtime.tradeBite('up');
+  assert.equal(result.success, false);
+  assert.equal(result.reason, 'fora_do_trade');
+  assert.equal(ledger.balance, 100);
+});
+
+test('o mercado da BITE avanca sozinho pelo tick(), mesmo longe do PC/laptop', () => {
+  const runtime = new HackRuntime({
+    mapManager: makeFakeMapManager({ mapId: 'district_07', col: 3, row: 5 }),
+    controller: makeFakeController(),
+    playerStats: createPlayerStats(1),
+    rng: () => 1,
+  });
+
+  const priceBefore = runtime.bitePrice;
+  runtime.tick(4000); // BITE_CANDLE_INTERVAL_MS
+  assert.ok(runtime.bitePrice > priceBefore, 'o preco avanca mesmo sem o jogador estar no trade');
 });

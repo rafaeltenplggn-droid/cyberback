@@ -36,5 +36,9 @@
     { "x": 7, "y": 9, "target_map": "district_07", "spawn_x": 4, "spawn_y": 6 },
     { "x": 8, "y": 9, "target_map": "district_07", "spawn_x": 4, "spawn_y": 6 }
   ],
-  "props": []
+  "props": [],
+  "dustMotes": [
+    { "x": 2, "y": 5, "spreadX": 0.5, "riseTiles": 1.4, "count": 4, "color": "#ffe6f7", "periodMs": 6000, "size": 2.2, "maxAlpha": 0.6 },
+    { "x": 6, "y": 4.3, "spreadX": 0.4, "riseTiles": 1.2, "count": 3, "color": "#fff0d2", "periodMs": 5500, "size": 2.0, "maxAlpha": 0.55 }
+  ]
 }

@@ -17,6 +17,7 @@ import { mineInformation as mineInformationAction } from './infoMining.js';
 import { WorkerRoster } from './workers.js';
 import { requiredLevelForTier } from './hackLevelGate.js';
 import { PetCollection } from './pets.js';
+import { BiteMarket } from './biteTrade.js';
 
 // 30s pra dar tempo real de "trabalho" (e de mostrar uma tela de PC/HUD
 // enquanto isso acontece), em vez do resultado aparecer quase instantaneo.
@@ -53,6 +54,7 @@ export class HackRuntime {
     this.sleepTracker = new SleepTracker(now ? { now } : undefined);
     this.workerRoster = new WorkerRoster({ rng: this.rng });
     this.petCollection = new PetCollection();
+    this.biteMarket = new BiteMarket({ rng: this.rng });
     this._sitting = false;
     this._mining = false;
     this._miningStartedAt = null;
@@ -118,6 +120,7 @@ export class HackRuntime {
    */
   tick(deltaMs) {
     this.workerRoster.tick(deltaMs, { informationLedger: this.informationLedger });
+    this.biteMarket.tick(deltaMs);
     if (this.isMovementBlocked) return;
     this.controller.tick(deltaMs);
     // Levanta sozinho se o jogador se afastou do banco (cosmetico, nao
@@ -305,6 +308,31 @@ export class HackRuntime {
       return { success: false, reason: 'loja_indisponivel' };
     }
     return this.petCollection.buy(petId, { ledger: this.ledger });
+  }
+
+  /** Preco atual da BITE e o historico recente (sparkline) - ver biteTrade.js. O mercado roda sozinho, mesmo com a tela fechada. */
+  get bitePrice() {
+    return this.biteMarket.price;
+  }
+
+  get biteHistory() {
+    return this.biteMarket.history;
+  }
+
+  /**
+   * Aposta 'up' ou 'down' na BITE. So funciona parado no PC de casa ou no
+   * laptop do bar (nullpoint_interior) - fora dai, recusa sem cobrar nada.
+   */
+  tradeBite(direction) {
+    const atHomePc = this.nearbyHomeInteractable() === 'pc';
+    const atBarLaptop = this.nearbyBarInteractable() === 'laptop';
+    if (!atHomePc && !atBarLaptop) {
+      return { success: false, reason: 'fora_do_trade' };
+    }
+    if (!this.ledger) {
+      return { success: false, reason: 'loja_indisponivel' };
+    }
+    return this.biteMarket.trade(direction, { ledger: this.ledger });
   }
 
   /** Dorme na cama: recupera energia de graca, mas so fora do cooldown. So funciona parado ao lado da cama. */
