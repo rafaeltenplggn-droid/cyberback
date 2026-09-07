@@ -355,6 +355,120 @@
       color: #536873;
       letter-spacing: 0.08em;
     }
+
+    /* ---------- Cardapio de drinks do bar: mesma ideia de overlay da tela
+       do PC (abre por cima do jogo), mas com uma "skin" bem diferente -
+       balcao de bar/neon quente, em vez do monitor CRT verde/ciano. Estes
+       drinks NUNCA recarregam energia (isso continua so no [D] existente);
+       aqui e so um buff temporario de stat. ---------- */
+    #drink-menu {
+      position: fixed;
+      inset: 0;
+      z-index: 10;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(10, 3, 4, 0.86);
+      font-family: 'Rajdhani', monospace;
+    }
+    #drink-menu[hidden] { display: none; }
+
+    .drink-board {
+      width: min(560px, 92vw);
+      background: linear-gradient(160deg, #3a1f1a, #1f120f 35%, #120908);
+      border: 1px solid #5a2e1f;
+      border-radius: 14px;
+      padding: 18px 20px 16px;
+      box-shadow: 0 30px 70px -30px rgba(0, 0, 0, 0.85), inset 0 0 40px rgba(255, 120, 40, 0.05);
+    }
+    .drink-board-title {
+      font-family: 'VT323', monospace;
+      font-size: 26px;
+      letter-spacing: 0.1em;
+      color: #ffb347;
+      text-shadow: 0 0 10px rgba(255, 140, 50, 0.5);
+      text-align: center;
+      margin-bottom: 4px;
+    }
+    .drink-board-sub {
+      text-align: center;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 11px;
+      color: #c98a5f;
+      letter-spacing: 0.06em;
+      margin-bottom: 14px;
+    }
+    .drink-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .drink-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      background: rgba(0, 0, 0, 0.25);
+      border: 1px solid #4a2a20;
+      border-radius: 8px;
+      padding: 10px 12px;
+    }
+    .drink-item-info { display: flex; flex-direction: column; gap: 2px; }
+    .drink-item-name {
+      font-weight: 700;
+      color: #ffe0c2;
+      letter-spacing: 0.04em;
+    }
+    .drink-item-buff {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 11px;
+      color: #ff9d5c;
+    }
+    .drink-item-btn {
+      appearance: none;
+      border: 1px solid #ff8a3d;
+      background: rgba(255, 138, 61, 0.1);
+      color: #ffe0c2;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      padding: 8px 12px;
+      border-radius: 6px;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    .drink-item-btn:disabled {
+      border-color: #4a3a30;
+      background: transparent;
+      color: #7a5c4a;
+      cursor: default;
+    }
+    .drink-active {
+      margin-top: 12px;
+      text-align: center;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 12px;
+      color: #4dffb8;
+      min-height: 16px;
+    }
+    .drink-result {
+      text-align: center;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 11px;
+      color: #8fa3ad;
+      min-height: 14px;
+      margin-top: 4px;
+    }
+    .drink-result.lose { color: #ff5d6a; }
+    .drink-hint {
+      text-align: center;
+      padding-top: 12px;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 11px;
+      color: #7a5c4a;
+      letter-spacing: 0.08em;
+    }
   </style>
 </head>
 <body>
@@ -422,9 +536,20 @@
     </div>
   </div>
 
+  <div id="drink-menu" hidden>
+    <div class="drink-board">
+      <div class="drink-board-title">CARDAPIO</div>
+      <div class="drink-board-sub">nao recarrega energia - so um bonus temporario, um de cada vez</div>
+      <div class="drink-list" id="drink-list"></div>
+      <div class="drink-active" id="drink-active"></div>
+      <div class="drink-result" id="drink-result"></div>
+      <div class="drink-hint">ESC fecha o cardapio</div>
+    </div>
+  </div>
+
   <details id="help">
     <summary>Ajuda / controles</summary>
-    <p>Setas do teclado movem o personagem (grid, 4 direcoes, sem diagonal). Retangulos cinza sao props/predios ainda sem arte final. Ponto ciano e uma porta: ao pisar nela o mapa inteiro troca e o personagem reaparece no spawn do destino. Chegando perto de qualquer predio hackavel em district_07 (gridcorp_tower - comum, nullpoint_bar - incomum, ghost_row_market/BLACKNET - raro, o mais dificil), ESPACO ou ENTER disparam um hack de teste contra ele; enquanto o hack roda o movimento fica bloqueado. Hack bem sucedido rende XP (sobe de nivel e os stats crescem) e uma unidade de Informacao (raridade de acordo com o tier do predio: comum/rara/epica). Cada tentativa de hack gasta energia (mesmo se falhar); sem energia suficiente pro tier do predio, o hack nem tenta - a energia so recupera dormindo ou comprando um energetico no bar (nao recarrega sozinha nem tem loja no PC de casa). Cada predio so pode ser hackeado a partir de um nivel minimo (comum 1, incomum 3, raro 5) - abaixo disso o hack e recusado, fisico ou remoto. O personagem tem um quarto (player_home), acessivel por uma porta em district_07: perto do PC, tecla B abre a tela do PC com um menu de acoes - minerar informacao (leva uns 30 segundos, chance de sucesso, sempre rende comum quando da certo, gasta energia mesmo se falhar) ou hackear qualquer um dos 3 predios remotamente, sem precisar andar ate la (respeitando a mesma trava de nivel); ainda no PC, a aba EQUIPE deixa contratar os outros personagens do elenco por BYTE - uma vez contratados, eles minerm informacao sozinhos, em tempo real, pelo resto da partida, sem gastar a energia do jogador (tambem da pra contratar pelas teclas 1/2/3 fora do menu); perto da cama, tecla S deixa o personagem dormir, recuperando energia de graca, mas so uma vez a cada 2 minutos. O nullpoint_bar (fora, hackavel normalmente) tem um balcao dentro dele: perto do balcao, tecla D compra um energetico por BYTE que recarrega a energia ate o maximo. Ainda dentro do bar: perto do banco, tecla C senta/levanta (so cosmetico, sem efeito no jogo); perto do laptop, ESPACO ou ENTER hackeiam o proprio nullpoint_bar remotamente, sem precisar sair do bar, e tecla T abre a tela de TRADE da BITE nesse mesmo laptop. Atras do balcao tem o dono do bar (Rook): perto dele, tecla D tambem compra o energetico, exatamente como no balcao (mesma loja, dois pontos de acesso). A tela de TRADE (tecla T no laptop do bar, ou aba TRADE dentro do PC de casa) e um minijogo simples: aposta 20 BYTE apostando se o preco da BITE vai subir ou descer no proximo instante, ganhando 40 BYTE se acertar (o preco continua se mexendo sozinho mesmo com a tela fechada). Dentro da BLACKNET (ghost_row_interior), tecla V vende toda a Informacao acumulada por BYTE (preco por raridade: comum 8, rara 25, epica 60).</p>
+    <p>Setas do teclado movem o personagem (grid, 4 direcoes, sem diagonal). Retangulos cinza sao props/predios ainda sem arte final. Ponto ciano e uma porta: ao pisar nela o mapa inteiro troca e o personagem reaparece no spawn do destino. Chegando perto de qualquer predio hackavel em district_07 (gridcorp_tower - comum, nullpoint_bar - incomum, ghost_row_market/BLACKNET - raro, o mais dificil), ESPACO ou ENTER disparam um hack de teste contra ele; enquanto o hack roda o movimento fica bloqueado. Hack bem sucedido rende XP (sobe de nivel e os stats crescem) e uma unidade de Informacao (raridade de acordo com o tier do predio: comum/rara/epica). Cada tentativa de hack gasta energia (mesmo se falhar); sem energia suficiente pro tier do predio, o hack nem tenta - a energia so recupera dormindo ou comprando um energetico no bar (nao recarrega sozinha nem tem loja no PC de casa). Cada predio so pode ser hackeado a partir de um nivel minimo (comum 1, incomum 3, raro 5) - abaixo disso o hack e recusado, fisico ou remoto. O personagem tem um quarto (player_home), acessivel por uma porta em district_07: perto do PC, tecla B abre a tela do PC com um menu de acoes - minerar informacao (leva uns 30 segundos, chance de sucesso, sempre rende comum quando da certo, gasta energia mesmo se falhar) ou hackear qualquer um dos 3 predios remotamente, sem precisar andar ate la (respeitando a mesma trava de nivel); ainda no PC, a aba EQUIPE deixa contratar os outros personagens do elenco por BYTE - uma vez contratados, eles minerm informacao sozinhos, em tempo real, pelo resto da partida, sem gastar a energia do jogador (tambem da pra contratar pelas teclas 1/2/3 fora do menu); perto da cama, tecla S deixa o personagem dormir, recuperando energia de graca, mas so uma vez a cada 2 minutos. O nullpoint_bar (fora, hackavel normalmente) tem um balcao dentro dele: perto do balcao, tecla D compra um energetico por BYTE que recarrega a energia ate o maximo. Ainda dentro do bar: perto do banco, tecla C senta/levanta (so cosmetico, sem efeito no jogo); perto do laptop, ESPACO ou ENTER hackeiam o proprio nullpoint_bar remotamente, sem precisar sair do bar, e tecla T abre a tela de TRADE da BITE nesse mesmo laptop. Atras do balcao tem o dono do bar (Rook): perto dele, tecla D tambem compra o energetico, exatamente como no balcao (mesma loja, dois pontos de acesso). Ainda perto do balcao/atendente, tecla M abre o CARDAPIO: drinks com buff temporario (Synth Ale, Neon Lager, Kaze Whiskey, Byte Sour), cada um sobe um stat diferente por 60 segundos - NAO recarregam energia, e so um buff ativo por vez (pedir outro substitui o anterior). A tela de TRADE (tecla T no laptop do bar, ou aba TRADE dentro do PC de casa) e um minijogo simples: aposta 20 BYTE apostando se o preco da BITE vai subir ou descer no proximo instante, ganhando 40 BYTE se acertar (o preco continua se mexendo sozinho mesmo com a tela fechada). Dentro da BLACKNET (ghost_row_interior), tecla V vende toda a Informacao acumulada por BYTE (preco por raridade: comum 8, rara 25, epica 60).</p>
   </details>
 
   <script type="module" src="src/main.js"></script>

@@ -43,13 +43,21 @@ export class HackSession {
     return this.status !== STAGE_IDLE && this.status !== STAGE_DONE;
   }
 
-  async run(target) {
+  async run(target, { statBuff } = {}) {
     if (this.isActive) {
       throw new Error('ja existe um hack em andamento');
     }
     if (!target) {
       throw new Error('target e obrigatorio');
     }
+
+    // statBuff (ver drinkMenu.js) e um bonus temporario de drink, so afeta
+    // os calculos deste hack (breach/fence) - nunca o playerStats
+    // persistido/nivelado, que continua intocado aqui.
+    const effectiveStats =
+      statBuff && this.playerStats
+        ? { ...this.playerStats, [statBuff.stat]: this.playerStats[statBuff.stat] + statBuff.amount }
+        : this.playerStats;
 
     this.result = null;
     this.status = STAGE_RECON;
@@ -80,7 +88,7 @@ export class HackSession {
     }
 
     this.status = STAGE_BREACHING;
-    const breachResult = await breachStage(target, this.playerStats, { rng: this.rng });
+    const breachResult = await breachStage(target, effectiveStats, { rng: this.rng });
 
     let exfiltrateResult = null;
     let fenceResult = null;
@@ -100,7 +108,7 @@ export class HackSession {
       // referencia/estimativa) - nao credita mais BYTE direto no ledger. O
       // que o jogador realmente ganha e uma unidade de Informacao (ver
       // informationLedger.js), vendida depois na BLACKNET por BYTE.
-      fenceResult = fenceStage(exfiltrateResult.loot, this.playerStats, {});
+      fenceResult = fenceStage(exfiltrateResult.loot, effectiveStats, {});
       if (this.informationLedger) {
         const rarity = infoRarityForTier(target.tier);
         this.informationLedger.add(rarity);

@@ -18,6 +18,7 @@ import { WorkerRoster } from './workers.js';
 import { requiredLevelForTier } from './hackLevelGate.js';
 import { PetCollection } from './pets.js';
 import { BiteMarket } from './biteTrade.js';
+import { DrinkBuffTracker } from './drinkMenu.js';
 
 // 30s pra dar tempo real de "trabalho" (e de mostrar uma tela de PC/HUD
 // enquanto isso acontece), em vez do resultado aparecer quase instantaneo.
@@ -55,6 +56,7 @@ export class HackRuntime {
     this.workerRoster = new WorkerRoster({ rng: this.rng });
     this.petCollection = new PetCollection();
     this.biteMarket = new BiteMarket({ rng: this.rng });
+    this.drinkBuffTracker = new DrinkBuffTracker(now ? { now } : undefined);
     this._sitting = false;
     this._mining = false;
     this._miningStartedAt = null;
@@ -184,7 +186,7 @@ export class HackRuntime {
 
     this._hacking = true;
     this._hackStartedAt = this._now();
-    const result = await this.hackSession.run(entry.target);
+    const result = await this.hackSession.run(entry.target, { statBuff: this.drinkBuffTracker.active });
     this.hackSession.reset();
 
     if (!result.energyBlocked) {
@@ -365,6 +367,28 @@ export class HackRuntime {
       return { success: false, reason: 'loja_indisponivel', byteSpent: 0 };
     }
     return buyDrinkAction({ energyMeter, ledger: this.ledger });
+  }
+
+  /** Buff de drink ativo agora (ou null) - ver drinkMenu.js. Pra UI mostrar o que esta ativo e quanto falta. */
+  get activeDrinkBuff() {
+    return this.drinkBuffTracker.active;
+  }
+
+  /**
+   * Pede um drink do cardapio novo (com buff, ver drinkMenu.js) - diferente
+   * de buyDrink(), este NAO recarrega energia, so da um bonus temporario
+   * num stat. Funciona parado ao lado do balcao ou do atendente, igual
+   * buyDrink().
+   */
+  orderDrink(drinkId) {
+    const nearby = this.nearbyBarInteractable();
+    if (nearby !== 'counter' && nearby !== 'bartender') {
+      return { success: false, reason: 'fora_do_balcao' };
+    }
+    if (!this.ledger) {
+      return { success: false, reason: 'loja_indisponivel' };
+    }
+    return this.drinkBuffTracker.order(drinkId, { ledger: this.ledger });
   }
 
   /** 'sell' ou null - se o personagem esta parado no ponto de venda dentro da BLACKNET (ghost_row_interior). */

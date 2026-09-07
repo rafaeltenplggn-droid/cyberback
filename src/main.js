@@ -13,6 +13,7 @@ import { ByteLedger } from './hackloop/byteLedger.js';
 import { HackRuntime } from './hackIntegration/hackRuntime.js';
 import { SLEEP_ENERGY_RESTORE } from './hackIntegration/sleepAction.js';
 import { DRINK_COST_BYTE } from './hackIntegration/drinkShop.js';
+import { DRINKS, DRINK_BUFF_DURATION_MS } from './hackIntegration/drinkMenu.js';
 import { INFO_MINING_ENERGY_COST_RATIO } from './hackIntegration/infoMining.js';
 import { WORKER_HIRE_COST_BYTE } from './hackIntegration/workers.js';
 import { PET_COST_BYTE } from './hackIntegration/pets.js';
@@ -175,6 +176,15 @@ function startGame(characterId) {
   const pcRunEl = document.getElementById('pc-run');
   const pcMenuMineBtn = document.getElementById('pc-menu-mine');
   const pcMenuTargetsEl = document.getElementById('pc-menu-targets');
+
+  // ---------- Cardapio de drinks (buff, ver drinkMenu.js) ----------
+  // Overlay separado da tela do PC, com skin propria (balcao de bar) -
+  // diferente do energetico simples ([D], ver drinkShop.js), que continua
+  // intocado e so recarrega energia.
+  const drinkMenuEl = document.getElementById('drink-menu');
+  const drinkListEl = document.getElementById('drink-list');
+  const drinkActiveEl = document.getElementById('drink-active');
+  const drinkResultEl = document.getElementById('drink-result');
 
   const workerPortraits = {};
   let lastPetResult = null;
@@ -477,6 +487,90 @@ function startGame(characterId) {
     pcScreenOpen({ tabs: ['trade'], activeTab: 'trade' });
   }
 
+  let lastDrinkMenuResult = null;
+  const drinkItemButtons = {};
+
+  /**
+   * Monta a lista de drinks UMA vez (botoes fixos, so criados de novo ao
+   * reabrir o cardapio) - refazer o innerHTML a cada frame destruia os
+   * botoes debaixo do clique do jogador (o elemento sumia antes do click
+   * "pegar"). O que muda quadro a quadro (BYTE disponivel, contagem
+   * regressiva do buff) fica em updateDrinkMenuDynamic().
+   */
+  function renderDrinkMenu() {
+    drinkListEl.innerHTML = '';
+    for (const drink of DRINKS) {
+      const item = document.createElement('div');
+      item.className = 'drink-item';
+
+      const info = document.createElement('div');
+      info.className = 'drink-item-info';
+      const name = document.createElement('div');
+      name.className = 'drink-item-name';
+      name.textContent = drink.name;
+      const buff = document.createElement('div');
+      buff.className = 'drink-item-buff';
+      buff.textContent = `+${drink.label} por ${Math.round(DRINK_BUFF_DURATION_MS / 1000)}s`;
+      info.append(name, buff);
+
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'drink-item-btn';
+      btn.textContent = `${drink.costByte} BYTE`;
+      btn.addEventListener('click', () => handleOrderDrink(drink.id));
+      drinkItemButtons[drink.id] = btn;
+
+      item.append(info, btn);
+      drinkListEl.appendChild(item);
+    }
+    updateDrinkMenuDynamic();
+  }
+
+  /** So atualiza texto/disabled dos botoes ja existentes - chamado a cada frame enquanto o cardapio estiver aberto. */
+  function updateDrinkMenuDynamic() {
+    const balance = hackRuntime.byteBalance;
+    for (const drink of DRINKS) {
+      const btn = drinkItemButtons[drink.id];
+      if (btn) btn.disabled = balance < drink.costByte;
+    }
+
+    const activeBuff = hackRuntime.activeDrinkBuff;
+    if (activeBuff) {
+      const drink = DRINKS.find((d) => d.id === activeBuff.drinkId);
+      const secsLeft = Math.max(0, Math.ceil((activeBuff.expiresAt - Date.now()) / 1000));
+      drinkActiveEl.textContent = `ativo: ${drink?.name ?? activeBuff.drinkId} (+${drink?.label ?? activeBuff.stat}) - ${secsLeft}s`;
+    } else {
+      drinkActiveEl.textContent = '';
+    }
+
+    if (lastDrinkMenuResult && !lastDrinkMenuResult.success) {
+      drinkResultEl.textContent = 'BYTE insuficiente pra esse drink';
+      drinkResultEl.className = 'drink-result lose';
+    } else {
+      drinkResultEl.textContent = '';
+      drinkResultEl.className = 'drink-result';
+    }
+  }
+
+  function handleOrderDrink(drinkId) {
+    lastDrinkMenuResult = hackRuntime.orderDrink(drinkId);
+    updateDrinkMenuDynamic();
+  }
+
+  /** Abre o cardapio de drinks - so funciona parado perto do balcao/atendente do bar. */
+  function handleOpenDrinkMenu() {
+    const nearby = hackRuntime.nearbyBarInteractable();
+    if (nearby !== 'counter' && nearby !== 'bartender') return;
+    if (hackRuntime.isMovementBlocked) return;
+    lastDrinkMenuResult = null;
+    drinkMenuEl.hidden = false;
+    renderDrinkMenu();
+  }
+
+  function closeDrinkMenu() {
+    drinkMenuEl.hidden = true;
+  }
+
   function updateStatus() {
     const sittingText = hackRuntime.isSitting ? ' | sentado no banco' : '';
     statusEl.textContent = `mapa: ${mapManager.currentMap.id} | posicao: (${mapManager.playerCol}, ${mapManager.playerRow}) | direcao: ${controller.direction} | pose: ${controller.pose} | trace: ${traceMeter.value.toFixed(1)}${sittingText}`;
@@ -622,6 +716,7 @@ function startGame(characterId) {
       } else {
         shopStatusEl.textContent = `[D] ${label}: nao foi possivel pedir agora`;
       }
+      shopStatusEl.textContent += ' | [M] cardapio (drinks com buff, nao recarrega energia)';
       return;
     }
 
@@ -949,6 +1044,11 @@ function startGame(characterId) {
       handleBuyDrink();
       return;
     }
+    if (event.key === 'm' || event.key === 'M') {
+      event.preventDefault();
+      handleOpenDrinkMenu();
+      return;
+    }
     if (event.key === 'v' || event.key === 'V') {
       event.preventDefault();
       handleSellInformation();
@@ -973,6 +1073,11 @@ function startGame(characterId) {
     if (event.key === 'Escape' && !pcScreenEl.hidden) {
       event.preventDefault();
       pcScreenClose();
+      return;
+    }
+    if (event.key === 'Escape' && !drinkMenuEl.hidden) {
+      event.preventDefault();
+      closeDrinkMenu();
     }
   });
 
@@ -1009,6 +1114,7 @@ function startGame(characterId) {
     updateShopStatus();
     updateWorkerStatus();
     if (!pcScreenEl.hidden && !pcPanelTradeEl.hidden) renderTradePanel();
+    if (!drinkMenuEl.hidden) updateDrinkMenuDynamic();
   }
 
   let lastTime = performance.now();

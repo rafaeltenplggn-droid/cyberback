@@ -207,6 +207,33 @@ test('depois de recarregar energia suficiente, o proximo hack ja funciona normal
   assert.equal(okResult.breach.success, true);
 });
 
+test('statBuff aumenta a chance de breach calculada, sem alterar playerStats persistido', async () => {
+  const playerStats = createPlayerStats(1);
+  const session = new HackSession({ playerStats, rng: () => 0 });
+
+  const plain = await session.run(GRIDCORP_TARGET, {});
+  session.reset();
+
+  const buffed = await session.run(GRIDCORP_TARGET, { statBuff: { stat: 'breachSpeed', amount: 5 } });
+
+  assert.ok(buffed.breach.chance > plain.breach.chance, 'chance de breach deve subir com o buff');
+  assert.equal(buffed.playerStats.breachSpeed, playerStats.breachSpeed, 'stat persistido nao deve ganhar o bonus do drink');
+  assert.equal(session.playerStats.breachSpeed, playerStats.breachSpeed);
+});
+
+test('statBuff tambem afeta o resultado de fence (lootYield), sem persistir', async () => {
+  const playerStats = createPlayerStats(5);
+  const lootYieldBefore = playerStats.lootYield;
+  const session = new HackSession({ playerStats, rng: () => 0 });
+
+  const plain = await session.run(GRIDCORP_TARGET, {});
+  session.reset();
+  const buffed = await session.run(GRIDCORP_TARGET, { statBuff: { stat: 'lootYield', amount: 5 } });
+
+  assert.ok(buffed.fence.byteAmount >= plain.fence.byteAmount, 'lootYield maior nao deve reduzir o valor calculado pelo fence');
+  assert.equal(buffed.playerStats.lootYield, lootYieldBefore, 'lootYield persistido nao muda por causa do drink');
+});
+
 test('reset() so funciona depois que o hack termina', async () => {
   const playerStats = createPlayerStats(1);
   const session = new HackSession({ playerStats, rng: () => 0 });

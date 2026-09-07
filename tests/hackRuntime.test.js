@@ -11,6 +11,7 @@ import { INFO_MINING_ENERGY_COST_RATIO } from '../src/hackIntegration/infoMining
 import { HIRABLE_WORKERS, WORKER_HIRE_COST_BYTE, WORKER_WORK_INTERVAL_MS } from '../src/hackIntegration/workers.js';
 import { PET_COST_BYTE } from '../src/hackIntegration/pets.js';
 import { BITE_TRADE_STAKE_BYTE, BITE_TRADE_PAYOUT_BYTE } from '../src/hackIntegration/biteTrade.js';
+import { DRINKS, DRINK_BUFF_AMOUNT } from '../src/hackIntegration/drinkMenu.js';
 
 function makeFakeMapManager({ mapId = 'district_07', col = 3, row = 5 } = {}) {
   return { currentMap: { id: mapId }, playerCol: col, playerRow: row };
@@ -343,6 +344,71 @@ test('buyDrink e recusado fora do balcao (outro mapa, ou longe dele dentro do ba
   assert.equal(farFromCounter.buyDrink().reason, 'fora_do_balcao');
 
   assert.equal(ledger.balance, 100, 'nenhuma tentativa recusada cobrou nada');
+});
+
+test('orderDrink pede um drink do cardapio novo, cobra BYTE e ativa o buff, sem mexer em energia', () => {
+  const mapManager = makeFakeMapManager({ mapId: 'nullpoint_interior', col: 7, row: 4 }); // oeste do balcao (origem 8,4)
+  const controller = makeFakeController();
+  const ledger = new ByteLedger();
+  ledger.record({ type: 'gain', amount: 100 });
+  const energyMeter = new EnergyMeter({ regenPerSecond: 0 });
+  energyMeter.spend(50); // 50/100
+  const runtime = new HackRuntime({ mapManager, controller, playerStats: createPlayerStats(1), ledger, energyMeter });
+
+  assert.equal(runtime.activeDrinkBuff, null);
+  const drink = DRINKS[0];
+  const result = runtime.orderDrink(drink.id);
+
+  assert.equal(result.success, true);
+  assert.equal(runtime.byteBalance, 100 - drink.costByte);
+  assert.equal(runtime.energyValue, 50, 'orderDrink nao recarrega energia, diferente de buyDrink');
+  assert.equal(runtime.activeDrinkBuff.stat, drink.stat);
+  assert.equal(runtime.activeDrinkBuff.amount, DRINK_BUFF_AMOUNT);
+});
+
+test('orderDrink e recusado fora do balcao (mesma regra de alcance do buyDrink)', () => {
+  const ledger = new ByteLedger();
+  ledger.record({ type: 'gain', amount: 100 });
+
+  const farFromCounter = new HackRuntime({
+    mapManager: makeFakeMapManager({ mapId: 'nullpoint_interior', col: 3, row: 5 }),
+    controller: makeFakeController(),
+    playerStats: createPlayerStats(1),
+    ledger,
+  });
+  assert.equal(farFromCounter.orderDrink(DRINKS[0].id).reason, 'fora_do_balcao');
+  assert.equal(ledger.balance, 100);
+});
+
+test('orderDrink funciona tambem parado perto do atendente (bartender)', () => {
+  const mapManager = makeFakeMapManager({ mapId: 'nullpoint_interior', col: 7, row: 7 }); // oeste do atendente (origem 8,7)
+  const ledger = new ByteLedger();
+  ledger.record({ type: 'gain', amount: 100 });
+  const runtime = new HackRuntime({ mapManager, controller: makeFakeController(), playerStats: createPlayerStats(1), ledger });
+
+  const result = runtime.orderDrink(DRINKS[0].id);
+  assert.equal(result.success, true);
+});
+
+test('o buff do drink afeta o hack seguinte (breach/fence), mas nunca o playerStats persistido', async () => {
+  const mapManager = makeFakeMapManager({ mapId: 'nullpoint_interior', col: 7, row: 4 });
+  const controller = makeFakeController();
+  const ledger = new ByteLedger();
+  ledger.record({ type: 'gain', amount: 100 });
+  const drink = DRINKS.find((d) => d.stat === 'breachSpeed');
+  const runtime = new HackRuntime({ mapManager, controller, playerStats: createPlayerStats(3), ledger, rng: () => 0, hackDelayMs: 0 });
+
+  const breachSpeedBefore = runtime.playerStats.breachSpeed;
+  runtime.orderDrink(drink.id);
+  assert.equal(runtime.activeDrinkBuff.stat, 'breachSpeed');
+
+  mapManager.currentMap.id = 'nullpoint_interior';
+  mapManager.playerCol = 10;
+  mapManager.playerRow = 4; // oeste do laptop, dispara o hack remoto do bar
+  const result = await runtime.triggerHack();
+
+  assert.ok(result.breach, 'o hack rodou');
+  assert.equal(runtime.playerStats.breachSpeed, breachSpeedBefore, 'stat persistido nao ganha o bonus do drink depois do hack');
 });
 
 test('parado no laptop dentro do nullpoint_interior, nearbyHackableBuilding aponta pro nullpoint_bar', async () => {
