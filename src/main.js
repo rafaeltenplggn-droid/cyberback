@@ -3,7 +3,7 @@ import { Renderer } from './render/renderer.js';
 import { centerMapOrigin, gridToScreen, screenToGrid, TILE_SIZE } from './core/topdown.js';
 import { MovementController } from './character/movementController.js';
 import { CharacterRenderer, isImageReady } from './character/characterRenderer.js';
-import { CHARACTER_ROSTER, loadCharacterAssets, loadPortraitImage } from './character/characterRoster.js';
+import { CHARACTER_ROSTER, loadCharacterAssets, loadPortraitImage, applyPortraitImage } from './character/characterRoster.js';
 import { loadPropImage } from './render/propAssets.js';
 import { loadBackgroundImage } from './render/backgroundAssets.js';
 import { createPlayerStats, xpRequiredForLevel } from './hackloop/playerStats.js';
@@ -236,6 +236,11 @@ function startGame(characterId) {
   const workerStatusEl = document.getElementById('worker-status');
 
   // ---------- HUD (cartao de status no canto superior esquerdo) ----------
+  const hudAvatarImgEl = document.getElementById('hud-avatar-img');
+  // Retrato do personagem escolhido (o "NFT") no avatar redondo do HUD -
+  // mesma cadeia de fallback da tela de selecao (portrait -> front_idle ->
+  // front_walk1), so carregada uma vez, no inicio da partida.
+  applyPortraitImage(hudAvatarImgEl, characterId);
   const hudLevelEl = document.getElementById('hud-level');
   const hudXpFillEl = document.getElementById('hud-xp-fill');
   const hudXpValueEl = document.getElementById('hud-xp-value');

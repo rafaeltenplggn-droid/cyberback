@@ -19,8 +19,7 @@ export const CHARACTER_ROSTER = [
  * numa unica implementacao em vez de repetir a cadeia de onerror em
  * cada lugar que precisa de um fallback.
  */
-function loadImageWithFallback(folder, fileNames) {
-  const img = new Image();
+function loadImageWithFallback(folder, fileNames, img = new Image()) {
   let index = 0;
   img.onerror = function tryNext() {
     index += 1;
@@ -49,6 +48,16 @@ export function loadFrontIdleImage(folder) {
  */
 export function loadPortraitImage(folder) {
   return loadImageWithFallback(folder, ['portrait.png', 'front_idle.png', 'front_walk1.png']);
+}
+
+/**
+ * Mesma cadeia de fallback do retrato (portrait -> front_idle ->
+ * front_walk1), mas aplicada direto num <img> que ja existe no DOM (ver
+ * o avatar redondo do HUD em main.js) em vez de criar uma Image() nova -
+ * assim o elemento real na tela recebe o onerror/fallback certinho.
+ */
+export function applyPortraitImage(imgEl, folder) {
+  return loadImageWithFallback(folder, ['portrait.png', 'front_idle.png', 'front_walk1.png'], imgEl);
 }
 
 /**
