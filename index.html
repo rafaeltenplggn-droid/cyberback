@@ -37,22 +37,139 @@
       max-height: calc(100vw * 560 / 900);
     }
 
-    /* HUD de debug: cantinho discreto sobre o jogo, nao ocupa layout. */
+    /* HUD: cantinho superior esquerdo, sempre visivel sobre o jogo, mas
+       sem roubar clique (pointer-events: none) - so informativo. Estilo
+       "cartao" cyberpunk (borda neon fina, fundo translucido) no lugar do
+       antigo dump de texto cru; ver .hud-card abaixo. */
     #debug-hud {
       position: fixed;
       top: 8px;
       left: 8px;
-      max-width: min(520px, 90vw);
-      background: rgba(5, 6, 10, 0.72);
-      border: 1px solid #333;
-      border-radius: 6px;
-      padding: 8px 10px;
-      font-size: 12px;
-      line-height: 1.4;
+      width: min(280px, 90vw);
+      font-family: 'IBM Plex Mono', monospace;
       pointer-events: none;
     }
-    #status, #player-status, #hack-status, #shop-status, #worker-status { margin-bottom: 4px; }
-    #player-status { color: #7dffb3; }
+    .hud-debugline {
+      font-size: 10px;
+      line-height: 1.4;
+      color: #6a7680;
+      background: rgba(5, 6, 10, 0.6);
+      border-radius: 5px;
+      padding: 3px 7px;
+      margin-bottom: 6px;
+    }
+    .hud-card {
+      background: linear-gradient(160deg, rgba(22, 28, 36, 0.92), rgba(8, 10, 14, 0.92));
+      border: 1px solid rgba(77, 255, 184, 0.32);
+      border-radius: 10px;
+      padding: 10px 12px 9px;
+      margin-bottom: 6px;
+      box-shadow: 0 14px 34px -16px rgba(0, 0, 0, 0.75), inset 0 0 24px rgba(77, 255, 184, 0.035);
+    }
+    .hud-card-top {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      margin-bottom: 7px;
+    }
+    .hud-level-badge {
+      flex: none;
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      background: radial-gradient(circle at 35% 30%, #1c2731, #0a0f14);
+      border: 1px solid #4dffb8;
+      color: #4dffb8;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: 'Rajdhani', sans-serif;
+      font-weight: 700;
+      font-size: 15px;
+      text-shadow: 0 0 6px rgba(77, 255, 184, 0.65);
+    }
+    .hud-card-top-info { flex: 1; min-width: 0; }
+    .hud-card-top .hud-bar-row { margin-bottom: 0; }
+    .hud-bar-row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-bottom: 6px;
+    }
+    .hud-label {
+      flex: none;
+      width: 42px;
+      font-size: 9px;
+      letter-spacing: 0.06em;
+      color: #7d8994;
+    }
+    .hud-bar {
+      flex: 1;
+      height: 6px;
+      border-radius: 4px;
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      overflow: hidden;
+    }
+    .hud-bar-fill {
+      height: 100%;
+      width: 0%;
+      border-radius: 3px;
+      transition: width 0.25s ease, background 0.25s ease;
+    }
+    .hud-bar-xp { background: linear-gradient(90deg, #22e5ff, #4dffb8); }
+    .hud-bar-energy { background: linear-gradient(90deg, #ffd23a, #ff9d3a); }
+    .hud-bar-energy.low { background: linear-gradient(90deg, #ff5d6a, #ff2079); }
+    .hud-bar-trace { background: linear-gradient(90deg, #ff9d3a, #ff2079); }
+    .hud-value {
+      flex: none;
+      min-width: 42px;
+      font-size: 10px;
+      color: #c7d3da;
+      text-align: right;
+    }
+    .hud-stats-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+      margin-bottom: 7px;
+    }
+    .hud-chip {
+      font-size: 9px;
+      padding: 2px 6px;
+      border-radius: 4px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      color: #9fb4c0;
+      letter-spacing: 0.02em;
+    }
+    .hud-chip-byte {
+      color: #ffd23a;
+      border-color: rgba(255, 210, 58, 0.4);
+      background: rgba(255, 210, 58, 0.08);
+      font-weight: 700;
+    }
+    .hud-info-row {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      font-size: 10px;
+      color: #9fb4c0;
+    }
+    .hud-info-item.comum { color: #9fb4c0; }
+    .hud-info-item.rara { color: #4dc4ff; }
+    .hud-info-item.epica { color: #d68bff; }
+    .hud-info-total { margin-left: auto; opacity: 0.7; }
+
+    .hud-line {
+      font-size: 11px;
+      line-height: 1.4;
+      background: rgba(5, 6, 10, 0.68);
+      border-radius: 5px;
+      padding: 4px 8px;
+      margin-bottom: 5px;
+    }
+    .hud-line:empty { display: none; }
     #hack-status { color: #ff2079; }
     #shop-status { color: #ffd23a; }
     #worker-status { color: #b47bff; white-space: pre-line; }
@@ -477,11 +594,51 @@
   </div>
 
   <div id="debug-hud">
-    <div id="status">carregando...</div>
-    <div id="player-status"></div>
-    <div id="hack-status"></div>
-    <div id="shop-status"></div>
-    <div id="worker-status"></div>
+    <div id="status" class="hud-debugline">carregando...</div>
+
+    <div class="hud-card">
+      <div class="hud-card-top">
+        <div class="hud-level-badge" id="hud-level">1</div>
+        <div class="hud-card-top-info">
+          <div class="hud-bar-row">
+            <span class="hud-label">XP</span>
+            <div class="hud-bar"><div class="hud-bar-fill hud-bar-xp" id="hud-xp-fill"></div></div>
+            <span class="hud-value" id="hud-xp-value">0/0</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="hud-bar-row">
+        <span class="hud-label">ENERGIA</span>
+        <div class="hud-bar"><div class="hud-bar-fill hud-bar-energy" id="hud-energy-fill"></div></div>
+        <span class="hud-value" id="hud-energy-value">0/0</span>
+      </div>
+
+      <div class="hud-bar-row">
+        <span class="hud-label">TRACE</span>
+        <div class="hud-bar"><div class="hud-bar-fill hud-bar-trace" id="hud-trace-fill"></div></div>
+        <span class="hud-value" id="hud-trace-value">0</span>
+      </div>
+
+      <div class="hud-stats-row">
+        <div class="hud-chip hud-chip-byte" id="hud-byte">◈ 0 BYTE</div>
+        <div class="hud-chip" id="hud-stat-breach">BSpd 0</div>
+        <div class="hud-chip" id="hud-stat-stealth">Stl 0</div>
+        <div class="hud-chip" id="hud-stat-loot">Loot 0</div>
+        <div class="hud-chip" id="hud-stat-trace">TRes 0</div>
+      </div>
+
+      <div class="hud-info-row">
+        <span class="hud-info-item comum">● <span id="hud-info-comum">0</span></span>
+        <span class="hud-info-item rara">● <span id="hud-info-rara">0</span></span>
+        <span class="hud-info-item epica">● <span id="hud-info-epica">0</span></span>
+        <span class="hud-info-total">= <span id="hud-info-total">0</span> info</span>
+      </div>
+    </div>
+
+    <div id="hack-status" class="hud-line"></div>
+    <div id="shop-status" class="hud-line"></div>
+    <div id="worker-status" class="hud-line"></div>
   </div>
 
   <div id="pc-screen" hidden>

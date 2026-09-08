@@ -7,7 +7,7 @@ import { CHARACTER_ROSTER, loadCharacterAssets, loadPortraitImage } from './char
 import { loadPropImage } from './render/propAssets.js';
 import { loadBackgroundImage } from './render/backgroundAssets.js';
 import { createPlayerStats, xpRequiredForLevel } from './hackloop/playerStats.js';
-import { TraceMeter } from './hackloop/trace.js';
+import { TraceMeter, TRACE_MAX } from './hackloop/trace.js';
 import { EnergyMeter } from './hackloop/energy.js';
 import { ByteLedger } from './hackloop/byteLedger.js';
 import { HackRuntime } from './hackIntegration/hackRuntime.js';
@@ -231,10 +231,27 @@ function startGame(characterId) {
   const hackRuntime = new HackRuntime({ mapManager, controller, playerStats, traceMeter, energyMeter, ledger });
 
   const statusEl = document.getElementById('status');
-  const playerStatusEl = document.getElementById('player-status');
   const hackStatusEl = document.getElementById('hack-status');
   const shopStatusEl = document.getElementById('shop-status');
   const workerStatusEl = document.getElementById('worker-status');
+
+  // ---------- HUD (cartao de status no canto superior esquerdo) ----------
+  const hudLevelEl = document.getElementById('hud-level');
+  const hudXpFillEl = document.getElementById('hud-xp-fill');
+  const hudXpValueEl = document.getElementById('hud-xp-value');
+  const hudEnergyFillEl = document.getElementById('hud-energy-fill');
+  const hudEnergyValueEl = document.getElementById('hud-energy-value');
+  const hudTraceFillEl = document.getElementById('hud-trace-fill');
+  const hudTraceValueEl = document.getElementById('hud-trace-value');
+  const hudByteEl = document.getElementById('hud-byte');
+  const hudStatBreachEl = document.getElementById('hud-stat-breach');
+  const hudStatStealthEl = document.getElementById('hud-stat-stealth');
+  const hudStatLootEl = document.getElementById('hud-stat-loot');
+  const hudStatTraceEl = document.getElementById('hud-stat-trace');
+  const hudInfoComumEl = document.getElementById('hud-info-comum');
+  const hudInfoRaraEl = document.getElementById('hud-info-rara');
+  const hudInfoEpicaEl = document.getElementById('hud-info-epica');
+  const hudInfoTotalEl = document.getElementById('hud-info-total');
 
   // ---------- Tela de invasao (PC screen) ----------
   // Overlay visual mostrado durante um hack de predio ou a mineracao do
@@ -664,15 +681,36 @@ function startGame(characterId) {
 
   function updateStatus() {
     const sittingText = hackRuntime.isSitting ? ' | sentado no banco' : '';
-    statusEl.textContent = `mapa: ${mapManager.currentMap.id} | posicao: (${mapManager.playerCol}, ${mapManager.playerRow}) | direcao: ${controller.direction} | pose: ${controller.pose} | trace: ${traceMeter.value.toFixed(1)}${sittingText}`;
+    statusEl.textContent = `mapa: ${mapManager.currentMap.id} | posicao: (${mapManager.playerCol}, ${mapManager.playerRow}) | direcao: ${controller.direction} | pose: ${controller.pose}${sittingText}`;
 
     const stats = hackRuntime.playerStats;
     const xpNeeded = xpRequiredForLevel(stats.level);
+    hudLevelEl.textContent = stats.level;
+    hudXpFillEl.style.width = `${Math.min(100, (stats.xp / xpNeeded) * 100)}%`;
+    hudXpValueEl.textContent = `${stats.xp}/${xpNeeded}`;
+
+    const energyValue = hackRuntime.energyValue;
+    const energyMax = hackRuntime.energyMax;
+    const energyPct = (energyValue / energyMax) * 100;
+    hudEnergyFillEl.style.width = `${energyPct}%`;
+    hudEnergyFillEl.classList.toggle('low', energyPct < 25);
+    hudEnergyValueEl.textContent = `${energyValue.toFixed(0)}/${energyMax}`;
+
+    const traceValue = traceMeter.value;
+    hudTraceFillEl.style.width = `${(traceValue / TRACE_MAX) * 100}%`;
+    hudTraceValueEl.textContent = traceValue.toFixed(0);
+
+    hudByteEl.textContent = `◈ ${hackRuntime.byteBalance} BYTE`;
+    hudStatBreachEl.textContent = `BSpd ${stats.breachSpeed}`;
+    hudStatStealthEl.textContent = `Stl ${stats.stealth}`;
+    hudStatLootEl.textContent = `Loot ${stats.lootYield}`;
+    hudStatTraceEl.textContent = `TRes ${stats.traceResistance}`;
+
     const info = hackRuntime.informationCounts;
-    const infoText = ` | informacao: ${hackRuntime.informationTotal} (comum ${info.comum}, rara ${info.rara}, epica ${info.epica})`;
-    playerStatusEl.textContent =
-      `nivel ${stats.level} | xp ${stats.xp}/${xpNeeded} | energia: ${hackRuntime.energyValue.toFixed(0)}/${hackRuntime.energyMax} | BYTE: ${hackRuntime.byteBalance} | ` +
-      `breachSpeed ${stats.breachSpeed} | stealth ${stats.stealth} | lootYield ${stats.lootYield} | traceResistance ${stats.traceResistance}${infoText}`;
+    hudInfoComumEl.textContent = info.comum;
+    hudInfoRaraEl.textContent = info.rara;
+    hudInfoEpicaEl.textContent = info.epica;
+    hudInfoTotalEl.textContent = hackRuntime.informationTotal;
   }
 
   const petRoomImages = {};
