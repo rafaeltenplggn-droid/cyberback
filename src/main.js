@@ -1,6 +1,6 @@
 import { MapManager } from './maps/mapManager.js';
 import { Renderer } from './render/renderer.js';
-import { centerMapOrigin } from './core/topdown.js';
+import { centerMapOrigin, gridToScreen, screenToGrid, TILE_SIZE } from './core/topdown.js';
 import { MovementController } from './character/movementController.js';
 import { CharacterRenderer, isImageReady } from './character/characterRenderer.js';
 import { CHARACTER_ROSTER, loadCharacterAssets, loadPortraitImage } from './character/characterRoster.js';
@@ -18,7 +18,14 @@ import { INFO_MINING_ENERGY_COST_RATIO } from './hackIntegration/infoMining.js';
 import { WORKER_HIRE_COST_BYTE } from './hackIntegration/workers.js';
 import { PET_COST_BYTE } from './hackIntegration/pets.js';
 import { BITE_TRADE_STAKE_BYTE, BITE_TRADE_PAYOUT_BYTE } from './hackIntegration/biteTrade.js';
-import { PLAYER_HOME_MAP_ID, HOME_BED_LOCATION } from './hackIntegration/homeLocations.js';
+import { PLAYER_HOME_MAP_ID, HOME_BED_LOCATION, HOME_PC_LOCATION } from './hackIntegration/homeLocations.js';
+import {
+  BAR_COUNTER_LOCATION,
+  BAR_STOOL_LOCATION,
+  BAR_LAPTOP_LOCATION,
+  BAR_NPC_LOCATION,
+} from './hackIntegration/barLocations.js';
+import { BLACKNET_SELL_LOCATION } from './hackIntegration/blacknetLocations.js';
 
 const STARTING_BYTE_BALANCE = 100;
 const BAR_OWNER_NAME = 'Rook';
@@ -78,6 +85,90 @@ function petStretchScale(nowMs, phaseMs) {
 const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
 const origin = { originX: canvas.width / 2, originY: 80 };
+
+const HINT_BUBBLE_FONT = '11px "IBM Plex Mono", monospace';
+const HINT_BUBBLE_MAX_WIDTH = 200;
+const HINT_BUBBLE_PADDING = 8;
+const HINT_BUBBLE_LINE_HEIGHT = 14;
+
+/** Quebra `text` em linhas que cabem em `maxWidth` (ctx.font ja deve estar setado). */
+function wrapHintText(ctx, text, maxWidth) {
+  const words = text.split(' ');
+  const lines = [];
+  let current = '';
+  for (const word of words) {
+    const candidate = current ? `${current} ${word}` : word;
+    if (ctx.measureText(candidate).width > maxWidth && current) {
+      lines.push(current);
+      current = word;
+    } else {
+      current = candidate;
+    }
+  }
+  if (current) lines.push(current);
+  return lines;
+}
+
+/**
+ * Balao de fala generico (canvas puro, sem DOM) - aparece acima de
+ * qualquer interativel (NPC, PC, laptop, predio hackavel) quando o
+ * personagem esta perto o suficiente pra agir, avisando a tecla de atalho
+ * e que tambem da pra clicar direto nele. `anchorX/anchorY` e o topo-centro
+ * do alvo (onde a pontinha do balao aponta).
+ */
+function drawHintBubble(ctx, anchorX, anchorY, text) {
+  ctx.save();
+  ctx.font = HINT_BUBBLE_FONT;
+  ctx.textBaseline = 'top';
+  const lines = wrapHintText(ctx, text, HINT_BUBBLE_MAX_WIDTH);
+  const textWidth = Math.max(...lines.map((line) => ctx.measureText(line).width));
+  const boxW = textWidth + HINT_BUBBLE_PADDING * 2;
+  const boxH = lines.length * HINT_BUBBLE_LINE_HEIGHT + HINT_BUBBLE_PADDING * 2;
+  const tailH = 6;
+  let boxX = anchorX - boxW / 2;
+  // pra alvos perto do topo do mapa (predios altos, por exemplo) nao ha
+  // espaco pro balao ficar ACIMA do anchor sem vazar pra fora do canvas -
+  // nesse caso vira o balao pra BAIXO do anchor, com a pontinha apontando
+  // pra cima em vez de pra baixo.
+  const preferAbove = anchorY - boxH - tailH >= 4;
+  const boxY = preferAbove ? anchorY - boxH - tailH : anchorY + tailH;
+  // nao deixa o balao vazar pelas bordas laterais do canvas
+  boxX = Math.max(4, Math.min(boxX, ctx.canvas.width - boxW - 4));
+
+  ctx.fillStyle = 'rgba(8, 10, 14, 0.88)';
+  ctx.strokeStyle = 'rgba(77, 255, 184, 0.7)';
+  ctx.lineWidth = 1;
+  const radius = 6;
+  ctx.beginPath();
+  ctx.moveTo(boxX + radius, boxY);
+  ctx.arcTo(boxX + boxW, boxY, boxX + boxW, boxY + boxH, radius);
+  ctx.arcTo(boxX + boxW, boxY + boxH, boxX, boxY + boxH, radius);
+  ctx.arcTo(boxX, boxY + boxH, boxX, boxY, radius);
+  ctx.arcTo(boxX, boxY, boxX + boxW, boxY, radius);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+
+  // pontinha do balao, sempre alinhada com o alvo (nao com o centro da caixa) -
+  // aponta pra baixo (caso normal) ou pra cima (quando o balao foi virado)
+  const tailX = Math.max(boxX + 10, Math.min(anchorX, boxX + boxW - 10));
+  const tailBaseY = preferAbove ? boxY + boxH : boxY;
+  const tailTipY = preferAbove ? tailBaseY + tailH : tailBaseY - tailH;
+  ctx.beginPath();
+  ctx.moveTo(tailX - 5, tailBaseY);
+  ctx.lineTo(tailX + 5, tailBaseY);
+  ctx.lineTo(tailX, tailTipY);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+
+  ctx.fillStyle = '#eaf6f2';
+  lines.forEach((line, index) => {
+    const lineWidth = ctx.measureText(line).width;
+    ctx.fillText(line, boxX + (boxW - lineWidth) / 2, boxY + HINT_BUBBLE_PADDING + index * HINT_BUBBLE_LINE_HEIGHT);
+  });
+  ctx.restore();
+}
 
 // Roda o jogo de verdade com o personagem escolhido na tela de selecao.
 function startGame(characterId) {
@@ -990,6 +1081,84 @@ function startGame(characterId) {
     pcScreenClose();
   }
 
+  /**
+   * Interativel disponivel agora (NPC, PC, laptop, banco, predio hackavel,
+   * terminal da BLACKNET) - usado tanto pro balao de fala (render()) quanto
+   * pro clique direto no personagem/objeto (ver canvas 'click' abaixo). So
+   * um por vez: a mesma prioridade de nearbyBarInteractable/etc.
+   */
+  function getActiveHint() {
+    if (hackRuntime.isMovementBlocked) return null;
+    if (!pcScreenEl.hidden || !drinkMenuEl.hidden) return null;
+
+    const nearbyHome = hackRuntime.nearbyHomeInteractable();
+    if (nearbyHome === 'pc') {
+      return { location: HOME_PC_LOCATION, text: '[B] abrir o PC, ou clique nele', trigger: handleOpenPc };
+    }
+    if (nearbyHome === 'bed') {
+      return { location: HOME_BED_LOCATION, text: '[S] dormir, ou clique na cama', trigger: handleSleep };
+    }
+
+    const nearbyBar = hackRuntime.nearbyBarInteractable();
+    if (nearbyBar === 'bartender') {
+      return { location: BAR_NPC_LOCATION, text: '[M] acessar a loja, ou clique no personagem', trigger: handleOpenDrinkMenu };
+    }
+    if (nearbyBar === 'counter') {
+      return { location: BAR_COUNTER_LOCATION, text: '[M] acessar a loja, ou clique no balcao', trigger: handleOpenDrinkMenu };
+    }
+    if (nearbyBar === 'stool') {
+      return { location: BAR_STOOL_LOCATION, text: '[C] sentar, ou clique no banco', trigger: handleToggleSit };
+    }
+    if (nearbyBar === 'laptop') {
+      return { location: BAR_LAPTOP_LOCATION, text: '[ESPACO] hackear, ou clique no laptop', trigger: handleAction };
+    }
+
+    const nearbyBuilding = hackRuntime.nearbyHackableBuilding();
+    if (nearbyBuilding) {
+      const { building } = nearbyBuilding;
+      // Predios sao grandes (varias fileiras) - o clique continua valendo
+      // no footprint inteiro (building), mas o balao ancora na fileira de
+      // baixo (a entrada, perto de onde o jogador esta parado) em vez do
+      // topo do predio, senao ele fica flutuando longe, quase fora do mapa.
+      return {
+        location: building,
+        anchorRow: building.originY + building.footprintH - 1,
+        text: '[ESPACO] hackear, ou clique no predio',
+        trigger: handleAction,
+      };
+    }
+
+    const nearbyBlacknet = hackRuntime.nearbyBlacknetInteractable();
+    if (nearbyBlacknet === 'sell') {
+      return { location: BLACKNET_SELL_LOCATION, text: '[V] vender informacao, ou clique no terminal', trigger: handleSellInformation };
+    }
+
+    return null;
+  }
+
+  let activeHint = null;
+
+  /** true se (col,row) cai dentro do footprint de `location` (mesmo criterio de "em cima do alvo" usado no resto do jogo). */
+  function isWithinFootprint(col, row, location) {
+    return (
+      col >= location.originX &&
+      col < location.originX + location.footprintW &&
+      row >= location.originY &&
+      row < location.originY + location.footprintH
+    );
+  }
+
+  canvas.addEventListener('click', (event) => {
+    if (!activeHint) return;
+    const rect = canvas.getBoundingClientRect();
+    const canvasX = ((event.clientX - rect.left) / rect.width) * canvas.width;
+    const canvasY = ((event.clientY - rect.top) / rect.height) * canvas.height;
+    const { col, row } = screenToGrid(canvasX, canvasY, mapRenderer.originX, mapRenderer.originY);
+    if (isWithinFootprint(col, row, activeHint.location)) {
+      activeHint.trigger();
+    }
+  });
+
   const MOVE_KEYS = { ArrowUp: 'up', ArrowDown: 'down', ArrowLeft: 'left', ArrowRight: 'right' };
 
   // Direcoes seguradas de verdade (nao o auto-repeat do SO, que tem um
@@ -1109,6 +1278,14 @@ function startGame(characterId) {
     });
     drawOwnedPets(nowMs);
     mapRenderer.drawDustMotes(mapManager.currentMap, nowMs);
+    activeHint = getActiveHint();
+    if (activeHint) {
+      const { location } = activeHint;
+      const anchorRow = activeHint.anchorRow ?? location.originY;
+      const { x } = gridToScreen(location.originX + location.footprintW / 2, anchorRow, mapRenderer.originX, mapRenderer.originY);
+      const anchorY = mapRenderer.originY + anchorRow * TILE_SIZE;
+      drawHintBubble(ctx, x, anchorY, activeHint.text);
+    }
     updateStatus();
     updateHackStatus();
     updateShopStatus();
