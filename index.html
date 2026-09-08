@@ -233,18 +233,82 @@
     }
     #pc-screen[hidden] { display: none; }
 
+    /* Moldura de monitor de verdade: bezel plastico grosso em volta do
+       vidro da tela, camera no meio do bezel superior, LED aceso no
+       inferior, e um pescoco+base fora do #pc-screen (ver .pc-monitor-neck/
+       -base) pra parecer um monitor de mesa mesmo, nao um cartao flutuando. */
+    .pc-monitor-wrap {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
     .pc-monitor {
-      width: min(680px, 92vw);
-      background: linear-gradient(160deg, #262e3a, #14181f 30%, #090b0f);
-      border-radius: 16px;
-      padding: 14px 14px 18px;
-      box-shadow: 0 30px 70px -30px rgba(0, 0, 0, 0.85);
+      position: relative;
+      width: min(720px, 92vw);
+      background: linear-gradient(155deg, #363f4c, #1c222b 45%, #0d1117);
+      border: 1px solid #454f5c;
+      border-radius: 20px;
+      padding: 22px 16px 14px;
+      box-shadow: 0 30px 70px -30px rgba(0, 0, 0, 0.85), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+    }
+    .pc-monitor-cam {
+      position: absolute;
+      top: 9px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: #05070a;
+      box-shadow: 0 0 0 3px #262e38, 0 0 5px rgba(77, 255, 184, 0.35);
+    }
+    .pc-monitor-led {
+      position: absolute;
+      bottom: 8px;
+      right: 16px;
+      width: 5px;
+      height: 5px;
+      border-radius: 50%;
+      background: #4dffb8;
+      box-shadow: 0 0 5px 1px rgba(77, 255, 184, 0.85);
+    }
+    .pc-monitor-brand {
+      position: absolute;
+      bottom: 6px;
+      left: 18px;
+      font-family: 'Rajdhani', sans-serif;
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: 0.14em;
+      color: #58636f;
+    }
+    .pc-monitor-neck {
+      width: 70px;
+      height: 16px;
+      background: linear-gradient(160deg, #363f4c, #14181f);
+      clip-path: polygon(28% 0, 72% 0, 88% 100%, 12% 100%);
+    }
+    .pc-monitor-base {
+      width: 150px;
+      height: 9px;
+      border-radius: 5px;
+      background: linear-gradient(160deg, #2c343f, #12161b);
+      box-shadow: 0 8px 16px -6px rgba(0, 0, 0, 0.7);
     }
 
+    /* Taskbar (abas + botao de fechar) fica DENTRO do vidro da tela, como
+       as abas de um SO de verdade - nao mais flutuando acima do monitor. */
+    .pc-taskbar {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 8px 0;
+    }
     .pc-tabs {
       display: flex;
       gap: 6px;
-      padding: 0 2px 10px;
+      flex: 1;
+      min-width: 0;
     }
     .pc-tab {
       appearance: none;
@@ -264,6 +328,26 @@
       background: #1b222c;
       border-color: #4dffb8;
     }
+    .pc-close-btn {
+      appearance: none;
+      flex: none;
+      width: 22px;
+      height: 22px;
+      border-radius: 5px;
+      border: 1px solid rgba(255, 93, 106, 0.4);
+      background: rgba(255, 93, 106, 0.08);
+      color: #ff8a93;
+      font-size: 12px;
+      line-height: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+    }
+    .pc-close-btn:hover {
+      background: rgba(255, 93, 106, 0.25);
+      color: #fff;
+    }
 
     .pc-screen-box {
       position: relative;
@@ -271,7 +355,7 @@
       border-radius: 8px;
       overflow: hidden;
       min-height: 320px;
-      box-shadow: inset 0 0 40px rgba(0, 0, 0, 0.65), inset 0 0 90px rgba(0, 0, 0, 0.5);
+      box-shadow: inset 0 0 40px rgba(0, 0, 0, 0.65), inset 0 0 90px rgba(0, 0, 0, 0.5), 0 0 22px rgba(77, 255, 184, 0.06);
     }
     .pc-screen-box::before {
       content: "";
@@ -280,6 +364,14 @@
       pointer-events: none;
       background: repeating-linear-gradient(to bottom, rgba(0, 0, 0, 0.18) 0px, rgba(0, 0, 0, 0.18) 1px, transparent 2px, transparent 3px);
       mix-blend-mode: multiply;
+    }
+    /* leve brilho de vidro diagonal, cosmetico - reforca a sensacao de tela de verdade */
+    .pc-screen-box::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      background: linear-gradient(115deg, rgba(255, 255, 255, 0.05) 0%, transparent 18%, transparent 82%, rgba(255, 255, 255, 0.03) 100%);
     }
 
     .pc-panel { padding: 18px 20px; height: 100%; }
@@ -486,14 +578,6 @@
     .pc-trade-result.win { color: #4dffb8; }
     .pc-trade-result.lose { color: #ff5d6a; }
 
-    .pc-hint {
-      text-align: center;
-      padding-top: 10px;
-      font-family: 'IBM Plex Mono', monospace;
-      font-size: 11px;
-      color: #536873;
-      letter-spacing: 0.08em;
-    }
 
     /* ---------- Cardapio de drinks do bar: mesma ideia de overlay da tela
        do PC (abre por cima do jogo), mas com uma "skin" bem diferente -
@@ -513,12 +597,35 @@
     #drink-menu[hidden] { display: none; }
 
     .drink-board {
+      position: relative;
       width: min(560px, 92vw);
       background: linear-gradient(160deg, #3a1f1a, #1f120f 35%, #120908);
       border: 1px solid #5a2e1f;
       border-radius: 14px;
       padding: 18px 20px 16px;
       box-shadow: 0 30px 70px -30px rgba(0, 0, 0, 0.85), inset 0 0 40px rgba(255, 120, 40, 0.05);
+    }
+    .drink-close-btn {
+      position: absolute;
+      top: 12px;
+      right: 12px;
+      appearance: none;
+      width: 24px;
+      height: 24px;
+      border-radius: 6px;
+      border: 1px solid rgba(255, 138, 61, 0.4);
+      background: rgba(255, 138, 61, 0.08);
+      color: #ffb347;
+      font-size: 13px;
+      line-height: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+    }
+    .drink-close-btn:hover {
+      background: rgba(255, 138, 61, 0.25);
+      color: #fff;
     }
     .drink-board-title {
       font-family: 'VT323', monospace;
@@ -600,14 +707,6 @@
       margin-top: 4px;
     }
     .drink-result.lose { color: #ff5d6a; }
-    .drink-hint {
-      text-align: center;
-      padding-top: 12px;
-      font-family: 'IBM Plex Mono', monospace;
-      font-size: 11px;
-      color: #7a5c4a;
-      letter-spacing: 0.08em;
-    }
   </style>
 </head>
 <body>
@@ -667,65 +766,74 @@
   </div>
 
   <div id="pc-screen" hidden>
-    <div class="pc-monitor">
-      <div class="pc-tabs">
-        <button type="button" class="pc-tab" id="pc-tab-terminal" data-active="true">TERMINAL</button>
-        <button type="button" class="pc-tab" id="pc-tab-equipe" hidden>EQUIPE</button>
-        <button type="button" class="pc-tab" id="pc-tab-loja" hidden>LOJA</button>
-        <button type="button" class="pc-tab" id="pc-tab-trade" hidden>TRADE</button>
-      </div>
-      <div class="pc-screen-box">
-        <div class="pc-panel" id="pc-panel-terminal">
-          <div id="pc-menu">
-            <div class="pc-menu-title">ACOES DISPONIVEIS</div>
-            <button type="button" class="pc-menu-btn" id="pc-menu-mine"></button>
-            <div class="pc-menu-title pc-menu-title-spaced">HACKEAR REMOTO</div>
-            <div id="pc-menu-targets"></div>
-          </div>
-          <div id="pc-run" hidden>
-            <div class="pc-head">
-              <span id="pc-head-target">ALVO: --</span>
-              <span id="pc-head-tier">TIER: --</span>
+    <div class="pc-monitor-wrap">
+      <div class="pc-monitor">
+        <span class="pc-monitor-cam"></span>
+        <div class="pc-screen-box">
+          <div class="pc-taskbar">
+            <div class="pc-tabs">
+              <button type="button" class="pc-tab" id="pc-tab-terminal" data-active="true">TERMINAL</button>
+              <button type="button" class="pc-tab" id="pc-tab-equipe" hidden>EQUIPE</button>
+              <button type="button" class="pc-tab" id="pc-tab-loja" hidden>LOJA</button>
+              <button type="button" class="pc-tab" id="pc-tab-trade" hidden>TRADE</button>
             </div>
-            <div id="pc-log"></div>
-            <div class="pc-bar-row">
-              <span id="pc-bar-label">STATUS</span>
-              <div class="pc-bar-track"><div class="pc-bar-fill" id="pc-bar-fill"></div></div>
-              <span id="pc-bar-val">--</span>
+            <button type="button" class="pc-close-btn" id="pc-close-btn" aria-label="Fechar a tela">✕</button>
+          </div>
+          <div class="pc-panel" id="pc-panel-terminal">
+            <div id="pc-menu">
+              <div class="pc-menu-title">ACOES DISPONIVEIS</div>
+              <button type="button" class="pc-menu-btn" id="pc-menu-mine"></button>
+              <div class="pc-menu-title pc-menu-title-spaced">HACKEAR REMOTO</div>
+              <div id="pc-menu-targets"></div>
+            </div>
+            <div id="pc-run" hidden>
+              <div class="pc-head">
+                <span id="pc-head-target">ALVO: --</span>
+                <span id="pc-head-tier">TIER: --</span>
+              </div>
+              <div id="pc-log"></div>
+              <div class="pc-bar-row">
+                <span id="pc-bar-label">STATUS</span>
+                <div class="pc-bar-track"><div class="pc-bar-fill" id="pc-bar-fill"></div></div>
+                <span id="pc-bar-val">--</span>
+              </div>
             </div>
           </div>
-        </div>
-        <div class="pc-panel" id="pc-panel-equipe" hidden>
-          <div class="pc-workers" id="pc-workers"></div>
-        </div>
-        <div class="pc-panel" id="pc-panel-loja" hidden>
-          <div class="pc-workers" id="pc-pets"></div>
-        </div>
-        <div class="pc-panel" id="pc-panel-trade" hidden>
-          <div class="pc-trade-head">
-            <span class="pc-trade-title">BITE/BYTE</span>
-            <span class="pc-trade-price" id="pc-trade-price">--</span>
+          <div class="pc-panel" id="pc-panel-equipe" hidden>
+            <div class="pc-workers" id="pc-workers"></div>
           </div>
-          <canvas id="pc-trade-chart" width="600" height="140"></canvas>
-          <div class="pc-trade-actions">
-            <button type="button" class="pc-trade-btn" id="pc-trade-up">▲ SOBE</button>
-            <button type="button" class="pc-trade-btn down" id="pc-trade-down">▼ DESCE</button>
+          <div class="pc-panel" id="pc-panel-loja" hidden>
+            <div class="pc-workers" id="pc-pets"></div>
           </div>
-          <div class="pc-trade-result" id="pc-trade-result"></div>
+          <div class="pc-panel" id="pc-panel-trade" hidden>
+            <div class="pc-trade-head">
+              <span class="pc-trade-title">BITE/BYTE</span>
+              <span class="pc-trade-price" id="pc-trade-price">--</span>
+            </div>
+            <canvas id="pc-trade-chart" width="600" height="140"></canvas>
+            <div class="pc-trade-actions">
+              <button type="button" class="pc-trade-btn" id="pc-trade-up">▲ SOBE</button>
+              <button type="button" class="pc-trade-btn down" id="pc-trade-down">▼ DESCE</button>
+            </div>
+            <div class="pc-trade-result" id="pc-trade-result"></div>
+          </div>
         </div>
+        <span class="pc-monitor-led"></span>
+        <span class="pc-monitor-brand">CYBER-OS</span>
       </div>
-      <div class="pc-hint">ESC fecha a tela (o que estiver rodando continua em segundo plano)</div>
+      <div class="pc-monitor-neck"></div>
+      <div class="pc-monitor-base"></div>
     </div>
   </div>
 
   <div id="drink-menu" hidden>
     <div class="drink-board">
+      <button type="button" class="drink-close-btn" id="drink-close-btn" aria-label="Fechar o cardapio">✕</button>
       <div class="drink-board-title">CARDAPIO</div>
       <div class="drink-board-sub">nao recarrega energia - so um bonus temporario, um de cada vez</div>
       <div class="drink-list" id="drink-list"></div>
       <div class="drink-active" id="drink-active"></div>
       <div class="drink-result" id="drink-result"></div>
-      <div class="drink-hint">ESC fecha o cardapio</div>
     </div>
   </div>
 

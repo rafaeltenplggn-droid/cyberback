@@ -264,6 +264,7 @@ function startGame(characterId) {
   // camada de apresentacao: nao muda em nada as regras/numeros do jogo,
   // so anima o que ja estava acontecendo por baixo (ver hackRuntime.js).
   const pcScreenEl = document.getElementById('pc-screen');
+  const pcCloseBtnEl = document.getElementById('pc-close-btn');
   const pcTabTerminalEl = document.getElementById('pc-tab-terminal');
   const pcTabEquipeEl = document.getElementById('pc-tab-equipe');
   const pcTabLojaEl = document.getElementById('pc-tab-loja');
@@ -298,6 +299,7 @@ function startGame(characterId) {
   const drinkListEl = document.getElementById('drink-list');
   const drinkActiveEl = document.getElementById('drink-active');
   const drinkResultEl = document.getElementById('drink-result');
+  const drinkCloseBtnEl = document.getElementById('drink-close-btn');
 
   const workerPortraits = {};
   let lastPetResult = null;
@@ -1293,6 +1295,8 @@ function startGame(characterId) {
     }
   });
 
+  pcCloseBtnEl.addEventListener('click', () => pcScreenClose());
+  drinkCloseBtnEl.addEventListener('click', () => closeDrinkMenu());
   pcTabTerminalEl.addEventListener('click', () => pcScreenSetTab('terminal'));
   pcTabEquipeEl.addEventListener('click', () => pcScreenSetTab('equipe'));
   pcTabLojaEl.addEventListener('click', () => pcScreenSetTab('loja'));
