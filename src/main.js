@@ -518,9 +518,12 @@ function startGame(characterId) {
   let lastTradeResult = null;
 
   /**
-   * Desenha a sparkline da BITE (linha simples ligando os pontos do
-   * historico) igual estilo pixel-art do resto da tela do PC - sem lib de
-   * grafico nenhuma, so canvas 2D puro.
+   * Desenha a sparkline da BITE - sem lib de grafico nenhuma, so canvas 2D
+   * puro. Alem da linha (pontos de verdade, sem suavizar - nao inventa
+   * curva onde o preco e reto), tem: grade horizontal discreta pra dar
+   * referencia de escala, preenchimento em gradiente sob a linha (reforca
+   * a tendencia de longe, sem precisar ler numero), ponto com brilho no
+   * preco atual, e os rotulos de minimo/maximo do periodo visivel.
    */
   function drawTradeChart(history) {
     const ctx = pcTradeChartEl.getContext('2d');
@@ -532,20 +535,79 @@ function startGame(characterId) {
     const min = Math.min(...history);
     const max = Math.max(...history);
     const range = max - min || 1;
-    const pad = 10;
-    const stepX = (w - pad * 2) / (history.length - 1);
+    const padX = 12;
+    const padY = 16;
+    const plotW = w - padX * 2;
+    const plotH = h - padY * 2;
+    const stepX = plotW / (history.length - 1);
     const up = history[history.length - 1] >= history[0];
+    const color = up ? '#4dffb8' : '#ff5d6a';
+    const fillColor = up ? '77, 255, 184' : '255, 93, 106';
 
-    ctx.strokeStyle = up ? '#4dffb8' : '#ff5d6a';
-    ctx.lineWidth = 2;
+    const toXY = (price, index) => ({
+      x: padX + index * stepX,
+      y: padY + (1 - (price - min) / range) * plotH,
+    });
+
+    // grade horizontal (topo/meio/base), bem discreta - so referencia de escala
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.06)';
+    ctx.lineWidth = 1;
+    for (let i = 0; i <= 2; i++) {
+      const y = Math.round(padY + (plotH / 2) * i) + 0.5;
+      ctx.beginPath();
+      ctx.moveTo(padX, y);
+      ctx.lineTo(w - padX, y);
+      ctx.stroke();
+    }
+
+    // preenchimento em gradiente sob a linha, na mesma cor da tendencia
+    const gradient = ctx.createLinearGradient(0, padY, 0, h - padY);
+    gradient.addColorStop(0, `rgba(${fillColor}, 0.28)`);
+    gradient.addColorStop(1, `rgba(${fillColor}, 0)`);
     ctx.beginPath();
     history.forEach((price, index) => {
-      const x = pad + index * stepX;
-      const y = pad + (1 - (price - min) / range) * (h - pad * 2);
+      const { x, y } = toXY(price, index);
+      if (index === 0) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
+    });
+    ctx.lineTo(padX + (history.length - 1) * stepX, h - padY);
+    ctx.lineTo(padX, h - padY);
+    ctx.closePath();
+    ctx.fillStyle = gradient;
+    ctx.fill();
+
+    // linha principal (pontas arredondadas, sem suavizar os dados)
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 2;
+    ctx.lineJoin = 'round';
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    history.forEach((price, index) => {
+      const { x, y } = toXY(price, index);
       if (index === 0) ctx.moveTo(x, y);
       else ctx.lineTo(x, y);
     });
     ctx.stroke();
+
+    // ponto do preco atual, com um leve brilho
+    const last = toXY(history[history.length - 1], history.length - 1);
+    ctx.save();
+    ctx.shadowColor = color;
+    ctx.shadowBlur = 8;
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.arc(last.x, last.y, 3, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+
+    // rotulos de minimo/maximo do periodo visivel
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
+    ctx.font = '9px "IBM Plex Mono", monospace';
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'top';
+    ctx.fillText(max.toFixed(2), padX, 2);
+    ctx.textBaseline = 'bottom';
+    ctx.fillText(min.toFixed(2), padX, h - 2);
   }
 
   /** Redesenha o painel TRADE inteiro (preco, cor, grafico) - chamado ao abrir a aba e a cada frame enquanto ela estiver visivel. */
