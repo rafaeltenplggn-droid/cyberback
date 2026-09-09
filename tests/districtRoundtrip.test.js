@@ -229,10 +229,23 @@ test('ghost_row_interior (BLACKNET) usa arte de fundo real, 16x12, com as mesas 
   assert.equal(map.width, 16);
   assert.equal(map.height, 12);
   assert.equal(map.background, 'blacknet_interior.png');
-  assert.equal(map.isBlocked(10, 6), true, 'mesa do corretor bloqueia a celula dela');
-  assert.equal(map.isBlocked(6, 4), true, 'mesa do primeiro trabalhador bloqueia a celula dela');
+  // As 4 mesas em si (fileiras 3 e 6) continuam bloqueando - so a mesa,
+  // nao a cadeira (fileiras 4 e 7, andar por ali tem que funcionar, ver
+  // teste "passagem livre" abaixo).
+  assert.equal(map.isBlocked(6, 3), true, 'mesa do primeiro trabalhador (topo) bloqueia a celula dela');
+  assert.equal(map.isBlocked(10, 3), true, 'mesa do segundo trabalhador (topo) bloqueia a celula dela');
+  assert.equal(map.isBlocked(6, 6), true, 'mesa do terceiro trabalhador (base) bloqueia a celula dela');
+  assert.equal(map.isBlocked(10, 6), true, 'mesa vazia/decorativa (base) bloqueia a celula dela');
   assert.equal(map.isBlocked(8, 9), false, 'porta de saida nao pode bloquear');
 
   const districtMap = parseMap(await loadMapJson('district_07'));
   assert.equal(districtMap.getDoorAt(11, 5).target_map, 'ghost_row_interior');
+});
+
+test('ghost_row_interior (BLACKNET): a passagem nas cadeiras/corredores das mesas esta livre, so as mesas em si bloqueiam', async () => {
+  const map = parseMap(await loadMapJson('ghost_row_interior'));
+  for (const col of [5, 6, 9, 10]) {
+    assert.equal(map.isBlocked(col, 4), false, `cadeira/corredor (${col},4) tem que ser livre`);
+    assert.equal(map.isBlocked(col, 7), false, `cadeira/corredor (${col},7) tem que ser livre`);
+  }
 });

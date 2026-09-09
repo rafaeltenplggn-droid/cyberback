@@ -28,7 +28,7 @@ import {
   BAR_LAPTOP_LOCATION,
   BAR_NPC_LOCATION,
 } from './hackIntegration/barLocations.js';
-import { BLACKNET_MAP_ID, BLACKNET_BROKER_LOCATION, BLACKNET_WORKER_DESKS } from './hackIntegration/blacknetLocations.js';
+import { BLACKNET_MAP_ID, BLACKNET_WORKER_DESKS, blacknetDeskLocation } from './hackIntegration/blacknetLocations.js';
 
 const STARTING_BYTE_BALANCE = 100;
 const BAR_OWNER_NAME = 'Rook';
@@ -821,6 +821,17 @@ function startGame(characterId) {
     pcScreenOpen({ tabs: ['trade'], activeTab: 'trade' });
   }
 
+  /**
+   * Mesa trancada dentro da BLACKNET (ver blacknetLocations.js): abre a
+   * mesma tela do PC, direto na aba EQUIPE, pra comprar aquele
+   * trabalhador ali mesmo - nao precisa voltar pra casa so pra isso.
+   */
+  function handleOpenBlacknetHire(workerId) {
+    if (hackRuntime.nearbyLockedBlacknetDesk() !== workerId) return;
+    pcScreenOpen({ tabs: ['equipe'], activeTab: 'equipe' });
+    pcRenderWorkers();
+  }
+
   let lastDrinkMenuResult = null;
   const drinkItemButtons = {};
 
@@ -997,31 +1008,45 @@ function startGame(characterId) {
 
   /**
    * Desenha os trabalhadores contratados (ver workers.js) sentados de
-   * costas nas mesas da BLACKNET, e o corretor fixo (sempre presente,
-   * nao depende de contratar ninguem) - puramente cosmetico, mesmo
-   * esquema visual dos pets na cama do quarto: sprite estatico, sem
-   * tween nem colisao propria (a colisao da mesa/cadeira ja esta no
-   * mapa). So aparecem conforme cada trabalhador e contratado.
+   * costas nas mesas da BLACKNET - puramente cosmetico, mesmo esquema
+   * visual dos pets na cama do quarto: sprite estatico, sem tween nem
+   * colisao propria (a colisao da mesa/cadeira ja esta no mapa). Cada
+   * mesa so aparece ocupada depois que aquele trabalhador e contratado;
+   * antes disso, mostra um cadeado (ver drawBlacknetLocks).
    */
   function drawBlacknetWorkers() {
     if (mapManager.currentMap?.id !== BLACKNET_MAP_ID) return;
 
-    const seats = [{ characterId: 'character1', col: BLACKNET_BROKER_LOCATION.originX, row: BLACKNET_BROKER_LOCATION.originY }];
     for (const worker of hackRuntime.hirableWorkers) {
       if (!worker.hired) continue;
       const desk = BLACKNET_WORKER_DESKS[worker.id];
       if (!desk) continue;
-      seats.push({ characterId: worker.id, col: desk.seatCol, row: desk.seatRow });
-    }
-
-    for (const seat of seats) {
-      const sprite = getBlacknetSeatSprite(seat.characterId);
+      const sprite = getBlacknetSeatSprite(worker.id);
       if (!isImageReady(sprite)) continue;
-      const { x, y } = gridToScreen(seat.col, seat.row, mapRenderer.originX, mapRenderer.originY);
+      const { x, y } = gridToScreen(desk.seatCol, desk.seatRow, mapRenderer.originX, mapRenderer.originY);
       const h = BLACKNET_SEAT_SPRITE_HEIGHT_PX;
       const w = sprite.naturalWidth * (h / sprite.naturalHeight);
       ctx.drawImage(sprite, x - w / 2, y + TILE_SIZE / 2 - h, w, h);
     }
+  }
+
+  const BLACKNET_LOCK_FONT = `${Math.round(TILE_SIZE * 0.7)}px sans-serif`;
+
+  /** Desenha um cadeado por cima de cada mesa ainda nao contratada dentro da BLACKNET. */
+  function drawBlacknetLocks() {
+    if (mapManager.currentMap?.id !== BLACKNET_MAP_ID) return;
+    const hiredIds = new Set(hackRuntime.hirableWorkers.filter((w) => w.hired).map((w) => w.id));
+    ctx.save();
+    ctx.font = BLACKNET_LOCK_FONT;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    for (const [workerId, desk] of Object.entries(BLACKNET_WORKER_DESKS)) {
+      if (hiredIds.has(workerId)) continue;
+      const location = blacknetDeskLocation(desk);
+      const { x, y } = gridToScreen(location.originX, location.originY, mapRenderer.originX, mapRenderer.originY);
+      ctx.fillText('🔒', x, y);
+    }
+    ctx.restore();
   }
 
   let hackingBuildingId = null;
@@ -1062,7 +1087,6 @@ function startGame(characterId) {
   let lastDrinkResult = null;
   let lastNearbyBar = null;
   let lastSellResult = null;
-  let lastNearbyBlacknet = null;
   let lastHireResult = null;
   let lastNearbyHomeForWorkers = null;
 
@@ -1083,11 +1107,7 @@ function startGame(characterId) {
       lastNearbyBar = nearbyBar;
     }
 
-    const nearbyBlacknet = hackRuntime.nearbyBlacknetInteractable();
-    if (nearbyBlacknet !== lastNearbyBlacknet) {
-      lastSellResult = null;
-      lastNearbyBlacknet = nearbyBlacknet;
-    }
+    const lockedDeskWorkerId = hackRuntime.nearbyLockedBlacknetDesk();
 
     if (nearbyBar === 'stool') {
       shopStatusEl.textContent = hackRuntime.isSitting ? '[C] levantar do banco' : '[C] sentar no banco (so cosmetico)';
@@ -1114,16 +1134,9 @@ function startGame(characterId) {
       return;
     }
 
-    if (nearbyBlacknet === 'sell') {
-      if (!lastSellResult) {
-        shopStatusEl.textContent = `[V] BLACKNET: vender toda a informacao (estoque: ${hackRuntime.informationTotal})`;
-      } else if (lastSellResult.success) {
-        shopStatusEl.textContent = `[V] BLACKNET: vendido por ${lastSellResult.byteEarned} BYTE`;
-      } else if (lastSellResult.reason === 'sem_informacao') {
-        shopStatusEl.textContent = '[V] BLACKNET: nada pra vender ainda';
-      } else {
-        shopStatusEl.textContent = '[V] BLACKNET: nao foi possivel vender agora';
-      }
+    if (lockedDeskWorkerId) {
+      const worker = hackRuntime.hirableWorkers.find((w) => w.id === lockedDeskWorkerId);
+      shopStatusEl.textContent = `[ESPACO] comprar ${worker?.name ?? lockedDeskWorkerId} (${WORKER_HIRE_COST_BYTE} BYTE)`;
       return;
     }
 
@@ -1377,7 +1390,11 @@ function startGame(characterId) {
 
   async function handleAction() {
     const nearby = hackRuntime.nearbyHackableBuilding();
-    if (!nearby) return;
+    if (!nearby) {
+      const lockedDeskWorkerId = hackRuntime.nearbyLockedBlacknetDesk();
+      if (lockedDeskWorkerId) handleOpenBlacknetHire(lockedDeskWorkerId);
+      return;
+    }
     hackingBuildingId = nearby.id;
     updateHackStatus();
 
@@ -1452,9 +1469,15 @@ function startGame(characterId) {
       };
     }
 
-    const nearbyBlacknet = hackRuntime.nearbyBlacknetInteractable();
-    if (nearbyBlacknet === 'sell') {
-      return { location: BLACKNET_BROKER_LOCATION, text: '[V] vender informacao, ou clique no personagem', trigger: handleSellInformation };
+    const lockedDeskWorkerId = hackRuntime.nearbyLockedBlacknetDesk();
+    if (lockedDeskWorkerId) {
+      const worker = hackRuntime.hirableWorkers.find((w) => w.id === lockedDeskWorkerId);
+      const desk = BLACKNET_WORKER_DESKS[lockedDeskWorkerId];
+      return {
+        location: blacknetDeskLocation(desk),
+        text: `[ESPACO] comprar ${worker?.name ?? lockedDeskWorkerId} (${WORKER_HIRE_COST_BYTE} BYTE), ou clique`,
+        trigger: () => handleOpenBlacknetHire(lockedDeskWorkerId),
+      };
     }
 
     return null;
@@ -1606,6 +1629,7 @@ function startGame(characterId) {
     });
     drawOwnedPets(nowMs);
     drawBlacknetWorkers();
+    drawBlacknetLocks();
     mapRenderer.drawDustMotes(mapManager.currentMap, nowMs);
     activeHint = getActiveHint();
     if (activeHint) {

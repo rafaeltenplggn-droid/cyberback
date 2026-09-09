@@ -10,7 +10,7 @@ import { findHackableBuildingAt, HACKABLE_BUILDINGS } from './hackableBuildings.
 import { nearbyHomeInteractable as nearbyHomeInteractableAt } from './homeLocations.js';
 import { SleepTracker } from './sleepAction.js';
 import { nearbyBarInteractable as nearbyBarInteractableAt, BAR_HACKABLE_BUILDING_ID } from './barLocations.js';
-import { nearbyBlacknetInteractable as nearbyBlacknetInteractableAt } from './blacknetLocations.js';
+import { nearbyLockedBlacknetDesk as nearbyLockedBlacknetDeskAt, BLACKNET_MAP_ID } from './blacknetLocations.js';
 import { buyDrink as buyDrinkAction } from './drinkShop.js';
 import { InformationLedger } from './informationLedger.js';
 import { mineInformation as mineInformationAction } from './infoMining.js';
@@ -291,9 +291,16 @@ export class HackRuntime {
     return this.workerRoster.list();
   }
 
-  /** Contrata um trabalhador pelo id (ver HIRABLE_WORKERS em workers.js). So funciona parado no PC, no player_home. */
+  /**
+   * Contrata um trabalhador pelo id (ver HIRABLE_WORKERS em workers.js).
+   * Funciona parado no PC, no player_home, OU direto na mesa trancada
+   * dele dentro da BLACKNET (ver nearbyLockedBlacknetDesk) - nao precisa
+   * voltar pra casa so pra contratar.
+   */
   hireWorker(workerId) {
-    if (this.nearbyHomeInteractable() !== 'pc') {
+    const atHomePc = this.nearbyHomeInteractable() === 'pc';
+    const atOwnLockedDesk = this.nearbyLockedBlacknetDesk() === workerId;
+    if (!atHomePc && !atOwnLockedDesk) {
       return { success: false, reason: 'fora_do_pc' };
     }
     if (!this.ledger) {
@@ -304,11 +311,14 @@ export class HackRuntime {
 
   /**
    * Manda um trabalhador ja contratado hackear agora, gastando a energia
-   * PROPRIA dele (nunca a do jogador - ver workers.js). So funciona
-   * parado no PC, no player_home, igual hireWorker().
+   * PROPRIA dele (nunca a do jogador - ver workers.js). Funciona parado
+   * no PC, no player_home, OU direto dentro da BLACKNET (onde a aba
+   * EQUIPE tambem pode ser aberta agora, ver hireWorker()).
    */
   hackWorkerNow(workerId) {
-    if (this.nearbyHomeInteractable() !== 'pc') {
+    const atHomePc = this.nearbyHomeInteractable() === 'pc';
+    const atBlacknet = this.mapManager.currentMap?.id === BLACKNET_MAP_ID;
+    if (!atHomePc && !atBlacknet) {
       return { success: false, reason: 'fora_do_pc', informationGained: false };
     }
     return this.workerRoster.hackNow(workerId, { informationLedger: this.informationLedger });
@@ -409,23 +419,24 @@ export class HackRuntime {
     return this.drinkBuffTracker.order(drinkId, { ledger: this.ledger });
   }
 
-  /** 'sell' ou null - se o personagem esta parado no ponto de venda dentro da BLACKNET (ghost_row_interior). */
-  nearbyBlacknetInteractable() {
+  /**
+   * O id do trabalhador (HIRABLE_WORKERS) cuja mesa trancada esta na
+   * frente do jogador dentro da BLACKNET, ou null - ver
+   * blacknetLocations.js. Usado pra mostrar o cadeado e direcionar pra
+   * comprar (ver handleAction em main.js).
+   */
+  nearbyLockedBlacknetDesk() {
     if (this.isMovementBlocked) return null;
     if (this.controller.isMoving) return null;
-    return nearbyBlacknetInteractableAt(this.mapManager);
+    return nearbyLockedBlacknetDeskAt(
+      this.mapManager,
+      this.workerRoster.list().filter((w) => w.hired).map((w) => w.id)
+    );
   }
 
-  /**
-   * Vende todo o estoque de Informacao por BYTE. Funciona parado no ponto
-   * de venda dentro da BLACKNET (falando com o corretor) OU direto do PC
-   * de casa - o mesmo mercado, dois jeitos de acessar (nao precisa andar
-   * ate a BLACKNET so pra vender).
-   */
+  /** Vende todo o estoque de Informacao por BYTE. Funciona parado no PC de casa. */
   sellInformation() {
-    const atBlacknet = this.nearbyBlacknetInteractable() === 'sell';
-    const atHomePc = this.nearbyHomeInteractable() === 'pc';
-    if (!atBlacknet && !atHomePc) {
+    if (this.nearbyHomeInteractable() !== 'pc') {
       return { success: false, reason: 'fora_da_blacknet', byteEarned: 0, sold: {} };
     }
     if (!this.ledger) {

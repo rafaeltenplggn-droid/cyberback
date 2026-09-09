@@ -9,6 +9,7 @@ import { SLEEP_COOLDOWN_MS } from '../src/hackIntegration/sleepAction.js';
 import { DRINK_COST_BYTE } from '../src/hackIntegration/drinkShop.js';
 import { INFO_MINING_ENERGY_COST_RATIO } from '../src/hackIntegration/infoMining.js';
 import { HIRABLE_WORKERS, WORKER_HIRE_COST_BYTE, WORKER_WORK_INTERVAL_MS } from '../src/hackIntegration/workers.js';
+import { BLACKNET_WORKER_DESKS } from '../src/hackIntegration/blacknetLocations.js';
 import { PET_COST_BYTE } from '../src/hackIntegration/pets.js';
 import { BITE_TRADE_STAKE_BYTE, BITE_TRADE_PAYOUT_BYTE } from '../src/hackIntegration/biteTrade.js';
 import { DRINKS, DRINK_BUFF_AMOUNT } from '../src/hackIntegration/drinkMenu.js';
@@ -534,14 +535,13 @@ test('nao da pra disparar um segundo hack enquanto o primeiro ainda esta rodando
   assert.equal(runtime.canTriggerHack(), true, 'depois de terminar, um novo hack pode ser disparado');
 });
 
-test('sellInformation vende o estoque por BYTE quando parado no ponto de venda da BLACKNET', () => {
-  const mapManager = makeFakeMapManager({ mapId: 'ghost_row_interior', col: 10, row: 8 }); // na frente do corretor (origem 10,7)
+test('sellInformation vende o estoque por BYTE quando parado no PC de casa', () => {
+  const mapManager = makeFakeMapManager({ mapId: 'player_home', col: 6, row: 2 }); // na frente do PC (origem 7,2)
   const controller = makeFakeController();
   const ledger = new ByteLedger();
   const runtime = new HackRuntime({ mapManager, controller, playerStats: createPlayerStats(1), ledger });
 
   runtime.informationLedger.add('comum', 2);
-  assert.equal(runtime.nearbyBlacknetInteractable(), 'sell');
 
   const result = runtime.sellInformation();
 
@@ -551,20 +551,20 @@ test('sellInformation vende o estoque por BYTE quando parado no ponto de venda d
   assert.equal(runtime.informationTotal, 0, 'estoque zerado depois da venda');
 });
 
-test('sellInformation e recusado fora do ponto de venda, e com o estoque vazio', () => {
+test('sellInformation e recusado fora do PC, e com o estoque vazio', () => {
   const ledger = new ByteLedger();
 
-  const farFromSellPoint = new HackRuntime({
-    mapManager: makeFakeMapManager({ mapId: 'ghost_row_interior', col: 1, row: 8 }),
+  const farFromPc = new HackRuntime({
+    mapManager: makeFakeMapManager({ mapId: 'player_home', col: 8, row: 8 }),
     controller: makeFakeController(),
     playerStats: createPlayerStats(1),
     ledger,
   });
-  farFromSellPoint.informationLedger.add('comum');
-  assert.equal(farFromSellPoint.sellInformation().reason, 'fora_da_blacknet');
+  farFromPc.informationLedger.add('comum');
+  assert.equal(farFromPc.sellInformation().reason, 'fora_da_blacknet');
 
   const emptyStock = new HackRuntime({
-    mapManager: makeFakeMapManager({ mapId: 'ghost_row_interior', col: 10, row: 8 }),
+    mapManager: makeFakeMapManager({ mapId: 'player_home', col: 6, row: 2 }),
     controller: makeFakeController(),
     playerStats: createPlayerStats(1),
     ledger,
@@ -606,6 +606,39 @@ test('hireWorker e recusado fora do PC, e sem BYTE suficiente', () => {
   assert.equal(brokeAtPc.hireWorker(HIRABLE_WORKERS[0].id).reason, 'byte_insuficiente');
 });
 
+test('hireWorker tambem contrata direto na mesa trancada dela dentro da BLACKNET, sem precisar ir ate o PC', () => {
+  const workerId = HIRABLE_WORKERS[0].id;
+  const desk = BLACKNET_WORKER_DESKS[workerId];
+  const ledger = new ByteLedger();
+  ledger.record({ type: 'gain', amount: WORKER_HIRE_COST_BYTE });
+  const runtime = new HackRuntime({
+    mapManager: makeFakeMapManager({ mapId: 'ghost_row_interior', col: desk.seatCol, row: desk.seatRow }),
+    controller: makeFakeController(),
+    playerStats: createPlayerStats(1),
+    ledger,
+  });
+
+  const result = runtime.hireWorker(workerId);
+
+  assert.equal(result.success, true);
+  assert.equal(runtime.hirableWorkers.find((w) => w.id === workerId).hired, true);
+});
+
+test('hireWorker na BLACKNET so contrata a mesa da frente, nao os outros trabalhadores trancados', () => {
+  const [workerId, otherWorkerId] = HIRABLE_WORKERS.map((w) => w.id);
+  const desk = BLACKNET_WORKER_DESKS[workerId];
+  const ledger = new ByteLedger();
+  ledger.record({ type: 'gain', amount: WORKER_HIRE_COST_BYTE * 2 });
+  const runtime = new HackRuntime({
+    mapManager: makeFakeMapManager({ mapId: 'ghost_row_interior', col: desk.seatCol, row: desk.seatRow }),
+    controller: makeFakeController(),
+    playerStats: createPlayerStats(1),
+    ledger,
+  });
+
+  assert.equal(runtime.hireWorker(otherWorkerId).reason, 'fora_do_pc');
+});
+
 test('hackWorkerNow manda o trabalhador hackear parado no PC, gastando a energia PROPRIA dele (nunca a do jogador)', () => {
   const mapManager = makeFakeMapManager({ mapId: 'player_home', col: 6, row: 2 });
   const controller = makeFakeController();
@@ -643,6 +676,28 @@ test('hackWorkerNow e recusado fora do PC', () => {
   const result = atPc.hackWorkerNow(workerId);
   assert.equal(result.success, false);
   assert.equal(result.reason, 'fora_do_pc');
+});
+
+test('hackWorkerNow tambem funciona em qualquer lugar dentro da BLACKNET, nao so no PC', () => {
+  const ledger = new ByteLedger();
+  ledger.record({ type: 'gain', amount: WORKER_HIRE_COST_BYTE });
+  const runtime = new HackRuntime({
+    mapManager: makeFakeMapManager({ mapId: 'player_home', col: 6, row: 2 }),
+    controller: makeFakeController(),
+    playerStats: createPlayerStats(1),
+    ledger,
+    rng: () => 0,
+  });
+  const workerId = HIRABLE_WORKERS[0].id;
+  runtime.hireWorker(workerId);
+
+  // longe de qualquer mesa especifica, so precisa estar dentro do mapa da BLACKNET
+  runtime.mapManager.currentMap.id = 'ghost_row_interior';
+  runtime.mapManager.playerCol = 1;
+  runtime.mapManager.playerRow = 8;
+
+  const result = runtime.hackWorkerNow(workerId);
+  assert.equal(result.success, true);
 });
 
 test('trabalhadores contratados minerm sozinhos via tick(), mesmo com o movimento bloqueado', async () => {
