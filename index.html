@@ -507,6 +507,61 @@
     }
 
     #pc-panel-equipe, #pc-panel-loja { min-height: 320px; }
+    .pc-wallet-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 10px 12px;
+      margin-bottom: 6px;
+      border: 1px solid #333c48;
+      border-radius: 8px;
+      background: #0b0e13;
+    }
+    .pc-wallet-info {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      min-width: 0;
+    }
+    .pc-wallet-label {
+      font-family: 'Rajdhani', sans-serif;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      color: #6a808c;
+    }
+    #pc-wallet-status {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 13px;
+      color: #9fb4c0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    #pc-wallet-status.connected { color: #4dffb8; }
+    #pc-wallet-status.error { color: #ff8a93; }
+    .pc-wallet-btn {
+      appearance: none;
+      flex: none;
+      border: 1px solid #4dffb8;
+      background: rgba(77, 255, 184, 0.08);
+      color: #eaf6f2;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 12px;
+      padding: 8px 14px;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+    .pc-wallet-btn:hover { background: rgba(77, 255, 184, 0.18); }
+    .pc-wallet-btn.connected { border-color: #b47bff; color: #b47bff; background: rgba(180, 123, 255, 0.08); cursor: default; }
+    .pc-wallet-note {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 10px;
+      color: #536873;
+      margin-bottom: 10px;
+      line-height: 1.4;
+    }
     .pc-pet-icon {
       width: 84px;
       height: 84px;
@@ -895,6 +950,14 @@
             </div>
           </div>
           <div class="pc-panel" id="pc-panel-equipe" hidden>
+            <div class="pc-wallet-bar">
+              <div class="pc-wallet-info">
+                <span class="pc-wallet-label">CARTEIRA</span>
+                <span id="pc-wallet-status">nao conectada</span>
+              </div>
+              <button type="button" class="pc-wallet-btn" id="pc-wallet-btn">Conectar Wallet</button>
+            </div>
+            <div class="pc-wallet-note">Os trabalhadores vao virar NFT - a compra com BYTE abaixo e temporaria, ate o contrato ir pro ar.</div>
             <div class="pc-workers" id="pc-workers"></div>
           </div>
           <div class="pc-panel" id="pc-panel-loja" hidden>
