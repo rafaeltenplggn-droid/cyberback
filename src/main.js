@@ -299,8 +299,6 @@ function startGame(characterId) {
   const pcBarFillEl = document.getElementById('pc-bar-fill');
   const pcBarValEl = document.getElementById('pc-bar-val');
   const pcWorkersEl = document.getElementById('pc-workers');
-  const pcWalletBtn = document.getElementById('pc-wallet-btn');
-  const pcWalletStatusEl = document.getElementById('pc-wallet-status');
   const pcPetsEl = document.getElementById('pc-pets');
   const pcMenuEl = document.getElementById('pc-menu');
   const pcRunEl = document.getElementById('pc-run');
@@ -553,65 +551,6 @@ function startGame(characterId) {
     pcBarLabelEl.textContent = label;
     pcBarFillEl.style.width = `${Math.max(0, Math.min(100, percent))}%`;
     pcBarValEl.textContent = valueText;
-  }
-
-  // ---------- Wallet (MetaMask/EIP-1193) ----------
-  // Os trabalhadores vao virar NFT no futuro - isso aqui e so a conexao
-  // da wallet em si (endereco visivel na aba EQUIPE), sem nenhuma
-  // transacao de verdade ainda (nao ha contrato publicado). A compra
-  // continua em BYTE (ver hireWorker) ate isso mudar. Nao guarda nada em
-  // localStorage - quem ja autorizou o site antes, eth_accounts devolve
-  // isso sozinho (ver restoreWalletConnection), sem precisar duplicar.
-  let connectedWalletAddress = null;
-
-  function shortenWalletAddress(address) {
-    return `${address.slice(0, 6)}...${address.slice(-4)}`;
-  }
-
-  function updateWalletUI() {
-    if (connectedWalletAddress) {
-      pcWalletStatusEl.textContent = shortenWalletAddress(connectedWalletAddress);
-      pcWalletStatusEl.className = 'connected';
-      pcWalletBtn.textContent = 'conectada';
-      pcWalletBtn.classList.add('connected');
-    } else {
-      pcWalletStatusEl.textContent = 'nao conectada';
-      pcWalletStatusEl.className = '';
-      pcWalletBtn.textContent = 'Conectar Wallet';
-      pcWalletBtn.classList.remove('connected');
-    }
-  }
-
-  function setConnectedWallet(address) {
-    connectedWalletAddress = address;
-    updateWalletUI();
-  }
-
-  /** Pede a conexao de verdade (abre o popup da MetaMask) - so ao clicar no botao. */
-  async function connectWallet() {
-    if (!window.ethereum) {
-      pcWalletStatusEl.textContent = 'instale a MetaMask (ou outra wallet compativel)';
-      pcWalletStatusEl.className = 'error';
-      return;
-    }
-    try {
-      const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
-      if (accounts[0]) setConnectedWallet(accounts[0]);
-    } catch {
-      // usuario recusou a conexao no popup, ou ja tinha um pedido em
-      // andamento - so mantem o botao como "nao conectada", sem travar nada.
-    }
-  }
-
-  /** Checa (sem popup) se o site ja estava autorizado de uma visita anterior. */
-  async function restoreWalletConnection() {
-    if (!window.ethereum) return;
-    try {
-      const accounts = await window.ethereum.request({ method: 'eth_accounts' });
-      if (accounts[0]) setConnectedWallet(accounts[0]);
-    } catch {
-      // sem wallet instalada/disponivel - fica como "nao conectada", normal.
-    }
   }
 
   /** Desenha a aba EQUIPE: um card por trabalhador contratavel, com retrato e botao de contratar/status. */
@@ -1667,16 +1606,7 @@ function startGame(characterId) {
   pcTabTradeEl.addEventListener('click', () => pcScreenSetTab('trade'));
   pcMenuMineBtn.addEventListener('click', () => startMining());
   pcMenuSellBtn.addEventListener('click', () => handleSellInformationFromPc());
-  pcWalletBtn.addEventListener('click', () => {
-    if (!connectedWalletAddress) connectWallet();
-  });
-  if (window.ethereum?.on) {
-    // troca de conta na propria extensao (nao um clique no jogo) - reflete
-    // na hora; array vazio significa que o usuario desconectou todos os
-    // sites por la.
-    window.ethereum.on('accountsChanged', (accounts) => setConnectedWallet(accounts[0] ?? null));
-  }
-  restoreWalletConnection();
+  registerWalletUiTarget(document.getElementById('pc-wallet-btn'), document.getElementById('pc-wallet-status'));
   pcTradeUpBtn.addEventListener('click', () => handleTrade('up'));
   pcTradeDownBtn.addEventListener('click', () => handleTrade('down'));
 
@@ -1770,6 +1700,94 @@ function startGame(characterId) {
   );
 }
 
+// ---------- Wallet (MetaMask/EIP-1193) ----------
+// Os trabalhadores vao virar NFT no futuro - isso aqui e so a conexao da
+// wallet em si, sem nenhuma transacao de verdade ainda (nao ha contrato
+// publicado). Aparece em dois lugares que apontam pro mesmo estado: a
+// tela de entrada (antes da selecao de personagem) e a aba EQUIPE, ja
+// dentro do jogo - ver registerWalletUiTarget(). A compra continua em
+// BYTE (ver hireWorker) ate isso mudar. Nao guarda nada em localStorage -
+// quem ja autorizou o site antes, eth_accounts devolve isso sozinho (ver
+// restoreWalletConnection), sem precisar duplicar.
+let connectedWalletAddress = null;
+const walletUiTargets = [];
+
+function shortenWalletAddress(address) {
+  return `${address.slice(0, 6)}...${address.slice(-4)}`;
+}
+
+function updateOneWalletTarget({ btn, statusEl }) {
+  if (connectedWalletAddress) {
+    statusEl.textContent = shortenWalletAddress(connectedWalletAddress);
+    statusEl.className = 'pc-wallet-status connected';
+    btn.textContent = 'conectada';
+    btn.classList.add('connected');
+  } else {
+    statusEl.textContent = 'nao conectada';
+    statusEl.className = 'pc-wallet-status';
+    btn.textContent = 'Conectar Wallet';
+    btn.classList.remove('connected');
+  }
+}
+
+function updateWalletUI() {
+  walletUiTargets.forEach(updateOneWalletTarget);
+}
+
+/** Registra um par botao/status (ver index.html) pra refletir o estado da wallet - chamado uma vez por tela que tem esse widget. */
+function registerWalletUiTarget(btn, statusEl) {
+  const target = { btn, statusEl };
+  walletUiTargets.push(target);
+  btn.addEventListener('click', () => {
+    if (!connectedWalletAddress) connectWallet();
+  });
+  updateOneWalletTarget(target);
+}
+
+function setConnectedWallet(address) {
+  connectedWalletAddress = address;
+  updateWalletUI();
+}
+
+/** Pede a conexao de verdade (abre o popup da MetaMask) - so ao clicar num dos botoes. */
+async function connectWallet() {
+  if (!window.ethereum) {
+    walletUiTargets.forEach(({ statusEl }) => {
+      statusEl.textContent = 'instale a MetaMask';
+      statusEl.title = 'ou outra wallet compativel com EIP-1193';
+      statusEl.className = 'pc-wallet-status error';
+    });
+    return;
+  }
+  try {
+    const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+    if (accounts[0]) setConnectedWallet(accounts[0]);
+  } catch {
+    // usuario recusou a conexao no popup, ou ja tinha um pedido em
+    // andamento - so mantem os botoes como "nao conectada", sem travar nada.
+  }
+}
+
+/** Checa (sem popup) se o site ja estava autorizado de uma visita anterior. */
+async function restoreWalletConnection() {
+  if (!window.ethereum) return;
+  try {
+    const accounts = await window.ethereum.request({ method: 'eth_accounts' });
+    if (accounts[0]) setConnectedWallet(accounts[0]);
+  } catch {
+    // sem wallet instalada/disponivel - fica como "nao conectada", normal.
+  }
+}
+
+if (window.ethereum?.on) {
+  // troca de conta na propria extensao (nao um clique no jogo) - reflete
+  // na hora; array vazio significa que o usuario desconectou todos os
+  // sites por la.
+  window.ethereum.on('accountsChanged', (accounts) => setConnectedWallet(accounts[0] ?? null));
+}
+restoreWalletConnection();
+
+// ---------- Tela de entrada (conectar wallet) + selecao de personagem ----------
 // Tela de selecao de personagem: roda antes do jogo em si. Puramente
 // visual/input - nao toca em nada do HackRuntime/MapManager, que so
 // existem depois que o jogador escolhe (dentro de startGame). Se a URL
@@ -1779,9 +1797,8 @@ function startGame(characterId) {
 // inexistentes silenciosamente.
 const forcedCharacter = new URLSearchParams(window.location.search).get('char');
 const forcedEntry = CHARACTER_ROSTER.find((entry) => entry.id === forcedCharacter);
-if (forcedEntry) {
-  startGame(forcedEntry.id);
-} else {
+
+function beginCharacterSelect() {
   const previews = CHARACTER_ROSTER.map((entry) => ({ ...entry, image: loadPortraitImage(entry.id) }));
 
   let selectedIndex = 0;
@@ -1848,4 +1865,18 @@ if (forcedEntry) {
 
   window.addEventListener('keydown', handleSelectionKeydown);
   requestAnimationFrame(selectionLoop);
+}
+
+if (forcedEntry) {
+  // atalho de debug/teste - pula a tela de wallet tambem, direto pro jogo.
+  startGame(forcedEntry.id);
+} else {
+  const walletGateEl = document.getElementById('wallet-gate');
+  const walletGateContinueBtn = document.getElementById('wallet-gate-continue-btn');
+  registerWalletUiTarget(document.getElementById('wallet-gate-connect-btn'), document.getElementById('wallet-gate-status'));
+
+  walletGateContinueBtn.addEventListener('click', () => {
+    walletGateEl.hidden = true;
+    beginCharacterSelect();
+  });
 }
