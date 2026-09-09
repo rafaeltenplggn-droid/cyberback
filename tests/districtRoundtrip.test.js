@@ -209,6 +209,15 @@ test('nullpoint_interior usa arte de fundo real, 16x12, com o balcao bloqueado e
   assert.equal(map.isBlocked(8, 3), true, 'balcao do bar bloqueia a celula dele');
   assert.equal(map.isBlocked(8, 9), false, 'porta de saida nao pode bloquear');
 
+  // As 2 mesas redondas do meio (fileira 6) continuam bloqueando - so a
+  // mesa mesmo, nao o tapete ao redor dela (fileira 7, so chao/tapete,
+  // sem nenhum movel em cima - andar por ali tem que funcionar).
+  assert.equal(map.isBlocked(7, 6), true, 'mesa redonda 1 bloqueia a celula dela');
+  assert.equal(map.isBlocked(10, 6), true, 'mesa redonda 2 bloqueia a celula dela');
+  for (const col of [6, 7, 8, 9, 10, 11]) {
+    assert.equal(map.isBlocked(col, 7), false, `tapete embaixo das mesas (${col},7) tem que ser livre`);
+  }
+
   const districtMap = parseMap(await loadMapJson('district_07'));
   assert.equal(districtMap.isBlocked(0, 0), true, 'nullpoint_bar (predio exterior) continua com colisao normal');
   assert.equal(districtMap.getDoorAt(3, 5).target_map, 'nullpoint_interior');
