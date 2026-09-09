@@ -1,7 +1,8 @@
 // Formato do sprite descrito em CYBER_SPEC.md: 12 frames por arquetipo,
-// grid 4 linhas (direcao) por 3 colunas (pose). A linha "right" do arquivo
-// nunca e lida: o frame de direita e sempre derivado espelhando a linha
-// "left" em tempo de render (scaleX -1), quem consome isso e
+// grid 4 linhas (direcao) por 3 colunas (pose). A arte de perfil
+// (side_walk*.png) foi desenhada olhando pra DIREITA - a linha "left" do
+// arquivo nunca e lida: o frame de esquerda e sempre derivado espelhando
+// a linha "right" em tempo de render (scaleX -1), quem consome isso e
 // src/character/characterRenderer.js.
 export const FRAME_POSES = ['idle', 'step1', 'step2'];
 
@@ -13,8 +14,8 @@ export function getFrame(direction, pose) {
     throw new Error(`Pose invalida: ${pose}`);
   }
 
-  const mirrored = direction === 'right';
-  const sourceDirection = mirrored ? 'left' : direction;
+  const mirrored = direction === 'left';
+  const sourceDirection = mirrored ? 'right' : direction;
   const row = DIRECTION_ROWS[sourceDirection];
   if (row === undefined) {
     throw new Error(`Direcao invalida: ${direction}`);

@@ -5,8 +5,9 @@
 // Sem `assets`, desenha o placeholder de sempre (retangulo + bolinha).
 // Com `assets` (ver formato abaixo), desenha o sprite de pixel art real
 // no lugar - mesma logica de grid de frames (4 direcoes x 3 poses) e o
-// mesmo requisito de espelhamento: o frame de "right" nunca e desenhado
-// direto, e sempre a geometria de "left" com ctx.scale(-1, 1).
+// mesmo requisito de espelhamento: o frame de "left" nunca e desenhado
+// direto, e sempre a geometria de "right" com ctx.scale(-1, 1) (a arte de
+// perfil foi desenhada olhando pra direita).
 import { gridToScreen, TILE_SIZE } from '../core/topdown.js';
 import { getFrame } from './spriteSheet.js';
 
@@ -51,7 +52,7 @@ export class CharacterRenderer {
     const bob = POSE_BOB[pose] ?? 0;
     const ctx = this.ctx;
 
-    const sourceDirection = frame.mirrored ? 'left' : direction;
+    const sourceDirection = frame.mirrored ? 'right' : direction;
     const sprite = this.assets?.[sourceDirection]?.[pose];
 
     ctx.save();

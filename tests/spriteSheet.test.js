@@ -2,8 +2,8 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { getFrame, DIRECTION_ROWS, FRAME_POSES } from '../src/character/spriteSheet.js';
 
-test('down/up/left usam a propria linha do sheet, sem espelhar', () => {
-  for (const direction of ['down', 'up', 'left']) {
+test('down/up/right usam a propria linha do sheet, sem espelhar', () => {
+  for (const direction of ['down', 'up', 'right']) {
     for (const pose of FRAME_POSES) {
       const frame = getFrame(direction, pose);
       assert.equal(frame.row, DIRECTION_ROWS[direction]);
@@ -12,11 +12,11 @@ test('down/up/left usam a propria linha do sheet, sem espelhar', () => {
   }
 });
 
-test('right nunca le a propria linha (row 4/index 3) do arquivo, sempre espelha left', () => {
+test('left nunca le a propria linha (row 3/index 2) do arquivo, sempre espelha right (a arte de perfil olha pra direita)', () => {
   for (const pose of FRAME_POSES) {
-    const frame = getFrame('right', pose);
-    assert.equal(frame.row, DIRECTION_ROWS.left);
-    assert.notEqual(frame.row, DIRECTION_ROWS.right);
+    const frame = getFrame('left', pose);
+    assert.equal(frame.row, DIRECTION_ROWS.right);
+    assert.notEqual(frame.row, DIRECTION_ROWS.left);
     assert.equal(frame.mirrored, true);
   }
 });

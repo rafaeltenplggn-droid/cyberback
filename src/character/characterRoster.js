@@ -77,6 +77,9 @@ export function loadCharacterAssets(folder) {
   return {
     down: { idle: frontIdle, step1: frontStep1, step2: frontStep2 },
     up: { idle: backStep1, step1: backStep1, step2: backStep2 },
-    left: { idle: sideStep1, step1: sideStep1, step2: sideStep2 },
+    // side_walk*.png mostra o personagem de perfil olhando pra DIREITA -
+    // "esquerda" e sempre essa mesma arte espelhada em tempo de render
+    // (ver spriteSheet.js/characterRenderer.js), nunca um arquivo proprio.
+    right: { idle: sideStep1, step1: sideStep1, step2: sideStep2 },
   };
 }
