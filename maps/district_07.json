@@ -46,24 +46,21 @@
       "y": 5,
       "target_map": "nullpoint_interior",
       "spawn_x": 8,
-      "spawn_y": 8,
-      "approach": "up"
+      "spawn_y": 8
     },
     {
       "x": 11,
       "y": 5,
       "target_map": "ghost_row_interior",
       "spawn_x": 8,
-      "spawn_y": 8,
-      "approach": "up"
+      "spawn_y": 8
     },
     {
       "x": 18,
       "y": 5,
       "target_map": "gridcorp_interior",
       "spawn_x": 5,
-      "spawn_y": 7,
-      "approach": "up"
+      "spawn_y": 7
     },
     {
       "x": 7,

@@ -45,6 +45,32 @@ test('district_07.json tem 24x16, fundo real (Visual Master) e as 5 portas para 
   assert.deepEqual([dataTerminalDoor.spawn_x, dataTerminalDoor.spawn_y], [5, 7]);
 });
 
+test('as portas do BAR/BLACKNET/CORP disparam em qualquer direcao - o spawn do jogador cai bem na fileira da porta (5,5), sem espaco pra "aproximar de cima"', async () => {
+  const manager = makeManager();
+  await manager.loadMap('district_07', 5, 5);
+
+  // andar de lado (a mesma fileira da calcada/porta) precisa continuar
+  // entrando - diferente da porta da MY HOME/DATA TERMINAL (fileira 13),
+  // que tem espaco de sobra pra exigir aproximar andando pra cima.
+  const result = await manager.tryMove(3, 5, 'left');
+  assert.equal(result.doorTriggered, true);
+  assert.equal(result.targetMap, 'nullpoint_interior');
+});
+
+test('as portas da MY HOME/DATA TERMINAL continuam exigindo aproximar andando pra cima (tem espaco de sobra na calcada, sem risco de spawn em cima da porta)', async () => {
+  const sideways = makeManager();
+  await sideways.loadMap('district_07', 6, 13);
+  const sidewaysResult = await sideways.tryMove(7, 13, 'right');
+  assert.equal(sidewaysResult.doorTriggered, false, 'de lado nao dispara');
+  assert.equal(sideways.currentMap.id, 'district_07');
+
+  const upward = makeManager();
+  await upward.loadMap('district_07', 7, 14); // ao sul da porta, na calcada aberta
+  const upwardResult = await upward.tryMove(7, 13, 'up');
+  assert.equal(upwardResult.doorTriggered, true);
+  assert.equal(upwardResult.targetMap, 'player_home');
+});
+
 test('predios do district_07 bloqueiam o footprint que bate com a arte de fundo', async () => {
   const map = parseMap(await loadMapJson('district_07'));
 
