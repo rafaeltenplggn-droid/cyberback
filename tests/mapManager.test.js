@@ -21,6 +21,24 @@ const RAW_MAPS = {
     doors: [{ x: 2, y: 0, target_map: 'map_b', spawn_x: 0, spawn_y: 0 }],
     props: [],
   },
+  map_directional: {
+    id: 'map_directional',
+    tileset: 'generic',
+    width: 3,
+    height: 3,
+    tiles: [
+      [0, 0, 0],
+      [0, 0, 0],
+      [0, 0, 0],
+    ],
+    collision: [
+      [0, 0, 0],
+      [0, 0, 0],
+      [0, 0, 0],
+    ],
+    doors: [{ x: 1, y: 2, target_map: 'map_b', spawn_x: 1, spawn_y: 1, approach: 'down' }],
+    props: [],
+  },
   map_b: {
     id: 'map_b',
     tileset: 'generic',
@@ -70,6 +88,44 @@ test('tryMove sobre uma door troca o mapa inteiro e reposiciona no spawn do dest
   assert.equal(manager.currentMap.id, 'map_b');
   assert.equal(manager.playerCol, 0);
   assert.equal(manager.playerRow, 0);
+});
+
+test('door com approach so dispara se a direcao do passo bater com a exigida', async () => {
+  const manager = makeManager();
+  await manager.loadMap('map_directional', 0, 2);
+
+  // andando de lado por cima da door (approach:'down' exige vir de cima) -
+  // so anda pra celula, nao dispara a troca de mapa.
+  const sideways = await manager.tryMove(1, 2, 'right');
+  assert.equal(sideways.moved, true);
+  assert.equal(sideways.doorTriggered, false);
+  assert.equal(manager.currentMap.id, 'map_directional');
+  assert.equal(manager.playerCol, 1);
+  assert.equal(manager.playerRow, 2);
+
+  // descendo de verdade (direcao 'down', a exigida) dispara normalmente.
+  const down = await manager.tryMove(1, 2, 'down');
+  assert.equal(down.moved, true);
+  assert.equal(down.doorTriggered, true);
+  assert.equal(down.targetMap, 'map_b');
+  assert.equal(manager.currentMap.id, 'map_b');
+});
+
+test('door com approach nao dispara sem nenhuma direcao informada', async () => {
+  const manager = makeManager();
+  await manager.loadMap('map_directional', 1, 1);
+  const result = await manager.tryMove(1, 2);
+  assert.equal(result.moved, true);
+  assert.equal(result.doorTriggered, false);
+  assert.equal(manager.currentMap.id, 'map_directional');
+});
+
+test('door sem approach dispara em qualquer direcao (compat com mapas antigos)', async () => {
+  const manager = makeManager();
+  await manager.loadMap('map_a', 1, 0);
+  const result = await manager.tryMove(2, 0, 'left');
+  assert.equal(result.doorTriggered, true);
+  assert.equal(result.targetMap, 'map_b');
 });
 
 test('tryMove para celula livre sem door apenas atualiza a posicao', async () => {

@@ -27,11 +27,12 @@ export const BAR_COUNTER_LOCATION = { originX: 8, originY: 4, footprintW: 1, foo
 // qualquer outro ponto de interacao).
 export const BAR_STOOL_LOCATION = { originX: 6, originY: 4, footprintW: 1, footprintH: 1 };
 
-// O laptop (tela ciana) fica desenhado EM CIMA do balcao, na mesma fileira
-// do atendente (fileira 3, coluna 10) - nao na fileira aberta dos bancos.
-// Mesma logica do atendente: so e alcancavel de frente (fileira 4, ao sul),
-// o resto da fileira 3 e parede/balcao solido, inalcancavel de qualquer jeito.
-export const BAR_LAPTOP_LOCATION = { originX: 10, originY: 3, footprintW: 1, footprintH: 1 };
+// O laptop e o terminal "PLAY BREATHE REPEAT" que ja esta desenhado na
+// propria arte de fundo (canto superior direito, com o banquinho na
+// frente dele - ver assets/backgrounds/nullpoint_bar_interior.png,
+// coluna 13). Mesma logica do atendente/balcao: fileira 3 e parede/mobilia
+// solida, so alcancavel de frente (fileira 4, ao sul, onde fica o banquinho).
+export const BAR_LAPTOP_LOCATION = { originX: 13, originY: 3, footprintW: 1, footprintH: 1 };
 const BAR_LAPTOP_APPROACH_SIDES = ['south'];
 
 // Posicao exata do atendente na arte (o personagem desenhado atras do

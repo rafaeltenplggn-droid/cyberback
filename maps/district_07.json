@@ -46,35 +46,40 @@
       "y": 5,
       "target_map": "nullpoint_interior",
       "spawn_x": 8,
-      "spawn_y": 8
+      "spawn_y": 8,
+      "approach": "up"
     },
     {
       "x": 11,
       "y": 5,
       "target_map": "ghost_row_interior",
       "spawn_x": 8,
-      "spawn_y": 8
+      "spawn_y": 8,
+      "approach": "up"
     },
     {
       "x": 18,
       "y": 5,
       "target_map": "gridcorp_interior",
       "spawn_x": 5,
-      "spawn_y": 7
+      "spawn_y": 7,
+      "approach": "up"
     },
     {
       "x": 7,
       "y": 13,
       "target_map": "player_home",
       "spawn_x": 5,
-      "spawn_y": 7
+      "spawn_y": 7,
+      "approach": "up"
     },
     {
       "x": 18,
       "y": 13,
       "target_map": "data_terminal_interior",
       "spawn_x": 5,
-      "spawn_y": 7
+      "spawn_y": 7,
+      "approach": "up"
     }
   ],
   "props": [],

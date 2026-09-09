@@ -22,6 +22,7 @@ import { requiredLevelForTier } from './hackIntegration/hackLevelGate.js';
 import { layoutBreachTaskZone, breachTaskParamsForTier, resolveBreachTaskAttempt } from './hackIntegration/breachTask.js';
 import { PLAYER_HOME_MAP_ID, HOME_BED_LOCATION, HOME_PC_LOCATION } from './hackIntegration/homeLocations.js';
 import {
+  BAR_MAP_ID,
   BAR_COUNTER_LOCATION,
   BAR_STOOL_LOCATION,
   BAR_LAPTOP_LOCATION,
@@ -215,12 +216,23 @@ function startGame(characterId) {
     return response.json();
   }
 
+  // Balao de boas-vindas ao entrar no bar (ver render()/drawHintBubble) -
+  // fica um tempo fixo na tela, sem precisar o jogador chegar perto de
+  // nenhum interativel especifico, so pra apresentar o que da pra fazer
+  // ali assim que a porta troca de mapa.
+  const BAR_ENTRANCE_HINT_DURATION_MS = 6000;
+  const BAR_ENTRANCE_HINT_TEXT = 'BALCAO: bebidas (M) | BANCO: sentar (C) | LAPTOP no canto: hackear (ESPACO)';
+  let barEntranceHintUntil = 0;
+
   const mapManager = new MapManager({ loadMapJson });
   const controller = new MovementController(mapManager, {
     onMapChanged: (map) => {
       fixCameraForMap(map);
       ensurePropImagesLoaded(map);
       ensureBackgroundImageLoaded(map);
+      if (map.id === BAR_MAP_ID) {
+        barEntranceHintUntil = performance.now() + BAR_ENTRANCE_HINT_DURATION_MS;
+      }
       updateStatus();
     },
   });
@@ -291,6 +303,7 @@ function startGame(characterId) {
   const pcMenuEl = document.getElementById('pc-menu');
   const pcRunEl = document.getElementById('pc-run');
   const pcMenuMineBtn = document.getElementById('pc-menu-mine');
+  const pcMenuSellBtn = document.getElementById('pc-menu-sell');
   const pcMenuTargetsEl = document.getElementById('pc-menu-targets');
   const pcTaskEl = document.getElementById('pc-task');
   const pcTaskTargetEl = document.getElementById('pc-task-target');
@@ -475,6 +488,9 @@ function startGame(characterId) {
     const energyCost = hackRuntime.energyMax != null ? Math.round(hackRuntime.energyMax * INFO_MINING_ENERGY_COST_RATIO) : null;
     pcMenuMineBtn.textContent = `[Minerar] informacao no PC (~30s, chance de sucesso, gasta ${energyCost} de energia)`;
     pcMenuMineBtn.disabled = busy;
+
+    pcMenuSellBtn.textContent = `[Vender] toda a informacao por BYTE (estoque: ${hackRuntime.informationTotal})`;
+    pcMenuSellBtn.disabled = busy || hackRuntime.informationTotal === 0;
 
     pcMenuTargetsEl.innerHTML = '';
     for (const entryTarget of hackRuntime.remoteHackTargets) {
@@ -1271,6 +1287,12 @@ function startGame(characterId) {
     updateShopStatus();
   }
 
+  /** Igual handleSellInformation(), so que tambem re-renderiza o menu do PC (o botao mostra o estoque restante). */
+  function handleSellInformationFromPc() {
+    handleSellInformation();
+    renderPcMenu();
+  }
+
   function handleHireWorker(workerId) {
     const result = hackRuntime.hireWorker(workerId);
     lastHireResult = { workerId, result };
@@ -1531,6 +1553,7 @@ function startGame(characterId) {
   pcTabLojaEl.addEventListener('click', () => pcScreenSetTab('loja'));
   pcTabTradeEl.addEventListener('click', () => pcScreenSetTab('trade'));
   pcMenuMineBtn.addEventListener('click', () => startMining());
+  pcMenuSellBtn.addEventListener('click', () => handleSellInformationFromPc());
   pcTradeUpBtn.addEventListener('click', () => handleTrade('up'));
   pcTradeDownBtn.addEventListener('click', () => handleTrade('down'));
 
@@ -1562,6 +1585,13 @@ function startGame(characterId) {
       const { x } = gridToScreen(location.originX + location.footprintW / 2, anchorRow, mapRenderer.originX, mapRenderer.originY);
       const anchorY = mapRenderer.originY + anchorRow * TILE_SIZE;
       drawHintBubble(ctx, x, anchorY, activeHint.text);
+    } else if (mapManager.currentMap?.id === BAR_MAP_ID && nowMs < barEntranceHintUntil) {
+      // Balao de boas-vindas (ver onMapChanged acima) - so enquanto nenhum
+      // outro hint especifico (de estar parado do lado de algo) tiver
+      // prioridade.
+      const { x } = gridToScreen(8, 6, mapRenderer.originX, mapRenderer.originY);
+      const anchorY = mapRenderer.originY + 6 * TILE_SIZE;
+      drawHintBubble(ctx, x, anchorY, BAR_ENTRANCE_HINT_TEXT);
     }
     updateStatus();
     updateHackStatus();

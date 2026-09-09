@@ -22,12 +22,17 @@ function validateRectMatrix(matrix, width, height, fieldName) {
   }
 }
 
+const DOOR_APPROACH_DIRECTIONS = ['up', 'down', 'left', 'right'];
+
 function validateDoor(door, width, height, index) {
   assert(Number.isInteger(door.x) && door.x >= 0 && door.x < width, `doors[${index}].x invalido`);
   assert(Number.isInteger(door.y) && door.y >= 0 && door.y < height, `doors[${index}].y invalido`);
   assert(typeof door.target_map === 'string' && door.target_map.length > 0, `doors[${index}].target_map invalido`);
   assert(Number.isInteger(door.spawn_x), `doors[${index}].spawn_x invalido`);
   assert(Number.isInteger(door.spawn_y), `doors[${index}].spawn_y invalido`);
+  if (door.approach !== undefined) {
+    assert(DOOR_APPROACH_DIRECTIONS.includes(door.approach), `doors[${index}].approach invalido`);
+  }
 }
 
 function validateProp(prop, width, height, index) {

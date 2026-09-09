@@ -66,6 +66,27 @@ test('door registra o gatilho na celula certa e nao bloqueia por si so', () => {
   assert.equal(map.isBlocked(2, 1), false);
 });
 
+test('door aceita approach opcional (uma das 4 direcoes)', () => {
+  const map = parseMap(
+    baseMap({
+      doors: [{ x: 2, y: 1, target_map: 'gridcorp_interior', spawn_x: 3, spawn_y: 14, approach: 'down' }],
+    })
+  );
+  assert.equal(map.getDoorAt(2, 1).approach, 'down');
+});
+
+test('door com approach invalido rejeita o mapa', () => {
+  assert.throws(
+    () =>
+      parseMap(
+        baseMap({
+          doors: [{ x: 2, y: 1, target_map: 'gridcorp_interior', spawn_x: 3, spawn_y: 14, approach: 'diagonal' }],
+        })
+      ),
+    MapParseError
+  );
+});
+
 test('prop com collision_footprint=true bloqueia todas as celulas do footprint', () => {
   const map = parseMap(
     baseMap({

@@ -38,7 +38,16 @@
       "y": 9,
       "target_map": "district_07",
       "spawn_x": 7,
-      "spawn_y": 14
+      "spawn_y": 14,
+      "approach": "down"
+    },
+    {
+      "x": 8,
+      "y": 9,
+      "target_map": "district_07",
+      "spawn_x": 7,
+      "spawn_y": 14,
+      "approach": "down"
     }
   ],
   "props": [],

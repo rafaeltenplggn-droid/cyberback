@@ -403,8 +403,8 @@ test('o buff do drink afeta o hack seguinte (breach/fence), mas nunca o playerSt
   assert.equal(runtime.activeDrinkBuff.stat, 'breachSpeed');
 
   mapManager.currentMap.id = 'nullpoint_interior';
-  mapManager.playerCol = 10;
-  mapManager.playerRow = 4; // na frente do laptop, dispara o hack remoto do bar
+  mapManager.playerCol = 13;
+  mapManager.playerRow = 4; // na frente do laptop (origem 13,3), dispara o hack remoto do bar
   const result = await runtime.triggerHack();
 
   assert.ok(result.breach, 'o hack rodou');
@@ -412,13 +412,13 @@ test('o buff do drink afeta o hack seguinte (breach/fence), mas nunca o playerSt
 });
 
 test('triggerHack aceita um taskBuff opcional (bonus da task de sincronizacao), somado ao do drink se houver', async () => {
-  const mapManager = makeFakeMapManager({ mapId: 'nullpoint_interior', col: 10, row: 4 });
+  const mapManager = makeFakeMapManager({ mapId: 'nullpoint_interior', col: 13, row: 4 });
   const controller = makeFakeController();
   const runtime = new HackRuntime({ mapManager, controller, playerStats: createPlayerStats(3), rng: () => 0, hackDelayMs: 0 });
 
   const plain = await runtime.triggerHack();
 
-  mapManager.playerCol = 10;
+  mapManager.playerCol = 13;
   mapManager.playerRow = 4;
   const buffed = await runtime.triggerHack({ stat: 'breachSpeed', amount: 8 });
 
@@ -436,7 +436,7 @@ test('triggerRemoteHack tambem aceita um taskBuff opcional', async () => {
 });
 
 test('parado no laptop dentro do nullpoint_interior, nearbyHackableBuilding aponta pro nullpoint_bar', async () => {
-  const mapManager = makeFakeMapManager({ mapId: 'nullpoint_interior', col: 10, row: 4 }); // na frente do laptop (origem 10,3)
+  const mapManager = makeFakeMapManager({ mapId: 'nullpoint_interior', col: 13, row: 4 }); // na frente do laptop (origem 13,3)
   const controller = makeFakeController();
   const runtime = new HackRuntime({ mapManager, controller, playerStats: createPlayerStats(1), rng: () => 0, hackDelayMs: 0 });
 
@@ -805,7 +805,7 @@ test('tradeBite funciona parado no laptop do bar', () => {
   const ledger = new ByteLedger();
   ledger.record({ type: 'gain', amount: 100 });
   const runtime = new HackRuntime({
-    mapManager: makeFakeMapManager({ mapId: 'nullpoint_interior', col: 10, row: 4 }), // na frente do laptop (origem 10,3)
+    mapManager: makeFakeMapManager({ mapId: 'nullpoint_interior', col: 13, row: 4 }), // na frente do laptop (origem 13,3)
     controller: makeFakeController(),
     playerStats: createPlayerStats(1),
     ledger,

@@ -404,9 +404,16 @@ export class HackRuntime {
     return nearbyBlacknetInteractableAt(this.mapManager);
   }
 
-  /** Vende todo o estoque de Informacao por BYTE. So funciona parado no ponto de venda, dentro da BLACKNET. */
+  /**
+   * Vende todo o estoque de Informacao por BYTE. Funciona parado no ponto
+   * de venda dentro da BLACKNET (falando com o corretor) OU direto do PC
+   * de casa - o mesmo mercado, dois jeitos de acessar (nao precisa andar
+   * ate a BLACKNET so pra vender).
+   */
   sellInformation() {
-    if (this.nearbyBlacknetInteractable() !== 'sell') {
+    const atBlacknet = this.nearbyBlacknetInteractable() === 'sell';
+    const atHomePc = this.nearbyHomeInteractable() === 'pc';
+    if (!atBlacknet && !atHomePc) {
       return { success: false, reason: 'fora_da_blacknet', byteEarned: 0, sold: {} };
     }
     if (!this.ledger) {

@@ -89,7 +89,11 @@ for (const [interiorId, exteriorDoor] of [
     const manager = makeManager();
     await manager.loadMap('district_07', 12, 8);
 
-    const enterResult = await manager.tryMove(exteriorDoor.x, exteriorDoor.y);
+    // As doors do district_07 so disparam andando pra cima (approach: 'up')
+    // - ver mapManager.js/mapParser.js - senao qualquer passo LATERAL por
+    // cima da calcada em frente a loja jogava o jogador pra dentro sem
+    // querer, so de passar por ali indo pro predio vizinho.
+    const enterResult = await manager.tryMove(exteriorDoor.x, exteriorDoor.y, 'up');
     assert.equal(enterResult.moved, true);
     assert.equal(enterResult.doorTriggered, true);
     assert.equal(enterResult.targetMap, interiorId);
@@ -99,7 +103,9 @@ for (const [interiorId, exteriorDoor] of [
     const interiorDoor = manager.currentMap.doors[0];
     assert.equal(interiorDoor.target_map, 'district_07');
 
-    const exitResult = await manager.tryMove(interiorDoor.x, interiorDoor.y);
+    // E as portas de saida dos interiores so disparam andando pra baixo
+    // (approach: 'down'), mesmo motivo.
+    const exitResult = await manager.tryMove(interiorDoor.x, interiorDoor.y, 'down');
     assert.equal(exitResult.moved, true);
     assert.equal(exitResult.doorTriggered, true);
     assert.equal(exitResult.targetMap, 'district_07');

@@ -16,10 +16,12 @@ function makeFakeMapManager({ blockedCells = new Set(), doorAt = new Map(), map 
     playerCol: 0,
     playerRow: 0,
     currentMap: map,
+    tryMoveDirections: [],
     canEnter(col, row) {
       return !blockedCells.has(`${col},${row}`);
     },
-    async tryMove(col, row) {
+    async tryMove(col, row, direction) {
+      manager.tryMoveDirections.push(direction);
       if (!manager.canEnter(col, row)) {
         return { moved: false, doorTriggered: false };
       }
@@ -64,6 +66,18 @@ test('enqueueInput so enfileira; a posicao logica nao muda ate o tween terminar'
 
   assert.equal(controller.isMoving, false);
   assert.equal(mapManager.playerRow, 1);
+});
+
+test('a direcao do passo vai junto pro mapManager.tryMove (pra door.approach conseguir exigir uma direcao especifica)', async () => {
+  const mapManager = makeFakeMapManager();
+  const controller = new MovementController(mapManager);
+
+  controller.enqueueInput('down');
+  controller.tick(0);
+  controller.tick(DEFAULT_STEP_DURATION_MS);
+  await flushMicrotasks();
+
+  assert.deepEqual(mapManager.tryMoveDirections, ['down']);
 });
 
 test('input novo entra em fila e nao interrompe o tween em andamento', async () => {

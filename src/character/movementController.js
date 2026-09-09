@@ -85,10 +85,12 @@ export class MovementController {
 
   _finishStep() {
     this._finishing = true;
-    const { toCol, toRow } = this.tween;
+    const { toCol, toRow, direction } = this.tween;
     // A posicao logica so muda aqui, no fim do tween, e so atraves do
-    // MapManager (unica fonte de verdade pra posicao/colisao/porta).
-    this.mapManager.tryMove(toCol, toRow).then((result) => {
+    // MapManager (unica fonte de verdade pra posicao/colisao/porta). A
+    // direcao do passo vai junto pra MapManager poder exigir uma door.approach
+    // especifica (ver mapManager.js).
+    this.mapManager.tryMove(toCol, toRow, direction).then((result) => {
       this.tween = null;
       this.pose = 'idle';
       this._finishing = false;
