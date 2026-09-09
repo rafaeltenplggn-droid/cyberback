@@ -1,19 +1,22 @@
 // O ginasio da CORP (gridcorp_interior, dentro do gridcorp_tower): 4
 // lutadores + o lider, direto inspirado num ginasio de Pokemon. So da pra
 // desafiar um de cada vez, na ordem certa - o proximo so destranca depois
-// que o anterior for vencido. Cada estagio usa a mesma task de
-// sincronizacao do hack normal (ver breachTask.js), so que aqui ela
-// GANHA ou PERDE de verdade: acertar derruba o lutador (credita
-// Informacao, raridade crescente ate o lider - o mais raro e mais
-// dificil) e destranca o proximo; errar nao penaliza nada, so nao avanca
-// (pode tentar de novo a hora que quiser). Cada estagio so paga uma vez
-// (e um "badge", nao e farmavel).
+// que o anterior for vencido. Cada estagio tem uma task fixa (ver
+// taskType) - 'sync' e a Breach Sync do hack normal (breachTask.js),
+// 'sequence' e a task nova de repetir uma sequencia de setas
+// (sequenceTask.js) - alternando entre as duas pra variar, com o tier de
+// cada uma subindo a cada estagio (mais dificil a cada passo, ate o
+// lider). Aqui a task GANHA ou PERDE de verdade: acertar derruba o
+// lutador (credita Informacao, raridade crescente ate o lider - o mais
+// raro e mais dificil) e destranca o proximo; errar nao penaliza nada, so
+// nao avanca (pode tentar de novo a hora que quiser). Cada estagio so
+// paga uma vez (e um "badge", nao e farmavel).
 export const CORP_GYM_STAGES = [
-  { id: 'fighter1', taskTier: 'comum', rewardRarity: 'comum' },
-  { id: 'fighter2', taskTier: 'incomum', rewardRarity: 'comum' },
-  { id: 'fighter3', taskTier: 'raro', rewardRarity: 'rara' },
-  { id: 'fighter4', taskTier: 'epico', rewardRarity: 'rara' },
-  { id: 'leader', taskTier: 'lendario', rewardRarity: 'epica' },
+  { id: 'fighter1', taskType: 'sync', taskTier: 'comum', rewardRarity: 'comum' },
+  { id: 'fighter2', taskType: 'sequence', taskTier: 'incomum', rewardRarity: 'comum' },
+  { id: 'fighter3', taskType: 'sync', taskTier: 'raro', rewardRarity: 'rara' },
+  { id: 'fighter4', taskType: 'sequence', taskTier: 'epico', rewardRarity: 'rara' },
+  { id: 'leader', taskType: 'sequence', taskTier: 'lendario', rewardRarity: 'epica' },
 ];
 
 export const CORP_GYM_STAGE_REASON = {

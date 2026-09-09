@@ -495,6 +495,30 @@
     .pc-task-result.bom { color: #ffd23a; text-shadow: 0 0 8px rgba(255, 210, 58, 0.5); }
     .pc-task-result.errou { color: #ff5d6a; text-shadow: 0 0 8px rgba(255, 93, 106, 0.5); }
 
+    #pc-sequence-task:not([hidden]) { display: flex; flex-direction: column; gap: 12px; height: 100%; }
+    .pc-seq-display {
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+      font-size: 30px;
+      font-family: 'IBM Plex Mono', monospace;
+    }
+    .pc-seq-arrow {
+      opacity: 0.3;
+      color: #6dffc9;
+      transition: opacity 120ms ease, transform 120ms ease, color 120ms ease;
+    }
+    .pc-seq-arrow.active { opacity: 1; transform: scale(1.25); text-shadow: 0 0 10px rgba(109, 255, 201, 0.7); }
+    .pc-seq-arrow.correct { opacity: 0.55; color: #4dffb8; }
+    .pc-seq-arrow.wrong { opacity: 1; color: #ff5d6a; text-shadow: 0 0 10px rgba(255, 93, 106, 0.7); }
+    .pc-seq-time-fill {
+      position: absolute;
+      inset: 1px;
+      width: 100%;
+      background: repeating-linear-gradient(90deg, #6dffc9, #6dffc9 4px, transparent 4px, transparent 7px);
+      transition: width 100ms linear;
+    }
+
     .pc-menu-title {
       font-family: 'Rajdhani', sans-serif;
       font-size: 13px;
@@ -1012,6 +1036,19 @@
               <button type="button" class="pc-menu-btn pc-task-btn" id="pc-task-btn">SINCRONIZAR</button>
               <div class="pc-task-hint">ou aperte ESPAÇO</div>
               <div class="pc-task-result" id="pc-task-result"></div>
+            </div>
+            <div id="pc-sequence-task" hidden>
+              <div class="pc-head">
+                <span id="pc-seq-target">ALVO: --</span>
+                <span id="pc-seq-tier">TIER: --</span>
+              </div>
+              <div class="pc-task-title">REPITA A SEQUENCIA</div>
+              <div class="pc-seq-display" id="pc-seq-display"></div>
+              <div class="pc-task-track" id="pc-seq-time-track">
+                <div class="pc-seq-time-fill" id="pc-seq-time-fill"></div>
+              </div>
+              <div class="pc-task-hint">use as SETAS na ordem certa</div>
+              <div class="pc-task-result" id="pc-seq-result"></div>
             </div>
             <div id="pc-run" hidden>
               <div class="pc-head">

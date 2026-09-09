@@ -20,6 +20,7 @@ import { PET_COST_BYTE } from './hackIntegration/pets.js';
 import { BITE_TRADE_STAKE_BYTE, BITE_TRADE_PAYOUT_BYTE } from './hackIntegration/biteTrade.js';
 import { requiredLevelForTier } from './hackIntegration/hackLevelGate.js';
 import { layoutBreachTaskZone, breachTaskParamsForTier, resolveBreachTaskAttempt } from './hackIntegration/breachTask.js';
+import { generateSequence, isSequenceStepCorrect, sequenceTaskParamsForTier, resolveSequenceAttempt } from './hackIntegration/sequenceTask.js';
 import { PLAYER_HOME_MAP_ID, HOME_BED_LOCATION, HOME_PC_LOCATION } from './hackIntegration/homeLocations.js';
 import {
   BAR_MAP_ID,
@@ -315,6 +316,12 @@ function startGame(characterId) {
   const pcTaskMarkerEl = document.getElementById('pc-task-marker');
   const pcTaskBtn = document.getElementById('pc-task-btn');
   const pcTaskResultEl = document.getElementById('pc-task-result');
+  const pcSequenceTaskEl = document.getElementById('pc-sequence-task');
+  const pcSeqTargetEl = document.getElementById('pc-seq-target');
+  const pcSeqTierEl = document.getElementById('pc-seq-tier');
+  const pcSeqDisplayEl = document.getElementById('pc-seq-display');
+  const pcSeqTimeFillEl = document.getElementById('pc-seq-time-fill');
+  const pcSeqResultEl = document.getElementById('pc-seq-result');
 
   // ---------- Cardapio de drinks (buff, ver drinkMenu.js) ----------
   // Overlay separado da tela do PC, com skin propria (balcao de bar) -
@@ -369,6 +376,7 @@ function startGame(characterId) {
     pcMenuEl.hidden = false;
     pcRunEl.hidden = true;
     pcTaskEl.hidden = true;
+    pcSequenceTaskEl.hidden = true;
   }
 
   /** Mostra o terminal em execucao (log + barra) no lugar do menu. */
@@ -376,6 +384,7 @@ function startGame(characterId) {
     pcMenuEl.hidden = true;
     pcRunEl.hidden = false;
     pcTaskEl.hidden = true;
+    pcSequenceTaskEl.hidden = true;
   }
 
   /** Mostra a task de sincronizacao (Breach Sync) no lugar do menu/terminal. */
@@ -383,6 +392,15 @@ function startGame(characterId) {
     pcMenuEl.hidden = true;
     pcRunEl.hidden = true;
     pcTaskEl.hidden = false;
+    pcSequenceTaskEl.hidden = true;
+  }
+
+  /** Mostra a task de sequencia (repetir as setas) no lugar do menu/terminal. */
+  function pcScreenShowSequenceTask() {
+    pcMenuEl.hidden = true;
+    pcRunEl.hidden = true;
+    pcTaskEl.hidden = true;
+    pcSequenceTaskEl.hidden = false;
   }
 
   const BREACH_TASK_AUTO_MISS_MS = 6000;
@@ -477,6 +495,113 @@ function startGame(characterId) {
       const missTimeoutId = setTimeout(() => finish(null), BREACH_TASK_AUTO_MISS_MS);
       pcTaskBtn.addEventListener('click', onAttempt);
       window.addEventListener('keydown', onKeydown);
+    });
+  }
+
+  const SEQUENCE_TASK_VERDICT_HOLD_MS = 900;
+  const SEQUENCE_ARROW_GLYPH = { up: '↑', down: '↓', left: '←', right: '→' };
+  const SEQUENCE_KEY_TO_DIRECTION = { ArrowUp: 'up', ArrowDown: 'down', ArrowLeft: 'left', ArrowRight: 'right' };
+
+  /**
+   * Task alternativa (ver sequenceTask.js): memoriza uma sequencia de
+   * setas (fase de revelacao, uma piscando por vez) e repete na ordem
+   * certa antes do tempo acabar (fase de input). Mesmo contrato de
+   * runBreachTask: resolve com um bonus de stat no acerto, ou null no
+   * erro/estouro de tempo - nunca impede o hack/luta de rodar, so decide
+   * se ganha o bonus (ou, no ginasio da CORP, se ganha a luta).
+   */
+  function runSequenceTask({ id, tier }) {
+    return new Promise((resolve) => {
+      breachTaskOpen = true; // reaproveita a mesma trava global de input (ver window keydown mais abaixo)
+      pcSeqTargetEl.textContent = `ALVO: ${id.toUpperCase()}`;
+      pcSeqTierEl.textContent = `TIER: ${tier.toUpperCase()}`;
+      pcSeqResultEl.textContent = '';
+      pcSeqResultEl.className = 'pc-task-result';
+      pcScreenShowSequenceTask();
+
+      const sequence = generateSequence(tier);
+      const { revealMs, inputMs } = sequenceTaskParamsForTier(tier);
+
+      pcSeqDisplayEl.innerHTML = '';
+      const arrowEls = sequence.map((direction) => {
+        const el = document.createElement('span');
+        el.className = 'pc-seq-arrow';
+        el.textContent = SEQUENCE_ARROW_GLYPH[direction];
+        pcSeqDisplayEl.appendChild(el);
+        return el;
+      });
+      pcSeqTimeFillEl.style.transition = 'none';
+      pcSeqTimeFillEl.style.width = '100%';
+
+      let settled = false;
+      let revealTimeoutId = null;
+      let missTimeoutId = null;
+      let inputIndex = 0;
+
+      function finish(attempt) {
+        if (settled) return;
+        settled = true;
+        clearTimeout(revealTimeoutId);
+        clearTimeout(missTimeoutId);
+        window.removeEventListener('keydown', onKeydown);
+        breachTaskOpen = false;
+
+        if (attempt) {
+          pcSeqResultEl.textContent = `SEQUENCIA CERTA! +${attempt.amount}%`;
+          pcSeqResultEl.className = 'pc-task-result perfeito';
+        } else {
+          pcSeqResultEl.textContent = 'ERROU A SEQUENCIA';
+          pcSeqResultEl.className = 'pc-task-result errou';
+        }
+
+        setTimeout(() => resolve(attempt), SEQUENCE_TASK_VERDICT_HOLD_MS);
+      }
+
+      function startInputPhase() {
+        arrowEls.forEach((el) => el.classList.remove('active'));
+        pcSeqTimeFillEl.style.transition = 'none';
+        pcSeqTimeFillEl.style.width = '100%';
+        // Forca o reflow antes de trocar a transition, senao o navegador
+        // agrupa as duas mudancas de width e a barra nunca anima descendo.
+        void pcSeqTimeFillEl.offsetWidth;
+        pcSeqTimeFillEl.style.transition = `width ${inputMs}ms linear`;
+        pcSeqTimeFillEl.style.width = '0%';
+
+        missTimeoutId = setTimeout(() => finish(null), inputMs);
+        window.addEventListener('keydown', onKeydown);
+      }
+
+      function onKeydown(ev) {
+        const direction = SEQUENCE_KEY_TO_DIRECTION[ev.key];
+        if (!direction) return;
+        ev.preventDefault();
+        if (!isSequenceStepCorrect(sequence, inputIndex, direction)) {
+          arrowEls[inputIndex]?.classList.add('wrong');
+          finish(null);
+          return;
+        }
+        arrowEls[inputIndex].classList.add('correct');
+        inputIndex += 1;
+        if (inputIndex === sequence.length) {
+          finish(resolveSequenceAttempt(sequence, sequence, tier));
+        }
+      }
+
+      // Fase de revelacao: acende um passo por vez, na ordem, antes de
+      // liberar o input - o jogador so pode comecar a repetir depois de
+      // ver a sequencia inteira.
+      let revealIndex = 0;
+      function revealStep() {
+        if (revealIndex > 0) arrowEls[revealIndex - 1].classList.remove('active');
+        if (revealIndex >= sequence.length) {
+          startInputPhase();
+          return;
+        }
+        arrowEls[revealIndex].classList.add('active');
+        revealIndex += 1;
+        revealTimeoutId = setTimeout(revealStep, revealMs);
+      }
+      revealStep();
     });
   }
 
@@ -836,12 +961,16 @@ function startGame(characterId) {
 
   let lastGymResult = null;
 
+  const CORP_GYM_TASK_LABEL = { sync: 'SYNC', sequence: 'SEQ' };
+
   /**
    * Desafia o lutador/lider da vez no ginasio da CORP (ver corpGym.js):
-   * roda a mesma task de sincronizacao (Breach Sync) do hack normal, mas
-   * aqui o resultado dela decide a luta inteira - acertar vence o estagio
-   * (credita a Informacao e destranca o proximo), errar so deixa tentar de
-   * novo (nenhum progresso e perdido, igual a filosofia do resto do jogo).
+   * cada estagio tem uma task fixa (taskType: 'sync' = Breach Sync do hack
+   * normal, 'sequence' = repetir a sequencia de setas, ver
+   * sequenceTask.js) - aqui o resultado dela decide a luta inteira: acertar
+   * vence o estagio (credita a Informacao e destranca o proximo), errar so
+   * deixa tentar de novo (nenhum progresso e perdido, igual a filosofia do
+   * resto do jogo).
    */
   async function handleChallengeCorpGymStage(stageId) {
     if (hackRuntime.nearbyCorpGymDesk() !== stageId) return;
@@ -850,25 +979,29 @@ function startGame(characterId) {
     if (!stage) return;
 
     pcScreenOpen({ tabs: ['terminal'], activeTab: 'terminal' });
-    const taskResult = await runBreachTask({ id: stageId, tier: stage.taskTier });
+    const taskResult =
+      stage.taskType === 'sequence'
+        ? await runSequenceTask({ id: stageId, tier: stage.taskTier })
+        : await runBreachTask({ id: stageId, tier: stage.taskTier });
 
     pcScreenShowRun();
     pcLogClear();
     pcSetHead(stageId.toUpperCase(), stage.taskTier.toUpperCase());
     pcSetBar(0, 'STATUS', '--');
 
+    const taskLabel = CORP_GYM_TASK_LABEL[stage.taskType] ?? 'TASK';
     if (taskResult) {
       const outcome = hackRuntime.defeatCorpGymStage(stageId);
       if (outcome.success) {
-        pcLogPush('> [SYNC] vitoria', 'hi');
+        pcLogPush(`> [${taskLabel}] vitoria`, 'hi');
         pcLogPush(`> +1 informacao ${outcome.rarity.toUpperCase()}`, 'hi');
         lastGymResult = { stageId, success: true, rarity: outcome.rarity, gymCompleted: outcome.gymCompleted };
       } else {
-        pcLogPush('> [SYNC] falha inesperada', 'fail');
+        pcLogPush(`> [${taskLabel}] falha inesperada`, 'fail');
         lastGymResult = { stageId, success: false };
       }
     } else {
-      pcLogPush('> [SYNC] falhou - tente de novo', 'fail');
+      pcLogPush(`> [${taskLabel}] falhou - tente de novo`, 'fail');
       lastGymResult = { stageId, success: false };
     }
     pcLogPush('> conexao encerrada', 'ok');
