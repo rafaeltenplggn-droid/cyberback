@@ -10,6 +10,7 @@ import { DRINK_COST_BYTE } from '../src/hackIntegration/drinkShop.js';
 import { INFO_MINING_ENERGY_COST_RATIO } from '../src/hackIntegration/infoMining.js';
 import { HIRABLE_WORKERS, WORKER_HIRE_COST_BYTE, WORKER_WORK_INTERVAL_MS } from '../src/hackIntegration/workers.js';
 import { BLACKNET_WORKER_DESKS } from '../src/hackIntegration/blacknetLocations.js';
+import { CORP_GYM_DESKS } from '../src/hackIntegration/corpGymLocations.js';
 import { PET_COST_BYTE } from '../src/hackIntegration/pets.js';
 import { BITE_TRADE_STAKE_BYTE, BITE_TRADE_PAYOUT_BYTE } from '../src/hackIntegration/biteTrade.js';
 import { DRINKS, DRINK_BUFF_AMOUNT } from '../src/hackIntegration/drinkMenu.js';
@@ -698,6 +699,55 @@ test('hackWorkerNow tambem funciona em qualquer lugar dentro da BLACKNET, nao so
 
   const result = runtime.hackWorkerNow(workerId);
   assert.equal(result.success, true);
+});
+
+test('defeatCorpGymStage vence o estagio da vez parado na mesa dele, credita a Informacao e destranca o proximo', () => {
+  const desk = CORP_GYM_DESKS.fighter1;
+  const runtime = new HackRuntime({
+    mapManager: makeFakeMapManager({ mapId: 'gridcorp_interior', col: desk.seatCol, row: desk.seatRow }),
+    controller: makeFakeController(),
+    playerStats: createPlayerStats(1),
+  });
+
+  assert.equal(runtime.nearbyCorpGymDesk(), 'fighter1');
+  assert.equal(runtime.corpGymStageStatus('fighter1'), 'current');
+  assert.equal(runtime.corpGymStageStatus('fighter2'), 'locked');
+
+  const result = runtime.defeatCorpGymStage('fighter1');
+
+  assert.equal(result.success, true);
+  assert.equal(runtime.corpGymStageStatus('fighter1'), 'defeated');
+  assert.equal(runtime.corpGymStageStatus('fighter2'), 'current');
+  assert.equal(runtime.informationTotal, 1);
+});
+
+test('defeatCorpGymStage e recusado parado longe da mesa certa (mesmo estando dentro do ginasio)', () => {
+  const desk = CORP_GYM_DESKS.fighter1;
+  const runtime = new HackRuntime({
+    mapManager: makeFakeMapManager({ mapId: 'gridcorp_interior', col: desk.seatCol, row: desk.seatRow }),
+    controller: makeFakeController(),
+    playerStats: createPlayerStats(1),
+  });
+
+  // parado na mesa do fighter1, tentando vencer o fighter2 (mesa diferente)
+  const result = runtime.defeatCorpGymStage('fighter2');
+  assert.equal(result.success, false);
+  assert.equal(result.reason, 'fora_do_ginasio');
+  assert.equal(runtime.informationTotal, 0);
+});
+
+test('defeatCorpGymStage e recusado fora de ordem, mesmo parado na mesa certa (a mesa so destranca depois do anterior)', () => {
+  const desk = CORP_GYM_DESKS.fighter2;
+  const runtime = new HackRuntime({
+    mapManager: makeFakeMapManager({ mapId: 'gridcorp_interior', col: desk.seatCol, row: desk.seatRow }),
+    controller: makeFakeController(),
+    playerStats: createPlayerStats(1),
+  });
+
+  const result = runtime.defeatCorpGymStage('fighter2');
+  assert.equal(result.success, false);
+  assert.equal(result.reason, 'fora_de_ordem');
+  assert.equal(runtime.informationTotal, 0);
 });
 
 test('trabalhadores contratados minerm sozinhos via tick(), mesmo com o movimento bloqueado', async () => {

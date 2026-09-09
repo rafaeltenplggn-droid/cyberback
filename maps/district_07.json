@@ -77,16 +77,16 @@
       "x": 18,
       "y": 5,
       "target_map": "gridcorp_interior",
-      "spawn_x": 5,
-      "spawn_y": 7,
+      "spawn_x": 8,
+      "spawn_y": 8,
       "approach": "up"
     },
     {
       "x": 19,
       "y": 5,
       "target_map": "gridcorp_interior",
-      "spawn_x": 5,
-      "spawn_y": 7,
+      "spawn_x": 8,
+      "spawn_y": 8,
       "approach": "up"
     },
     {

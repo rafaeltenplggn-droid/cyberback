@@ -29,6 +29,7 @@ import {
   BAR_NPC_LOCATION,
 } from './hackIntegration/barLocations.js';
 import { BLACKNET_MAP_ID, BLACKNET_WORKER_DESKS, blacknetDeskLocation } from './hackIntegration/blacknetLocations.js';
+import { CORP_GYM_MAP_ID, CORP_GYM_DESKS, corpGymDeskLocation } from './hackIntegration/corpGymLocations.js';
 
 const STARTING_BYTE_BALANCE = 100;
 const BAR_OWNER_NAME = 'Rook';
@@ -248,6 +249,7 @@ function startGame(characterId) {
   const hackStatusEl = document.getElementById('hack-status');
   const shopStatusEl = document.getElementById('shop-status');
   const workerStatusEl = document.getElementById('worker-status');
+  const gymStatusEl = document.getElementById('gym-status');
 
   // ---------- HUD (cartao de status no canto superior esquerdo) ----------
   const hudAvatarImgEl = document.getElementById('hud-avatar-img');
@@ -832,6 +834,49 @@ function startGame(characterId) {
     pcRenderWorkers();
   }
 
+  let lastGymResult = null;
+
+  /**
+   * Desafia o lutador/lider da vez no ginasio da CORP (ver corpGym.js):
+   * roda a mesma task de sincronizacao (Breach Sync) do hack normal, mas
+   * aqui o resultado dela decide a luta inteira - acertar vence o estagio
+   * (credita a Informacao e destranca o proximo), errar so deixa tentar de
+   * novo (nenhum progresso e perdido, igual a filosofia do resto do jogo).
+   */
+  async function handleChallengeCorpGymStage(stageId) {
+    if (hackRuntime.nearbyCorpGymDesk() !== stageId) return;
+    if (hackRuntime.corpGymStageStatus(stageId) !== 'current') return;
+    const stage = hackRuntime.corpGymStages.find((s) => s.id === stageId);
+    if (!stage) return;
+
+    pcScreenOpen({ tabs: ['terminal'], activeTab: 'terminal' });
+    const taskResult = await runBreachTask({ id: stageId, tier: stage.taskTier });
+
+    pcScreenShowRun();
+    pcLogClear();
+    pcSetHead(stageId.toUpperCase(), stage.taskTier.toUpperCase());
+    pcSetBar(0, 'STATUS', '--');
+
+    if (taskResult) {
+      const outcome = hackRuntime.defeatCorpGymStage(stageId);
+      if (outcome.success) {
+        pcLogPush('> [SYNC] vitoria', 'hi');
+        pcLogPush(`> +1 informacao ${outcome.rarity.toUpperCase()}`, 'hi');
+        lastGymResult = { stageId, success: true, rarity: outcome.rarity, gymCompleted: outcome.gymCompleted };
+      } else {
+        pcLogPush('> [SYNC] falha inesperada', 'fail');
+        lastGymResult = { stageId, success: false };
+      }
+    } else {
+      pcLogPush('> [SYNC] falhou - tente de novo', 'fail');
+      lastGymResult = { stageId, success: false };
+    }
+    pcLogPush('> conexao encerrada', 'ok');
+
+    await wait(2200);
+    pcScreenClose();
+  }
+
   let lastDrinkMenuResult = null;
   const drinkItemButtons = {};
 
@@ -1049,6 +1094,82 @@ function startGame(characterId) {
     ctx.restore();
   }
 
+  const CORP_GYM_SEAT_SPRITE_HEIGHT_PX = 40;
+  const CORP_GYM_LEADER_SEAT_SPRITE_HEIGHT_PX = 50;
+  const CORP_GYM_LOCK_FONT = `${Math.round(TILE_SIZE * 0.7)}px sans-serif`;
+  // Amplitude/periodo bem sutis (bem menores que o petStretchScale, que e
+  // um "burst" ocasional) - aqui e continuo, pra dar a sensacao de um NPC
+  // parado respirando, nao de uma animacao chamando atencao.
+  const CORP_GYM_BREATH_AMPLITUDE = 0.025;
+  const CORP_GYM_BREATH_PERIOD_MS = 2600;
+
+  /**
+   * Escala vertical continua (respiracao) ancorada nos pes do sprite -
+   * diferente do petStretchScale (que e um "burst" periodico pontual),
+   * aqui e um seno continuo e suave, sempre ativo enquanto o NPC estiver
+   * visivel. `phaseMs` desalinha cada NPC do resto pra nao respirarem
+   * todos em sincronia perfeita.
+   */
+  function npcBreathScale(nowMs, phaseMs = 0) {
+    const sy = 1 + CORP_GYM_BREATH_AMPLITUDE * Math.sin(((nowMs + phaseMs) / CORP_GYM_BREATH_PERIOD_MS) * Math.PI * 2);
+    return { sx: 1, sy };
+  }
+
+  const corpGymSeatSprites = {};
+
+  function getCorpGymSeatSprite(characterId) {
+    if (!corpGymSeatSprites[characterId]) {
+      corpGymSeatSprites[characterId] = loadCharacterAssets(characterId).up.idle;
+    }
+    return corpGymSeatSprites[characterId];
+  }
+
+  /**
+   * Desenha os NPCs do ginasio da CORP (ver corpGym.js/corpGymLocations.js):
+   * mesa ainda trancada (fora de ordem) mostra cadeado, igual a BLACKNET;
+   * mesa da vez ou ja vencida mostra o "lutador" sentado, respirando (ver
+   * npcBreathScale) - o lider (ultima mesa) fica visualmente maior, pra se
+   * destacar dos outros.
+   */
+  function drawCorpGymNpcs(nowMs) {
+    if (mapManager.currentMap?.id !== CORP_GYM_MAP_ID) return;
+
+    ctx.save();
+    ctx.font = CORP_GYM_LOCK_FONT;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+
+    hackRuntime.corpGymStages.forEach((stage, index) => {
+      const desk = CORP_GYM_DESKS[stage.id];
+      if (!desk) return;
+
+      if (stage.status === 'locked') {
+        const location = corpGymDeskLocation(stage.id);
+        const { x, y } = gridToScreen(location.originX, location.originY, mapRenderer.originX, mapRenderer.originY);
+        ctx.fillText('🔒', x, y);
+        return;
+      }
+
+      const sprite = getCorpGymSeatSprite(desk.characterId);
+      if (!isImageReady(sprite)) return;
+      const isLeader = stage.id === 'leader';
+      const h = isLeader ? CORP_GYM_LEADER_SEAT_SPRITE_HEIGHT_PX : CORP_GYM_SEAT_SPRITE_HEIGHT_PX;
+      const w = sprite.naturalWidth * (h / sprite.naturalHeight);
+      const { x, y } = gridToScreen(desk.seatCol, desk.seatRow, mapRenderer.originX, mapRenderer.originY);
+      const feetX = x;
+      const feetY = y + TILE_SIZE / 2;
+      const { sx, sy } = npcBreathScale(nowMs, index * 700);
+      ctx.save();
+      ctx.translate(feetX, feetY);
+      ctx.scale(sx, sy);
+      ctx.translate(-feetX, -feetY);
+      ctx.drawImage(sprite, x - w / 2, feetY - h, w, h);
+      ctx.restore();
+    });
+
+    ctx.restore();
+  }
+
   let hackingBuildingId = null;
   let lastHackResult = null;
 
@@ -1210,6 +1331,23 @@ function startGame(characterId) {
       return `[${key}] ${worker.name}: contratar por ${WORKER_HIRE_COST_BYTE} BYTE`;
     });
     workerStatusEl.textContent = lines.join('\n');
+  }
+
+  /** Mostra o progresso do ginasio da CORP so enquanto o jogador estiver dentro dele. */
+  function updateGymStatus() {
+    if (mapManager.currentMap?.id !== CORP_GYM_MAP_ID) {
+      gymStatusEl.textContent = '';
+      return;
+    }
+    const stages = hackRuntime.corpGymStages;
+    const defeatedCount = stages.filter((s) => s.status === 'defeated').length;
+    let line = `ginasio CORP: ${defeatedCount}/${stages.length} vencidos`;
+    if (lastGymResult) {
+      line += lastGymResult.success
+        ? ` | ultima luta: VITORIA (+1 info ${lastGymResult.rarity.toUpperCase()})${lastGymResult.gymCompleted ? ' | GINASIO COMPLETO!' : ''}`
+        : ' | ultima luta: derrota, tente de novo';
+    }
+    gymStatusEl.textContent = line;
   }
 
   const MINING_FLAVOR_LINES = [
@@ -1392,7 +1530,14 @@ function startGame(characterId) {
     const nearby = hackRuntime.nearbyHackableBuilding();
     if (!nearby) {
       const lockedDeskWorkerId = hackRuntime.nearbyLockedBlacknetDesk();
-      if (lockedDeskWorkerId) handleOpenBlacknetHire(lockedDeskWorkerId);
+      if (lockedDeskWorkerId) {
+        handleOpenBlacknetHire(lockedDeskWorkerId);
+        return;
+      }
+      const corpGymStageId = hackRuntime.nearbyCorpGymDesk();
+      if (corpGymStageId && hackRuntime.corpGymStageStatus(corpGymStageId) === 'current') {
+        await handleChallengeCorpGymStage(corpGymStageId);
+      }
       return;
     }
     hackingBuildingId = nearby.id;
@@ -1478,6 +1623,24 @@ function startGame(characterId) {
         text: `[ESPACO] comprar ${worker?.name ?? lockedDeskWorkerId} (${WORKER_HIRE_COST_BYTE} BYTE), ou clique`,
         trigger: () => handleOpenBlacknetHire(lockedDeskWorkerId),
       };
+    }
+
+    const corpGymStageId = hackRuntime.nearbyCorpGymDesk();
+    if (corpGymStageId) {
+      const status = hackRuntime.corpGymStageStatus(corpGymStageId);
+      const location = corpGymDeskLocation(corpGymStageId);
+      const isLeader = corpGymStageId === 'leader';
+      if (status === 'current') {
+        return {
+          location,
+          text: `[ESPACO] desafiar ${isLeader ? 'o lider' : 'o lutador'}, ou clique`,
+          trigger: () => handleChallengeCorpGymStage(corpGymStageId),
+        };
+      }
+      if (status === 'defeated') {
+        return { location, text: isLeader ? 'lider ja derrotado' : 'lutador ja derrotado', trigger: () => {} };
+      }
+      return { location, text: 'vença os anteriores pra desafiar esse', trigger: () => {} };
     }
 
     return null;
@@ -1631,6 +1794,7 @@ function startGame(characterId) {
     drawOwnedPets(nowMs);
     drawBlacknetWorkers();
     drawBlacknetLocks();
+    drawCorpGymNpcs(nowMs);
     mapRenderer.drawDustMotes(mapManager.currentMap, nowMs);
     activeHint = getActiveHint();
     if (activeHint) {
@@ -1651,6 +1815,7 @@ function startGame(characterId) {
     updateHackStatus();
     updateShopStatus();
     updateWorkerStatus();
+    updateGymStatus();
     if (!pcScreenEl.hidden && !pcPanelTradeEl.hidden) renderTradePanel();
     if (!drinkMenuEl.hidden) updateDrinkMenuDynamic();
   }
@@ -1869,6 +2034,7 @@ function beginCharacterSelect() {
 
 if (forcedEntry) {
   // atalho de debug/teste - pula a tela de wallet tambem, direto pro jogo.
+  document.getElementById('wallet-gate').hidden = true;
   startGame(forcedEntry.id);
 } else {
   const walletGateEl = document.getElementById('wallet-gate');

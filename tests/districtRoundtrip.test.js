@@ -42,7 +42,7 @@ test('district_07.json tem 24x16, fundo real (Visual Master) e as portas pros 5 
   for (const doorX of [18, 19]) {
     const door = map.getDoorAt(doorX, 5);
     assert.equal(door.target_map, 'gridcorp_interior');
-    assert.deepEqual([door.spawn_x, door.spawn_y], [5, 7]);
+    assert.deepEqual([door.spawn_x, door.spawn_y], [8, 8]);
   }
   for (const doorX of [6, 7]) {
     const door = map.getDoorAt(doorX, 13);
@@ -157,26 +157,46 @@ for (const [interiorId, exteriorDoor] of [
   });
 }
 
-test('os dois interiores ainda em blockout sao salas 10x10 com borda solida e a porta de saida aberta', async () => {
-  for (const id of ['gridcorp_interior', 'data_terminal_interior']) {
-    const map = parseMap(await loadMapJson(id));
-    assert.equal(map.width, 10);
-    assert.equal(map.height, 10);
+test('data_terminal_interior ainda em blockout e uma sala 10x10 com borda solida e a porta de saida aberta', async () => {
+  const map = parseMap(await loadMapJson('data_terminal_interior'));
+  assert.equal(map.width, 10);
+  assert.equal(map.height, 10);
 
-    for (let col = 0; col < 10; col++) {
-      if (col === 5) continue; // celula da porta, tratada abaixo
-      assert.equal(map.isBlocked(col, 0), true, `${id} topo (${col},0) devia ser parede`);
-      assert.equal(map.isBlocked(col, 9), col === 5 ? false : true, `${id} base (${col},9)`);
-    }
-    for (let row = 0; row < 10; row++) {
-      assert.equal(map.isBlocked(0, row), true, `${id} parede oeste (0,${row})`);
-      assert.equal(map.isBlocked(9, row), true, `${id} parede leste (9,${row})`);
-    }
-
-    const door = map.getDoorAt(5, 9);
-    assert.ok(door, `${id} deve ter porta na parede sul (5,9)`);
-    assert.equal(map.isBlocked(5, 9), false, `${id} celula da porta nao pode bloquear`);
+  for (let col = 0; col < 10; col++) {
+    if (col === 5) continue; // celula da porta, tratada abaixo
+    assert.equal(map.isBlocked(col, 0), true, `topo (${col},0) devia ser parede`);
+    assert.equal(map.isBlocked(col, 9), col === 5 ? false : true, `base (${col},9)`);
   }
+  for (let row = 0; row < 10; row++) {
+    assert.equal(map.isBlocked(0, row), true, `parede oeste (0,${row})`);
+    assert.equal(map.isBlocked(9, row), true, `parede leste (9,${row})`);
+  }
+
+  const door = map.getDoorAt(5, 9);
+  assert.ok(door, 'deve ter porta na parede sul (5,9)');
+  assert.equal(map.isBlocked(5, 9), false, 'celula da porta nao pode bloquear');
+});
+
+test('gridcorp_interior (ginasio da CORP): 16x12, as 5 mesas bloqueadas e a passagem livre no resto', async () => {
+  const map = parseMap(await loadMapJson('gridcorp_interior'));
+  assert.equal(map.width, 16);
+  assert.equal(map.height, 12);
+
+  // as 5 mesas em si (ver corpGymLocations.js) bloqueiam - lider (7,2),
+  // fighter3/4 (4,5)/(11,5), fighter1/2 (4,7)/(11,7).
+  for (const [col, row] of [[7, 2], [4, 5], [11, 5], [4, 7], [11, 7]]) {
+    assert.equal(map.isBlocked(col, row), true, `mesa (${col},${row}) tem que bloquear`);
+  }
+  // os assentos (1 fileira abaixo de cada mesa) tem que ser livres - o
+  // jogador para exatamente ali pra desafiar.
+  for (const [col, row] of [[7, 3], [4, 6], [11, 6], [4, 8], [11, 8]]) {
+    assert.equal(map.isBlocked(col, row), false, `assento (${col},${row}) tem que ser livre`);
+  }
+
+  assert.equal(map.isBlocked(8, 9), false, 'porta de saida nao pode bloquear');
+
+  const districtMap = parseMap(await loadMapJson('district_07'));
+  assert.equal(districtMap.getDoorAt(18, 5).target_map, 'gridcorp_interior');
 });
 
 test('player_home usa arte de fundo real, 16x12, com PC e cama bloqueados no lugar certo', async () => {

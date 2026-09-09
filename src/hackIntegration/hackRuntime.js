@@ -19,6 +19,8 @@ import { requiredLevelForTier } from './hackLevelGate.js';
 import { PetCollection } from './pets.js';
 import { BiteMarket } from './biteTrade.js';
 import { DrinkBuffTracker } from './drinkMenu.js';
+import { CorpGymProgress, CORP_GYM_STAGES } from './corpGym.js';
+import { nearbyCorpGymDesk as nearbyCorpGymDeskAt } from './corpGymLocations.js';
 
 // 30s pra dar tempo real de "trabalho" (e de mostrar uma tela de PC/HUD
 // enquanto isso acontece), em vez do resultado aparecer quase instantaneo.
@@ -57,6 +59,7 @@ export class HackRuntime {
     this.petCollection = new PetCollection();
     this.biteMarket = new BiteMarket({ rng: this.rng });
     this.drinkBuffTracker = new DrinkBuffTracker(now ? { now } : undefined);
+    this.corpGymProgress = new CorpGymProgress();
     this._sitting = false;
     this._mining = false;
     this._miningStartedAt = null;
@@ -432,6 +435,41 @@ export class HackRuntime {
       this.mapManager,
       this.workerRoster.list().filter((w) => w.hired).map((w) => w.id)
     );
+  }
+
+  /**
+   * O id do estagio do ginasio da CORP (ver corpGym.js) cuja mesa esta na
+   * frente do jogador dentro do gridcorp_interior, ou null - independente
+   * do status dela (trancada/da vez/vencida), quem decide o que mostrar
+   * pra cada status e a UI.
+   */
+  nearbyCorpGymDesk() {
+    if (this.isMovementBlocked) return null;
+    if (this.controller.isMoving) return null;
+    return nearbyCorpGymDeskAt(this.mapManager);
+  }
+
+  /** Todos os 5 estagios do ginasio da CORP, com o status atual de cada um - pronta pra UI. */
+  get corpGymStages() {
+    return CORP_GYM_STAGES.map((stage) => ({ ...stage, status: this.corpGymProgress.stageStatus(stage.id) }));
+  }
+
+  corpGymStageStatus(stageId) {
+    return this.corpGymProgress.stageStatus(stageId);
+  }
+
+  /**
+   * Vence o estagio `stageId` do ginasio da CORP (so funciona parado na
+   * mesa dele, e so se for exatamente o estagio da vez) - credita a
+   * Informacao correspondente e destranca o proximo. Chamado depois que a
+   * task de sincronizacao (ver runBreachTask em main.js) da certo; quem
+   * decide se ela deu certo ou nao e o chamador, aqui so aplica o resultado.
+   */
+  defeatCorpGymStage(stageId) {
+    if (this.nearbyCorpGymDesk() !== stageId) {
+      return { success: false, reason: 'fora_do_ginasio' };
+    }
+    return this.corpGymProgress.defeat(stageId, { informationLedger: this.informationLedger });
   }
 
   /** Vende todo o estoque de Informacao por BYTE. Funciona parado no PC de casa. */
