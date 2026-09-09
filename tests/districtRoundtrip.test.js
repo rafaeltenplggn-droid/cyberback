@@ -214,6 +214,7 @@ test('nullpoint_interior usa arte de fundo real, 16x12, com o balcao bloqueado e
   // sem nenhum movel em cima - andar por ali tem que funcionar).
   assert.equal(map.isBlocked(7, 6), true, 'mesa redonda 1 bloqueia a celula dela');
   assert.equal(map.isBlocked(10, 6), true, 'mesa redonda 2 bloqueia a celula dela');
+  assert.equal(map.isBlocked(8, 6), false, 'vao do tapete entre as duas mesas tem que ser livre');
   for (const col of [6, 7, 8, 9, 10, 11]) {
     assert.equal(map.isBlocked(col, 7), false, `tapete embaixo das mesas (${col},7) tem que ser livre`);
   }
