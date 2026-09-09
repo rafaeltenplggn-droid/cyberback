@@ -15,7 +15,7 @@ import { SLEEP_ENERGY_RESTORE } from './hackIntegration/sleepAction.js';
 import { DRINK_COST_BYTE } from './hackIntegration/drinkShop.js';
 import { DRINKS, DRINK_BUFF_DURATION_MS } from './hackIntegration/drinkMenu.js';
 import { INFO_MINING_ENERGY_COST_RATIO } from './hackIntegration/infoMining.js';
-import { WORKER_HIRE_COST_BYTE } from './hackIntegration/workers.js';
+import { WORKER_HIRE_COST_BYTE, WORKER_ENERGY_COST } from './hackIntegration/workers.js';
 import { PET_COST_BYTE } from './hackIntegration/pets.js';
 import { BITE_TRADE_STAKE_BYTE, BITE_TRADE_PAYOUT_BYTE } from './hackIntegration/biteTrade.js';
 import { requiredLevelForTier } from './hackIntegration/hackLevelGate.js';
@@ -576,9 +576,13 @@ function startGame(characterId) {
       btn.type = 'button';
       btn.className = 'pc-worker-btn';
       if (worker.hired) {
-        btn.textContent = 'contratado';
+        btn.textContent = `[Hackear] gasta ${WORKER_ENERGY_COST} de energia`;
         btn.classList.add('hired');
-        btn.disabled = true;
+        btn.disabled = worker.energyValue < WORKER_ENERGY_COST;
+        btn.addEventListener('click', () => {
+          handleHackWorkerNow(worker.id);
+          pcRenderWorkers();
+        });
       } else {
         btn.textContent = `contratar (${WORKER_HIRE_COST_BYTE} BYTE)`;
         btn.addEventListener('click', () => {
@@ -587,7 +591,26 @@ function startGame(characterId) {
         });
       }
 
-      card.append(img, name, passive, btn);
+      card.append(img, name, passive);
+
+      if (worker.hired) {
+        const energyRow = document.createElement('div');
+        energyRow.className = 'pc-worker-energy-row';
+        const label = document.createElement('span');
+        label.textContent = 'ENERGIA';
+        const track = document.createElement('div');
+        track.className = 'pc-worker-energy-track';
+        const fill = document.createElement('div');
+        fill.className = 'pc-worker-energy-fill';
+        fill.style.width = `${Math.round((worker.energyValue / worker.energyMax) * 100)}%`;
+        track.appendChild(fill);
+        const val = document.createElement('span');
+        val.textContent = `${Math.round(worker.energyValue)}/${worker.energyMax}`;
+        energyRow.append(label, track, val);
+        card.appendChild(energyRow);
+      }
+
+      card.appendChild(btn);
       pcWorkersEl.appendChild(card);
     }
   }
@@ -1300,6 +1323,12 @@ function startGame(characterId) {
     if (!pcScreenEl.hidden && !pcTabEquipeEl.hidden) pcRenderWorkers();
   }
 
+  /** Manda o trabalhador `workerId` hackear agora, gastando a energia PROPRIA dele (ver hackRuntime.hackWorkerNow). */
+  function handleHackWorkerNow(workerId) {
+    hackRuntime.hackWorkerNow(workerId);
+    if (!pcScreenEl.hidden && !pcTabEquipeEl.hidden) pcRenderWorkers();
+  }
+
   function handleToggleSit() {
     hackRuntime.toggleSit();
     updateStatus();
@@ -1600,6 +1629,15 @@ function startGame(characterId) {
     if (!pcScreenEl.hidden && !pcPanelTradeEl.hidden) renderTradePanel();
     if (!drinkMenuEl.hidden) updateDrinkMenuDynamic();
   }
+
+  // Reflete a energia dos trabalhadores regenerando sozinha (ver
+  // workers.js) enquanto a aba EQUIPE estiver aberta - um intervalo bem
+  // mais devagar que o loop de render (que roda a 60fps e recriaria os
+  // cards toda hora, sem necessidade nenhuma - a energia so muda de
+  // verdade uma vez por segundo).
+  setInterval(() => {
+    if (!pcScreenEl.hidden && !pcPanelEquipeEl.hidden) pcRenderWorkers();
+  }, 1000);
 
   let lastTime = performance.now();
   function loop(now) {

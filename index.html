@@ -572,6 +572,29 @@
     }
     .pc-worker-btn.hired { border-color: #b47bff; color: #b47bff; background: rgba(180, 123, 255, 0.08); }
 
+    .pc-worker-energy-row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      width: 100%;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 9px;
+      color: #6a808c;
+    }
+    .pc-worker-energy-track {
+      flex: 1;
+      height: 6px;
+      border: 1px solid #333c48;
+      background: rgba(255, 255, 255, 0.03);
+      border-radius: 3px;
+      overflow: hidden;
+    }
+    .pc-worker-energy-fill {
+      height: 100%;
+      background: #ffd23a;
+      transition: width 200ms linear;
+    }
+
     #pc-panel-trade { min-height: 320px; }
     .pc-trade-head {
       display: flex;

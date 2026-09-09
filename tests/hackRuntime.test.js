@@ -606,6 +606,45 @@ test('hireWorker e recusado fora do PC, e sem BYTE suficiente', () => {
   assert.equal(brokeAtPc.hireWorker(HIRABLE_WORKERS[0].id).reason, 'byte_insuficiente');
 });
 
+test('hackWorkerNow manda o trabalhador hackear parado no PC, gastando a energia PROPRIA dele (nunca a do jogador)', () => {
+  const mapManager = makeFakeMapManager({ mapId: 'player_home', col: 6, row: 2 });
+  const controller = makeFakeController();
+  const ledger = new ByteLedger();
+  ledger.record({ type: 'gain', amount: WORKER_HIRE_COST_BYTE });
+  const energyMeter = new EnergyMeter();
+  const runtime = new HackRuntime({ mapManager, controller, playerStats: createPlayerStats(1), ledger, energyMeter, rng: () => 0 });
+  const workerId = HIRABLE_WORKERS[0].id;
+  runtime.hireWorker(workerId);
+  const playerEnergyBefore = runtime.energyValue;
+
+  const result = runtime.hackWorkerNow(workerId);
+
+  assert.equal(result.success, true);
+  assert.equal(result.informationGained, true);
+  assert.equal(runtime.energyValue, playerEnergyBefore, 'energia do jogador nao muda');
+  assert.ok(runtime.hirableWorkers.find((w) => w.id === workerId).energyValue < 100, 'energia propria do trabalhador que caiu');
+  assert.equal(runtime.informationTotal, 1);
+});
+
+test('hackWorkerNow e recusado fora do PC', () => {
+  const ledger = new ByteLedger();
+  ledger.record({ type: 'gain', amount: WORKER_HIRE_COST_BYTE });
+  const atPc = new HackRuntime({
+    mapManager: makeFakeMapManager({ mapId: 'player_home', col: 6, row: 2 }),
+    controller: makeFakeController(),
+    playerStats: createPlayerStats(1),
+    ledger,
+  });
+  const workerId = HIRABLE_WORKERS[0].id;
+  atPc.hireWorker(workerId);
+  atPc.mapManager.playerCol = 8;
+  atPc.mapManager.playerRow = 8;
+
+  const result = atPc.hackWorkerNow(workerId);
+  assert.equal(result.success, false);
+  assert.equal(result.reason, 'fora_do_pc');
+});
+
 test('trabalhadores contratados minerm sozinhos via tick(), mesmo com o movimento bloqueado', async () => {
   const mapManager = makeFakeMapManager({ mapId: 'player_home', col: 6, row: 2 });
   const controller = makeFakeController();

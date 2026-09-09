@@ -53,7 +53,7 @@ export class HackRuntime {
     this.informationLedger = new InformationLedger();
     this.hackSession = new HackSession({ playerStats, traceMeter, energyMeter, informationLedger: this.informationLedger, rng });
     this.sleepTracker = new SleepTracker(now ? { now } : undefined);
-    this.workerRoster = new WorkerRoster({ rng: this.rng });
+    this.workerRoster = new WorkerRoster({ rng: this.rng, now: now ? this._now : undefined });
     this.petCollection = new PetCollection();
     this.biteMarket = new BiteMarket({ rng: this.rng });
     this.drinkBuffTracker = new DrinkBuffTracker(now ? { now } : undefined);
@@ -300,6 +300,18 @@ export class HackRuntime {
       return { success: false, reason: 'loja_indisponivel' };
     }
     return this.workerRoster.hire(workerId, { ledger: this.ledger });
+  }
+
+  /**
+   * Manda um trabalhador ja contratado hackear agora, gastando a energia
+   * PROPRIA dele (nunca a do jogador - ver workers.js). So funciona
+   * parado no PC, no player_home, igual hireWorker().
+   */
+  hackWorkerNow(workerId) {
+    if (this.nearbyHomeInteractable() !== 'pc') {
+      return { success: false, reason: 'fora_do_pc', informationGained: false };
+    }
+    return this.workerRoster.hackNow(workerId, { informationLedger: this.informationLedger });
   }
 
   /** Lista dos pets compraveis (id/nome) e quais ja foram comprados - ver pets.js. Puramente decorativo. */
