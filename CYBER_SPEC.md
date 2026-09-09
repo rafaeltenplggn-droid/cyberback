@@ -80,7 +80,7 @@ fundo):
 Portas do district_07 (calibradas visualmente pra baterem com a entrada de
 cada predio na imagem de fundo):
 - x4 y5, target_map nullpoint_interior (BAR), spawn_x 5, spawn_y 7
-- x11 y5, target_map ghost_row_interior (BLACKNET), spawn_x 5, spawn_y 7
+- x11 y5, target_map ghost_row_interior (BLACKNET), spawn_x 8, spawn_y 8
 - x18 y5, target_map gridcorp_interior (CORP), spawn_x 5, spawn_y 7
 - x7 y13, target_map player_home (MY HOME), spawn_x 5, spawn_y 7
 - x18 y13, target_map data_terminal_interior (DATA TERMINAL), spawn_x 5, spawn_y 7
@@ -174,8 +174,9 @@ coordenadas - mesma logica de adjacencia de sempre (`isAdjacentToBuilding`),
 so a posicao mudou. Porta de saida em (7,9), no vao da parede sul da
 imagem.
 
-Os outros 4 interiores (BAR, BLACKNET, CORP, DATA TERMINAL) continuam em
-blockout 10x10 generico ate ganharem sua propria arte, numa sprint por vez.
+BAR (`nullpoint_interior`) e BLACKNET (`ghost_row_interior`) ja ganharam
+arte propria depois (ver secao "Economia: Informacao e BLACKNET" pro
+BLACKNET). CORP e DATA TERMINAL continuam em blockout 10x10 generico.
 
 ## Economia: Informacao e BLACKNET
 
@@ -194,12 +195,20 @@ BLACKNET (raro, o mais dificil - e o mercado negro, faz sentido ser o
 alvo mais protegido).
 
 A Informacao so vira BYTE de verdade na BLACKNET (dentro do
-ghost_row_interior): um ponto de venda logico
-(`BLACKNET_SELL_LOCATION` em `src/hackIntegration/blacknetLocations.js`,
-ainda sem prop visual - blockout) vende todo o estoque de uma vez
-(`InformationLedger.sellAll()`), ao preco por raridade em
-`INFO_SELL_PRICE_BYTE` (comum 5, rara 25, epica 60 - valores baixos de
-proposito, informacao e um item farmavel).
+ghost_row_interior): a BLACKNET tem arte de fundo real
+(`assets/backgrounds/blacknet_interior.png`, 16x12, mesmo esquema do
+BAR/MY HOME) com 4 mesas - o corretor (`BLACKNET_BROKER_LOCATION` em
+`src/hackIntegration/blacknetLocations.js`) fica sentado numa delas o
+tempo todo, e vende todo o estoque de uma vez
+(`InformationLedger.sellAll()`) quando o jogador fica na frente dele
+(ao sul, mesma logica de `allowedSides` do atendente do bar), ao preco
+por raridade em `INFO_SELL_PRICE_BYTE` (comum 5, rara 25, epica 60 -
+valores baixos de proposito, informacao e um item farmavel). As outras
+3 mesas (`BLACKNET_WORKER_DESKS`) vao ficando ocupadas (sprite estatico
+de costas, ver `drawBlacknetWorkers` em main.js) conforme cada
+trabalhador contratavel (`HIRABLE_WORKERS`, ver workers.js) e
+contratado - cada um com uma passiva pequena (`WORKER_PASSIVES`, so um
+bonus/penalidade discreto na chance de sucesso do minerio automatico).
 
 O PC de casa (player_home) nao vende mais recarga de energia - virou um
 ponto de "minerar informacao" (`src/hackIntegration/infoMining.js`):

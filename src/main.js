@@ -25,7 +25,7 @@ import {
   BAR_LAPTOP_LOCATION,
   BAR_NPC_LOCATION,
 } from './hackIntegration/barLocations.js';
-import { BLACKNET_SELL_LOCATION } from './hackIntegration/blacknetLocations.js';
+import { BLACKNET_MAP_ID, BLACKNET_BROKER_LOCATION, BLACKNET_WORKER_DESKS } from './hackIntegration/blacknetLocations.js';
 
 const STARTING_BYTE_BALANCE = 100;
 const BAR_OWNER_NAME = 'Rook';
@@ -438,6 +438,10 @@ function startGame(characterId) {
       name.className = 'pc-worker-name';
       name.textContent = worker.name;
 
+      const passive = document.createElement('div');
+      passive.className = 'pc-worker-passive';
+      if (worker.passive) passive.textContent = worker.passive.description;
+
       const btn = document.createElement('button');
       btn.type = 'button';
       btn.className = 'pc-worker-btn';
@@ -453,7 +457,7 @@ function startGame(characterId) {
         });
       }
 
-      card.append(img, name, btn);
+      card.append(img, name, passive, btn);
       pcWorkersEl.appendChild(card);
     }
   }
@@ -826,6 +830,45 @@ function startGame(characterId) {
         stretch
       );
     });
+  }
+
+  const BLACKNET_SEAT_SPRITE_HEIGHT_PX = 40;
+  const blacknetSeatSprites = {};
+
+  function getBlacknetSeatSprite(characterId) {
+    if (!blacknetSeatSprites[characterId]) {
+      blacknetSeatSprites[characterId] = loadCharacterAssets(characterId).up.idle;
+    }
+    return blacknetSeatSprites[characterId];
+  }
+
+  /**
+   * Desenha os trabalhadores contratados (ver workers.js) sentados de
+   * costas nas mesas da BLACKNET, e o corretor fixo (sempre presente,
+   * nao depende de contratar ninguem) - puramente cosmetico, mesmo
+   * esquema visual dos pets na cama do quarto: sprite estatico, sem
+   * tween nem colisao propria (a colisao da mesa/cadeira ja esta no
+   * mapa). So aparecem conforme cada trabalhador e contratado.
+   */
+  function drawBlacknetWorkers() {
+    if (mapManager.currentMap?.id !== BLACKNET_MAP_ID) return;
+
+    const seats = [{ characterId: 'character1', col: BLACKNET_BROKER_LOCATION.originX, row: BLACKNET_BROKER_LOCATION.originY }];
+    for (const worker of hackRuntime.hirableWorkers) {
+      if (!worker.hired) continue;
+      const desk = BLACKNET_WORKER_DESKS[worker.id];
+      if (!desk) continue;
+      seats.push({ characterId: worker.id, col: desk.seatCol, row: desk.seatRow });
+    }
+
+    for (const seat of seats) {
+      const sprite = getBlacknetSeatSprite(seat.characterId);
+      if (!isImageReady(sprite)) continue;
+      const { x, y } = gridToScreen(seat.col, seat.row, mapRenderer.originX, mapRenderer.originY);
+      const h = BLACKNET_SEAT_SPRITE_HEIGHT_PX;
+      const w = sprite.naturalWidth * (h / sprite.naturalHeight);
+      ctx.drawImage(sprite, x - w / 2, y + TILE_SIZE / 2 - h, w, h);
+    }
   }
 
   let hackingBuildingId = null;
@@ -1237,7 +1280,7 @@ function startGame(characterId) {
 
     const nearbyBlacknet = hackRuntime.nearbyBlacknetInteractable();
     if (nearbyBlacknet === 'sell') {
-      return { location: BLACKNET_SELL_LOCATION, text: '[V] vender informacao, ou clique no terminal', trigger: handleSellInformation };
+      return { location: BLACKNET_BROKER_LOCATION, text: '[V] vender informacao, ou clique no personagem', trigger: handleSellInformation };
     }
 
     return null;
@@ -1386,6 +1429,7 @@ function startGame(characterId) {
       characterRenderer.draw({ col, row, direction: controller.direction, pose: controller.pose });
     });
     drawOwnedPets(nowMs);
+    drawBlacknetWorkers();
     mapRenderer.drawDustMotes(mapManager.currentMap, nowMs);
     activeHint = getActiveHint();
     if (activeHint) {

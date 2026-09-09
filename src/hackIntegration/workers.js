@@ -20,6 +20,17 @@ export const HIRABLE_WORKERS = [
   { id: 'character4', name: 'Corporate Spy' },
 ];
 
+// Passiva pequena de cada trabalhador - so ajusta a CHANCE de sucesso do
+// minerio automatico (nunca o intervalo nem a raridade, pra nao mexer em
+// mais nada do resto do sistema), com um pro/contra so de flavor. Bem
+// discreto de proposito (uns pontos percentuais), como pedido - nao muda
+// o jogo, so da um motivo pra escolher um em vez de outro.
+export const WORKER_PASSIVES = {
+  character2: { chanceBonus: 0.08, description: 'Reflexos rapidos: acha informacao com mais frequencia, mas some do radar de vez em quando.' },
+  character3: { chanceBonus: 0.03, description: 'Metodico e caprichoso: um pouco mais de acerto, sem exageros.' },
+  character4: { chanceBonus: -0.04, description: 'Trabalha em silencio - acerta um pouco menos, mas nunca deixa rastro.' },
+};
+
 export const WORKER_HIRE_REASON = {
   ALREADY_HIRED: 'ja_contratado',
   INVALID: 'trabalhador_invalido',
@@ -37,9 +48,13 @@ export class WorkerRoster {
     return this._hired.has(workerId);
   }
 
-  /** Lista completa dos contrataveis, com `hired` marcado pra cada um - pronta pra UI. */
+  /** Lista completa dos contrataveis, com `hired` e a passiva marcados - pronta pra UI. */
   list() {
-    return HIRABLE_WORKERS.map((worker) => ({ ...worker, hired: this._hired.has(worker.id) }));
+    return HIRABLE_WORKERS.map((worker) => ({
+      ...worker,
+      hired: this._hired.has(worker.id),
+      passive: WORKER_PASSIVES[worker.id] ?? null,
+    }));
   }
 
   /** Contrata um trabalhador pagando `WORKER_HIRE_COST_BYTE` do ledger. So pode contratar cada um uma vez. */
@@ -63,14 +78,17 @@ export class WorkerRoster {
    * Chamado a cada frame (deltaMs) independente de qualquer coisa que o
    * jogador esteja fazendo. Cada trabalhador contratado acumula tempo e,
    * a cada WORKER_WORK_INTERVAL_MS, tenta minerar sozinho (mesma chance
-   * do PC) - sucesso credita 1 informacao comum no ledger compartilhado.
+   * do PC, com a passiva de cada um somada) - sucesso credita 1
+   * informacao comum no ledger compartilhado.
    */
   tick(deltaMs, { informationLedger }) {
     for (const workerId of this._hired) {
+      const chanceBonus = WORKER_PASSIVES[workerId]?.chanceBonus ?? 0;
+      const chance = Math.min(1, Math.max(0, INFO_MINING_SUCCESS_CHANCE + chanceBonus));
       let acc = (this._accumulatedMs.get(workerId) ?? 0) + deltaMs;
       while (acc >= WORKER_WORK_INTERVAL_MS) {
         acc -= WORKER_WORK_INTERVAL_MS;
-        if (this.rng() < INFO_MINING_SUCCESS_CHANCE) {
+        if (this.rng() < chance) {
           informationLedger.add(INFO_MINING_RARITY);
         }
       }

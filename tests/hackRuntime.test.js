@@ -511,7 +511,7 @@ test('nao da pra disparar um segundo hack enquanto o primeiro ainda esta rodando
 });
 
 test('sellInformation vende o estoque por BYTE quando parado no ponto de venda da BLACKNET', () => {
-  const mapManager = makeFakeMapManager({ mapId: 'ghost_row_interior', col: 4, row: 5 }); // oeste do ponto de venda (origem 5,5)
+  const mapManager = makeFakeMapManager({ mapId: 'ghost_row_interior', col: 10, row: 8 }); // na frente do corretor (origem 10,7)
   const controller = makeFakeController();
   const ledger = new ByteLedger();
   const runtime = new HackRuntime({ mapManager, controller, playerStats: createPlayerStats(1), ledger });
@@ -540,7 +540,7 @@ test('sellInformation e recusado fora do ponto de venda, e com o estoque vazio',
   assert.equal(farFromSellPoint.sellInformation().reason, 'fora_da_blacknet');
 
   const emptyStock = new HackRuntime({
-    mapManager: makeFakeMapManager({ mapId: 'ghost_row_interior', col: 4, row: 5 }),
+    mapManager: makeFakeMapManager({ mapId: 'ghost_row_interior', col: 10, row: 8 }),
     controller: makeFakeController(),
     playerStats: createPlayerStats(1),
     ledger,

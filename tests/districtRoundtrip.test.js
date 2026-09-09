@@ -30,7 +30,7 @@ test('district_07.json tem 24x16, fundo real (Visual Master) e as 5 portas para 
 
   const ghostRowDoor = map.getDoorAt(11, 5);
   assert.equal(ghostRowDoor.target_map, 'ghost_row_interior');
-  assert.deepEqual([ghostRowDoor.spawn_x, ghostRowDoor.spawn_y], [5, 7]);
+  assert.deepEqual([ghostRowDoor.spawn_x, ghostRowDoor.spawn_y], [8, 8]);
 
   const gridcorpDoor = map.getDoorAt(18, 5);
   assert.equal(gridcorpDoor.target_map, 'gridcorp_interior');
@@ -111,8 +111,8 @@ for (const [interiorId, exteriorDoor] of [
   });
 }
 
-test('os tres interiores ainda em blockout sao salas 10x10 com borda solida e a porta de saida aberta', async () => {
-  for (const id of ['gridcorp_interior', 'ghost_row_interior', 'data_terminal_interior']) {
+test('os dois interiores ainda em blockout sao salas 10x10 com borda solida e a porta de saida aberta', async () => {
+  for (const id of ['gridcorp_interior', 'data_terminal_interior']) {
     const map = parseMap(await loadMapJson(id));
     assert.equal(map.width, 10);
     assert.equal(map.height, 10);
@@ -166,4 +166,17 @@ test('nullpoint_interior usa arte de fundo real, 16x12, com o balcao bloqueado e
   const districtMap = parseMap(await loadMapJson('district_07'));
   assert.equal(districtMap.isBlocked(0, 0), true, 'nullpoint_bar (predio exterior) continua com colisao normal');
   assert.equal(districtMap.getDoorAt(3, 5).target_map, 'nullpoint_interior');
+});
+
+test('ghost_row_interior (BLACKNET) usa arte de fundo real, 16x12, com as mesas bloqueadas e a porta de saida aberta', async () => {
+  const map = parseMap(await loadMapJson('ghost_row_interior'));
+  assert.equal(map.width, 16);
+  assert.equal(map.height, 12);
+  assert.equal(map.background, 'blacknet_interior.png');
+  assert.equal(map.isBlocked(10, 6), true, 'mesa do corretor bloqueia a celula dela');
+  assert.equal(map.isBlocked(6, 4), true, 'mesa do primeiro trabalhador bloqueia a celula dela');
+  assert.equal(map.isBlocked(8, 9), false, 'porta de saida nao pode bloquear');
+
+  const districtMap = parseMap(await loadMapJson('district_07'));
+  assert.equal(districtMap.getDoorAt(11, 5).target_map, 'ghost_row_interior');
 });
