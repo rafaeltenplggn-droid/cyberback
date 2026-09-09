@@ -177,19 +177,20 @@ test('data_terminal_interior ainda em blockout e uma sala 10x10 com borda solida
   assert.equal(map.isBlocked(5, 9), false, 'celula da porta nao pode bloquear');
 });
 
-test('gridcorp_interior (ginasio da CORP): 16x12, as 5 mesas bloqueadas e a passagem livre no resto', async () => {
+test('gridcorp_interior (ginasio da CORP): usa arte de fundo real, 16x12, as 5 mesas bloqueadas e a passagem livre no resto', async () => {
   const map = parseMap(await loadMapJson('gridcorp_interior'));
   assert.equal(map.width, 16);
   assert.equal(map.height, 12);
+  assert.equal(map.background, 'gridcorp_interior.png');
 
-  // as 5 mesas em si (ver corpGymLocations.js) bloqueiam - lider (7,2),
-  // fighter3/4 (4,5)/(11,5), fighter1/2 (4,7)/(11,7).
-  for (const [col, row] of [[7, 2], [4, 5], [11, 5], [4, 7], [11, 7]]) {
+  // as 5 mesas em si (ver corpGymLocations.js) bloqueiam - lider (8,3),
+  // fighter3/4 (5,4)/(11,4), fighter1/2 (5,6)/(11,6).
+  for (const [col, row] of [[8, 3], [5, 4], [11, 4], [5, 6], [11, 6]]) {
     assert.equal(map.isBlocked(col, row), true, `mesa (${col},${row}) tem que bloquear`);
   }
-  // os assentos (1 fileira abaixo de cada mesa) tem que ser livres - o
-  // jogador para exatamente ali pra desafiar.
-  for (const [col, row] of [[7, 3], [4, 6], [11, 6], [4, 8], [11, 8]]) {
+  // os assentos (onde o jogador para pra desafiar, ver CORP_GYM_DESKS) tem
+  // que ser livres.
+  for (const [col, row] of [[8, 4], [5, 5], [11, 5], [5, 7], [11, 7]]) {
     assert.equal(map.isBlocked(col, row), false, `assento (${col},${row}) tem que ser livre`);
   }
 

@@ -1095,65 +1095,29 @@ function startGame(characterId) {
   }
 
   const CORP_GYM_LOCK_FONT = `${Math.round(TILE_SIZE * 0.7)}px sans-serif`;
-  const CORP_GYM_NPC_FONT = `${Math.round(TILE_SIZE * 0.85)}px sans-serif`;
-  const CORP_GYM_LEADER_NPC_FONT = `${Math.round(TILE_SIZE * 1.15)}px sans-serif`;
-  // Amplitude/periodo bem sutis (bem menores que o petStretchScale, que e
-  // um "burst" ocasional) - aqui e continuo, pra dar a sensacao de um NPC
-  // parado respirando, nao de uma animacao chamando atencao.
-  const CORP_GYM_BREATH_AMPLITUDE = 0.06;
-  const CORP_GYM_BREATH_PERIOD_MS = 2600;
 
   /**
-   * Escala vertical continua (respiracao) ancorada nos pes do NPC -
-   * diferente do petStretchScale (que e um "burst" periodico pontual),
-   * aqui e um seno continuo e suave, sempre ativo enquanto o NPC estiver
-   * visivel. `phaseMs` desalinha cada NPC do resto pra nao respirarem
-   * todos em sincronia perfeita.
+   * Desenha os cadeados do ginasio da CORP (ver corpGym.js/corpGymLocations.js):
+   * so as mesas ainda fora de ordem mostram cadeado, igual a BLACKNET. As
+   * mesas liberadas/vencidas nao precisam de nenhum sprite por cima - o
+   * "lutador" ja esta desenhado na propria arte de fundo
+   * (assets/backgrounds/gridcorp_interior.png), entao nao ha nenhum
+   * personagem do roster jogavel/NFT envolvido aqui.
    */
-  function npcBreathScale(nowMs, phaseMs = 0) {
-    const sy = 1 + CORP_GYM_BREATH_AMPLITUDE * Math.sin(((nowMs + phaseMs) / CORP_GYM_BREATH_PERIOD_MS) * Math.PI * 2);
-    return { sx: 1, sy };
-  }
-
-  /**
-   * Desenha os NPCs do ginasio da CORP (ver corpGym.js/corpGymLocations.js):
-   * mesa ainda trancada (fora de ordem) mostra cadeado, igual a BLACKNET;
-   * mesa da vez ou ja vencida mostra o "lutador" respirando (ver
-   * npcBreathScale). Esses NPCs sao inimigos genericos da CORP, nunca o
-   * roster jogavel/NFT (character1-4) - por isso um emoji generico como
-   * placeholder em vez de reaproveitar a arte dos personagens, ate ter arte
-   * propria de cada lutador. O lider (ultima mesa) usa um icone/fonte maior,
-   * pra se destacar dos outros.
-   */
-  function drawCorpGymNpcs(nowMs) {
+  function drawCorpGymLocks() {
     if (mapManager.currentMap?.id !== CORP_GYM_MAP_ID) return;
 
     ctx.save();
+    ctx.font = CORP_GYM_LOCK_FONT;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
 
-    hackRuntime.corpGymStages.forEach((stage, index) => {
-      const desk = CORP_GYM_DESKS[stage.id];
-      if (!desk) return;
-      const isLeader = stage.id === 'leader';
-
-      if (stage.status === 'locked') {
-        ctx.font = CORP_GYM_LOCK_FONT;
-        const location = corpGymDeskLocation(stage.id);
-        const { x, y } = gridToScreen(location.originX, location.originY, mapRenderer.originX, mapRenderer.originY);
-        ctx.fillText('🔒', x, y);
-        return;
-      }
-
-      const { x, y } = gridToScreen(desk.seatCol, desk.seatRow, mapRenderer.originX, mapRenderer.originY);
-      const { sx, sy } = npcBreathScale(nowMs, index * 700);
-      ctx.save();
-      ctx.translate(x, y);
-      ctx.scale(sx, sy);
-      ctx.font = isLeader ? CORP_GYM_LEADER_NPC_FONT : CORP_GYM_NPC_FONT;
-      ctx.fillText(isLeader ? '🕴️' : '🧑‍💼', 0, 0);
-      ctx.restore();
-    });
+    for (const stage of hackRuntime.corpGymStages) {
+      if (stage.status !== 'locked') continue;
+      const location = corpGymDeskLocation(stage.id);
+      const { x, y } = gridToScreen(location.originX, location.originY, mapRenderer.originX, mapRenderer.originY);
+      ctx.fillText('🔒', x, y);
+    }
 
     ctx.restore();
   }
@@ -1782,7 +1746,7 @@ function startGame(characterId) {
     drawOwnedPets(nowMs);
     drawBlacknetWorkers();
     drawBlacknetLocks();
-    drawCorpGymNpcs(nowMs);
+    drawCorpGymLocks();
     mapRenderer.drawDustMotes(mapManager.currentMap, nowMs);
     activeHint = getActiveHint();
     if (activeHint) {

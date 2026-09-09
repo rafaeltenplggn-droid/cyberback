@@ -18,11 +18,11 @@ const CORP_GYM_DESK_APPROACH_SIDES = ['south'];
  * placeholder generico ate ter arte propria de cada lutador.
  */
 export const CORP_GYM_DESKS = {
-  fighter1: { seatCol: 4, seatRow: 8 },
-  fighter2: { seatCol: 11, seatRow: 8 },
-  fighter3: { seatCol: 4, seatRow: 6 },
-  fighter4: { seatCol: 11, seatRow: 6 },
-  leader: { seatCol: 7, seatRow: 3 },
+  fighter1: { seatCol: 5, seatRow: 7 },
+  fighter2: { seatCol: 11, seatRow: 7 },
+  fighter3: { seatCol: 5, seatRow: 5 },
+  fighter4: { seatCol: 11, seatRow: 5 },
+  leader: { seatCol: 8, seatRow: 4 },
 };
 
 /** A celula da mesa em si (bloqueada, 1 acima do assento) - usado tanto pro cadeado quanto pra ancorar o balao de fala. */
