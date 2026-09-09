@@ -1652,7 +1652,14 @@ function startGame(characterId) {
   const params = new URLSearchParams(window.location.search);
   const startMap = params.get('map') || 'district_07';
   const startCol = Number(params.get('x') ?? 5);
-  const startRow = Number(params.get('y') ?? 5);
+  // row5 e a propria fileira das portas do BAR/BLACKNET/CORP (ver
+  // district_07.json) - nascer ali em cima da porta e o que fazia
+  // qualquer door.approach quebrar (nao tem como "aproximar de cima" de
+  // uma porta em que voce ja esta em cima). row6 e a calcada logo abaixo,
+  // sempre livre - de la sim da pra aproximar as portas andando pra cima,
+  // igual toda vez que volta de dentro de um predio (ver os spawn_y de
+  // volta em cada maps/*_interior.json, todos na fileira 6).
+  const startRow = Number(params.get('y') ?? 6);
 
   mapManager.loadMap(startMap, startCol, startRow).then(
     () => {
