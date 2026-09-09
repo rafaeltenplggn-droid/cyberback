@@ -17,28 +17,38 @@ function makeManager() {
   return new MapManager({ loadMapJson });
 }
 
-test('district_07.json tem 24x16, fundo real (Visual Master) e as 5 portas para os interiores', async () => {
+test('district_07.json tem 24x16, fundo real (Visual Master) e as portas pros 5 interiores', async () => {
   const raw = await loadMapJson('district_07');
   const map = parseMap(raw);
   assert.equal(map.width, 24);
   assert.equal(map.height, 16);
   assert.equal(map.background, 'sector7_exterior.png');
 
-  const nullpointDoor = map.getDoorAt(3, 5);
-  assert.equal(nullpointDoor.target_map, 'nullpoint_interior');
-  assert.deepEqual([nullpointDoor.spawn_x, nullpointDoor.spawn_y], [8, 8]);
-
-  const ghostRowDoor = map.getDoorAt(11, 5);
-  assert.equal(ghostRowDoor.target_map, 'ghost_row_interior');
-  assert.deepEqual([ghostRowDoor.spawn_x, ghostRowDoor.spawn_y], [8, 8]);
-
-  const gridcorpDoor = map.getDoorAt(18, 5);
-  assert.equal(gridcorpDoor.target_map, 'gridcorp_interior');
-  assert.deepEqual([gridcorpDoor.spawn_x, gridcorpDoor.spawn_y], [5, 7]);
-
-  const homeDoor = map.getDoorAt(7, 13);
-  assert.equal(homeDoor.target_map, 'player_home');
-  assert.deepEqual([homeDoor.spawn_x, homeDoor.spawn_y], [5, 7]);
+  // BAR, BLACKNET, CORP e MY HOME tem porta de 2 celulas de largura (bate
+  // com o desenho das portas duplas na arte de fundo, ver
+  // assets/backgrounds/sector7_exterior.png - entrar so pela celula da
+  // esquerda parecia "entrar de lado" da porta). DATA TERMINAL ja nascia
+  // com a porta bem centralizada numa unica celula.
+  for (const doorX of [3, 4]) {
+    const door = map.getDoorAt(doorX, 5);
+    assert.equal(door.target_map, 'nullpoint_interior');
+    assert.deepEqual([door.spawn_x, door.spawn_y], [8, 8]);
+  }
+  for (const doorX of [11, 12]) {
+    const door = map.getDoorAt(doorX, 5);
+    assert.equal(door.target_map, 'ghost_row_interior');
+    assert.deepEqual([door.spawn_x, door.spawn_y], [8, 8]);
+  }
+  for (const doorX of [18, 19]) {
+    const door = map.getDoorAt(doorX, 5);
+    assert.equal(door.target_map, 'gridcorp_interior');
+    assert.deepEqual([door.spawn_x, door.spawn_y], [5, 7]);
+  }
+  for (const doorX of [6, 7]) {
+    const door = map.getDoorAt(doorX, 13);
+    assert.equal(door.target_map, 'player_home');
+    assert.deepEqual([door.spawn_x, door.spawn_y], [5, 7]);
+  }
 
   const dataTerminalDoor = map.getDoorAt(18, 13);
   assert.equal(dataTerminalDoor.target_map, 'data_terminal_interior');
