@@ -325,7 +325,7 @@ function startGame(characterId) {
 
   // ---------- Cardapio de drinks (buff, ver drinkMenu.js) ----------
   // Overlay separado da tela do PC, com skin propria (balcao de bar) -
-  // diferente do energetico simples ([D], ver drinkShop.js), que continua
+  // diferente do energetico simples ([E], ver drinkShop.js), que continua
   // intocado e so recarrega energia.
   const drinkMenuEl = document.getElementById('drink-menu');
   const drinkListEl = document.getElementById('drink-list');
@@ -1325,16 +1325,16 @@ function startGame(characterId) {
       if (!lastDrinkResult) {
         shopStatusEl.textContent =
           nearbyBar === 'bartender'
-            ? `[D] ${label}: "aqui e casa, so nao fode com a clientela" - energetico por ${DRINK_COST_BYTE} BYTE`
-            : `[D] ${label}: pedir um energetico por ${DRINK_COST_BYTE} BYTE (recarrega a energia)`;
+            ? `[E] ${label}: "aqui e casa, so nao fode com a clientela" - energetico por ${DRINK_COST_BYTE} BYTE`
+            : `[E] ${label}: pedir um energetico por ${DRINK_COST_BYTE} BYTE (recarrega a energia)`;
       } else if (lastDrinkResult.success) {
-        shopStatusEl.textContent = `[D] ${label}: energetico servido por ${lastDrinkResult.byteSpent} BYTE, energia recarregada`;
+        shopStatusEl.textContent = `[E] ${label}: energetico servido por ${lastDrinkResult.byteSpent} BYTE, energia recarregada`;
       } else if (lastDrinkResult.reason === 'energia_cheia') {
-        shopStatusEl.textContent = `[D] ${label}: energia ja esta cheia`;
+        shopStatusEl.textContent = `[E] ${label}: energia ja esta cheia`;
       } else if (lastDrinkResult.reason === 'byte_insuficiente') {
-        shopStatusEl.textContent = `[D] ${label}: BYTE insuficiente (precisa de ${DRINK_COST_BYTE}, tem ${hackRuntime.byteBalance})`;
+        shopStatusEl.textContent = `[E] ${label}: BYTE insuficiente (precisa de ${DRINK_COST_BYTE}, tem ${hackRuntime.byteBalance})`;
       } else {
-        shopStatusEl.textContent = `[D] ${label}: nao foi possivel pedir agora`;
+        shopStatusEl.textContent = `[E] ${label}: nao foi possivel pedir agora`;
       }
       shopStatusEl.textContent += ' | [M] cardapio (drinks com buff, nao recarrega energia)';
       return;
@@ -1369,12 +1369,12 @@ function startGame(characterId) {
       // senao a contagem regressiva fica presa mesmo depois do tempo passar.
       const remainingMs = hackRuntime.sleepTracker.cooldownRemainingMs();
       if (lastSleepResult?.success) {
-        shopStatusEl.textContent = `[S] dormiu: +${SLEEP_ENERGY_RESTORE} energia`;
+        shopStatusEl.textContent = `[Z] dormiu: +${SLEEP_ENERGY_RESTORE} energia`;
       } else if (remainingMs > 0) {
         const secs = Math.ceil(remainingMs / 1000);
-        shopStatusEl.textContent = `[S] ainda cansado, espera mais ${secs}s pra dormir de novo`;
+        shopStatusEl.textContent = `[Z] ainda cansado, espera mais ${secs}s pra dormir de novo`;
       } else {
-        shopStatusEl.textContent = `[S] dormir (+${SLEEP_ENERGY_RESTORE} energia, uma vez a cada 2 minutos)`;
+        shopStatusEl.textContent = `[Z] dormir (+${SLEEP_ENERGY_RESTORE} energia, uma vez a cada 2 minutos)`;
       }
       return;
     }
@@ -1667,7 +1667,7 @@ function startGame(characterId) {
       return { location: HOME_PC_LOCATION, text: '[B] abrir o PC, ou clique nele', trigger: handleOpenPc };
     }
     if (nearbyHome === 'bed') {
-      return { location: HOME_BED_LOCATION, text: '[S] dormir, ou clique na cama', trigger: handleSleep };
+      return { location: HOME_BED_LOCATION, text: '[Z] dormir, ou clique na cama', trigger: handleSleep };
     }
 
     const nearbyBar = hackRuntime.nearbyBarInteractable();
@@ -1754,7 +1754,23 @@ function startGame(characterId) {
     }
   });
 
-  const MOVE_KEYS = { ArrowUp: 'up', ArrowDown: 'down', ArrowLeft: 'left', ArrowRight: 'right' };
+  // WASD anda junto com as setas (mesma direcao, so um jeito a mais de
+  // segurar) - por isso 's'/'d' saem daqui como atalho de acao (dormir
+  // virou 'Z', o energetico rapido do balcao virou 'E', ver mais abaixo).
+  const MOVE_KEYS = {
+    ArrowUp: 'up',
+    ArrowDown: 'down',
+    ArrowLeft: 'left',
+    ArrowRight: 'right',
+    w: 'up',
+    W: 'up',
+    s: 'down',
+    S: 'down',
+    a: 'left',
+    A: 'left',
+    d: 'right',
+    D: 'right',
+  };
 
   // Direcoes seguradas de verdade (nao o auto-repeat do SO, que tem um
   // atraso inicial e uma cadencia proprias e dava aquele "travadinho" ao
@@ -1799,12 +1815,12 @@ function startGame(characterId) {
       handleOpenPc();
       return;
     }
-    if (event.key === 's' || event.key === 'S') {
+    if (event.key === 'z' || event.key === 'Z') {
       event.preventDefault();
       handleSleep();
       return;
     }
-    if (event.key === 'd' || event.key === 'D') {
+    if (event.key === 'e' || event.key === 'E') {
       event.preventDefault();
       handleBuyDrink();
       return;
