@@ -18,6 +18,8 @@ import { INFO_MINING_ENERGY_COST_RATIO } from './hackIntegration/infoMining.js';
 import { WORKER_HIRE_COST_BYTE } from './hackIntegration/workers.js';
 import { PET_COST_BYTE } from './hackIntegration/pets.js';
 import { BITE_TRADE_STAKE_BYTE, BITE_TRADE_PAYOUT_BYTE } from './hackIntegration/biteTrade.js';
+import { requiredLevelForTier } from './hackIntegration/hackLevelGate.js';
+import { layoutBreachTaskZone, breachTaskParamsForTier, resolveBreachTaskAttempt } from './hackIntegration/breachTask.js';
 import { PLAYER_HOME_MAP_ID, HOME_BED_LOCATION, HOME_PC_LOCATION } from './hackIntegration/homeLocations.js';
 import {
   BAR_COUNTER_LOCATION,
@@ -290,6 +292,14 @@ function startGame(characterId) {
   const pcRunEl = document.getElementById('pc-run');
   const pcMenuMineBtn = document.getElementById('pc-menu-mine');
   const pcMenuTargetsEl = document.getElementById('pc-menu-targets');
+  const pcTaskEl = document.getElementById('pc-task');
+  const pcTaskTargetEl = document.getElementById('pc-task-target');
+  const pcTaskTierEl = document.getElementById('pc-task-tier');
+  const pcTaskTrackEl = document.getElementById('pc-task-track');
+  const pcTaskZoneEl = document.getElementById('pc-task-zone');
+  const pcTaskMarkerEl = document.getElementById('pc-task-marker');
+  const pcTaskBtn = document.getElementById('pc-task-btn');
+  const pcTaskResultEl = document.getElementById('pc-task-result');
 
   // ---------- Cardapio de drinks (buff, ver drinkMenu.js) ----------
   // Overlay separado da tela do PC, com skin propria (balcao de bar) -
@@ -343,12 +353,116 @@ function startGame(characterId) {
   function pcScreenShowMenu() {
     pcMenuEl.hidden = false;
     pcRunEl.hidden = true;
+    pcTaskEl.hidden = true;
   }
 
   /** Mostra o terminal em execucao (log + barra) no lugar do menu. */
   function pcScreenShowRun() {
     pcMenuEl.hidden = true;
     pcRunEl.hidden = false;
+    pcTaskEl.hidden = true;
+  }
+
+  /** Mostra a task de sincronizacao (Breach Sync) no lugar do menu/terminal. */
+  function pcScreenShowTask() {
+    pcMenuEl.hidden = true;
+    pcRunEl.hidden = true;
+    pcTaskEl.hidden = false;
+  }
+
+  const BREACH_TASK_AUTO_MISS_MS = 6000;
+  const BREACH_TASK_VERDICT_HOLD_MS = 900;
+  // Enquanto a task esta aberta, ESPACO deve so contar como a tentativa de
+  // sincronizar (ver runBreachTask) - sem isso o listener global de ESPACO
+  // (mais abaixo) tambem chamaria handleAction() de novo no meio da task.
+  let breachTaskOpen = false;
+
+  /**
+   * Roda a task de sincronizacao (Among-Us-like) antes do hack de verdade:
+   * um marker anda de um lado a outro de uma barra, e o jogador tenta
+   * parar dentro da zona-alvo (SINCRONIZAR ou ESPACO). Acertar retorna um
+   * bonus temporario de stat (mesmo formato do statBuff dos drinks, ver
+   * drinkMenu.js/breachTask.js) pra somar so nesse hack; errar ou deixar o
+   * tempo passar (BREACH_TASK_AUTO_MISS_MS) resolve com null - o hack roda
+   * normal, com a chance de sempre, nunca falha por causa da task.
+   */
+  function runBreachTask({ id, tier }) {
+    return new Promise((resolve) => {
+      breachTaskOpen = true;
+      pcTaskTargetEl.textContent = `ALVO: ${id.toUpperCase()}`;
+      pcTaskTierEl.textContent = `TIER: ${tier.toUpperCase()}`;
+      pcTaskResultEl.textContent = '';
+      pcTaskResultEl.className = 'pc-task-result';
+      pcScreenShowTask();
+
+      const { zoneStart, zoneEnd } = layoutBreachTaskZone(tier);
+      const { speed } = breachTaskParamsForTier(tier);
+      pcTaskZoneEl.style.left = `${zoneStart * 100}%`;
+      pcTaskZoneEl.style.width = `${(zoneEnd - zoneStart) * 100}%`;
+
+      let pos = 0;
+      let dir = 1;
+      let lastTs = null;
+      let rafId = null;
+      let settled = false;
+
+      function paintMarker() {
+        pcTaskMarkerEl.style.left = `${pos * 100}%`;
+      }
+
+      function step(ts) {
+        if (lastTs === null) lastTs = ts;
+        const dt = (ts - lastTs) / 1000;
+        lastTs = ts;
+        pos += dir * speed * dt;
+        if (pos >= 1) {
+          pos = 1;
+          dir = -1;
+        } else if (pos <= 0) {
+          pos = 0;
+          dir = 1;
+        }
+        paintMarker();
+        if (!settled) rafId = requestAnimationFrame(step);
+      }
+      paintMarker();
+      rafId = requestAnimationFrame(step);
+
+      function finish(attempt) {
+        if (settled) return;
+        settled = true;
+        cancelAnimationFrame(rafId);
+        clearTimeout(missTimeoutId);
+        pcTaskBtn.removeEventListener('click', onAttempt);
+        window.removeEventListener('keydown', onKeydown);
+        breachTaskOpen = false;
+
+        if (attempt) {
+          pcTaskResultEl.textContent = attempt.perfect ? `PERFEITO! +${attempt.amount}%` : `BOM +${attempt.amount}%`;
+          pcTaskResultEl.className = `pc-task-result ${attempt.perfect ? 'perfeito' : 'bom'}`;
+        } else {
+          pcTaskResultEl.textContent = 'ERROU A JANELA';
+          pcTaskResultEl.className = 'pc-task-result errou';
+        }
+
+        setTimeout(() => resolve(attempt ? { stat: attempt.stat, amount: attempt.amount } : null), BREACH_TASK_VERDICT_HOLD_MS);
+      }
+
+      function onAttempt() {
+        finish(resolveBreachTaskAttempt(pos, zoneStart, zoneEnd, tier));
+      }
+
+      function onKeydown(ev) {
+        if (ev.code === 'Space') {
+          ev.preventDefault();
+          onAttempt();
+        }
+      }
+
+      const missTimeoutId = setTimeout(() => finish(null), BREACH_TASK_AUTO_MISS_MS);
+      pcTaskBtn.addEventListener('click', onAttempt);
+      window.addEventListener('keydown', onKeydown);
+    });
   }
 
   /**
@@ -1123,13 +1237,15 @@ function startGame(characterId) {
     const target = hackRuntime.remoteHackTargets.find((t) => t.id === buildingId);
     if (!target || target.locked) return;
 
+    const taskBuff = await runBreachTask({ id: buildingId, tier: target.tier });
+
     pcScreenShowRun();
     pcLogClear();
     pcSetHead(buildingId.toUpperCase(), target.tier.toUpperCase());
     pcSetBar(0, 'STATUS', '--');
     pcLogPush(`> conectando a ${buildingId}...`, 'ok');
 
-    const result = await runHackVisual(hackRuntime.triggerRemoteHack(buildingId));
+    const result = await runHackVisual(hackRuntime.triggerRemoteHack(buildingId, taskBuff));
     lastHackResult = result;
     updateHackStatus();
     pcRevealHackResult(result);
@@ -1215,13 +1331,20 @@ function startGame(characterId) {
     updateHackStatus();
 
     pcScreenOpen({ tabs: ['terminal'], activeTab: 'terminal' });
+
+    // Nivel insuficiente ja vai recusar o hack em triggerHack() - nem vale
+    // a pena gastar o tempo do jogador com a task, o bonus dela seria
+    // descartado de qualquer jeito.
+    const levelBlocked = hackRuntime.playerStats.level < requiredLevelForTier(nearby.target.tier);
+    const taskBuff = levelBlocked ? null : await runBreachTask({ id: nearby.id, tier: nearby.target.tier });
+
     pcScreenShowRun();
     pcLogClear();
     pcSetHead(nearby.id.toUpperCase(), nearby.target.tier.toUpperCase());
     pcSetBar(0, 'STATUS', '--');
     pcLogPush(`> conectando a ${nearby.id}...`, 'ok');
 
-    const result = await runHackVisual(hackRuntime.triggerHack());
+    const result = await runHackVisual(hackRuntime.triggerHack(taskBuff));
     lastHackResult = result;
     hackingBuildingId = null;
     updateHackStatus();
@@ -1332,6 +1455,7 @@ function startGame(characterId) {
   }
 
   window.addEventListener('keydown', (event) => {
+    if (breachTaskOpen) return; // ESPACO aqui e so a tentativa de sync (ver runBreachTask)
     const direction = MOVE_KEYS[event.key];
     if (direction) {
       event.preventDefault();

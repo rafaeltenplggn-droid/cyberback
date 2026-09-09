@@ -386,6 +386,56 @@
     }
     #pc-menu:not([hidden]) { display: flex; flex-direction: column; gap: 8px; }
     #pc-run:not([hidden]) { display: flex; flex-direction: column; gap: 10px; height: 100%; }
+    #pc-task:not([hidden]) { display: flex; flex-direction: column; gap: 12px; height: 100%; }
+
+    .pc-task-title {
+      font-family: 'Rajdhani', sans-serif;
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      color: #cfffe9;
+      text-align: center;
+    }
+    .pc-task-track {
+      position: relative;
+      height: 20px;
+      border: 1px solid #2e6b58;
+      background: rgba(109, 255, 201, 0.06);
+    }
+    .pc-task-zone {
+      position: absolute;
+      top: 1px;
+      bottom: 1px;
+      background: rgba(255, 210, 58, 0.25);
+      border-left: 1px solid #ffd23a;
+      border-right: 1px solid #ffd23a;
+    }
+    .pc-task-marker {
+      position: absolute;
+      top: -3px;
+      bottom: -3px;
+      width: 3px;
+      background: #6dffc9;
+      box-shadow: 0 0 8px rgba(109, 255, 201, 0.8);
+    }
+    .pc-task-btn { text-align: center; font-size: 20px; letter-spacing: 0.05em; }
+    .pc-task-hint {
+      text-align: center;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 12px;
+      color: #2e6b58;
+    }
+    .pc-task-result {
+      text-align: center;
+      font-family: 'Rajdhani', sans-serif;
+      font-weight: 700;
+      font-size: 18px;
+      letter-spacing: 0.08em;
+      min-height: 22px;
+    }
+    .pc-task-result.perfeito { color: #4dffb8; text-shadow: 0 0 8px rgba(77, 255, 184, 0.6); }
+    .pc-task-result.bom { color: #ffd23a; text-shadow: 0 0 8px rgba(255, 210, 58, 0.5); }
+    .pc-task-result.errou { color: #ff5d6a; text-shadow: 0 0 8px rgba(255, 93, 106, 0.5); }
 
     .pc-menu-title {
       font-family: 'Rajdhani', sans-serif;
@@ -792,6 +842,20 @@
               <button type="button" class="pc-menu-btn" id="pc-menu-mine"></button>
               <div class="pc-menu-title pc-menu-title-spaced">HACKEAR REMOTO</div>
               <div id="pc-menu-targets"></div>
+            </div>
+            <div id="pc-task" hidden>
+              <div class="pc-head">
+                <span id="pc-task-target">ALVO: --</span>
+                <span id="pc-task-tier">TIER: --</span>
+              </div>
+              <div class="pc-task-title">SINCRONIZE O BREACH</div>
+              <div class="pc-task-track" id="pc-task-track">
+                <div class="pc-task-zone" id="pc-task-zone"></div>
+                <div class="pc-task-marker" id="pc-task-marker"></div>
+              </div>
+              <button type="button" class="pc-menu-btn pc-task-btn" id="pc-task-btn">SINCRONIZAR</button>
+              <div class="pc-task-hint">ou aperte ESPAÇO</div>
+              <div class="pc-task-result" id="pc-task-result"></div>
             </div>
             <div id="pc-run" hidden>
               <div class="pc-head">

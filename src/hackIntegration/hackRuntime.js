@@ -173,7 +173,7 @@ export class HackRuntime {
    * hack que nem chega a tentar o breach (energyBlocked) nao espera esse
    * tempo todo - nao faz sentido segurar 20s so pra dizer "sem energia".
    */
-  async _runHack(entry) {
+  async _runHack(entry, taskBuff = null) {
     const requiredLevel = requiredLevelForTier(entry.target.tier);
     if (this.playerStats.level < requiredLevel) {
       return {
@@ -186,7 +186,8 @@ export class HackRuntime {
 
     this._hacking = true;
     this._hackStartedAt = this._now();
-    const result = await this.hackSession.run(entry.target, { statBuff: this.drinkBuffTracker.active });
+    const buffs = [this.drinkBuffTracker.active, taskBuff].filter(Boolean);
+    const result = await this.hackSession.run(entry.target, { statBuff: buffs });
     this.hackSession.reset();
 
     if (!result.energyBlocked) {
@@ -199,11 +200,16 @@ export class HackRuntime {
     return result;
   }
 
-  /** Dispara o hack contra o predio adjacente, se houver. Retorna a Promise do resultado, ou null se fora de alcance/bloqueado. */
-  triggerHack() {
+  /**
+   * Dispara o hack contra o predio adjacente, se houver. `taskBuff` e o
+   * bonus opcional ganho na task de sincronizacao (ver breachTask.js),
+   * calculado em main.js antes de chamar isso. Retorna a Promise do
+   * resultado, ou null se fora de alcance/bloqueado.
+   */
+  triggerHack(taskBuff = null) {
     const entry = this.nearbyHackableBuilding();
     if (!entry) return null;
-    return this._runHack(entry);
+    return this._runHack(entry, taskBuff);
   }
 
   /**
@@ -224,12 +230,12 @@ export class HackRuntime {
    * andar ate la. So funciona parado no PC, sem nenhum hack/mineracao ja
    * em andamento, e respeita a mesma trava de nivel do hack fisico.
    */
-  triggerRemoteHack(buildingId) {
+  triggerRemoteHack(buildingId, taskBuff = null) {
     if (this.nearbyHomeInteractable() !== 'pc') return null;
     if (this.hackSession.isActive || this._mining || this._hacking) return null;
     const entry = HACKABLE_BUILDINGS.find((building) => building.id === buildingId);
     if (!entry) return null;
-    return this._runHack(entry);
+    return this._runHack(entry, taskBuff);
   }
 
   /**

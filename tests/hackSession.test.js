@@ -234,6 +234,38 @@ test('statBuff tambem afeta o resultado de fence (lootYield), sem persistir', as
   assert.equal(buffed.playerStats.lootYield, lootYieldBefore, 'lootYield persistido nao muda por causa do drink');
 });
 
+test('statBuff aceita uma lista de bonus (drink + task ao mesmo tempo), somando os dois', async () => {
+  const playerStats = createPlayerStats(1);
+  const session = new HackSession({ playerStats, rng: () => 0 });
+
+  const single = await session.run(GRIDCORP_TARGET, { statBuff: { stat: 'breachSpeed', amount: 5 } });
+  session.reset();
+
+  const stacked = await session.run(GRIDCORP_TARGET, {
+    statBuff: [
+      { stat: 'breachSpeed', amount: 5 },
+      { stat: 'breachSpeed', amount: 5 },
+    ],
+  });
+
+  assert.ok(stacked.breach.chance > single.breach.chance, 'dois buffs empilhados devem valer mais que um so');
+  assert.equal(stacked.playerStats.breachSpeed, playerStats.breachSpeed, 'stat persistido continua intocado');
+});
+
+test('statBuff como lista ignora entradas null/undefined (buff que nao estava ativo)', async () => {
+  const playerStats = createPlayerStats(1);
+  const session = new HackSession({ playerStats, rng: () => 0 });
+
+  const plain = await session.run(GRIDCORP_TARGET, {});
+  session.reset();
+
+  const withNulls = await session.run(GRIDCORP_TARGET, {
+    statBuff: [null, { stat: 'breachSpeed', amount: 5 }, undefined],
+  });
+
+  assert.ok(withNulls.breach.chance > plain.breach.chance);
+});
+
 test('reset() so funciona depois que o hack termina', async () => {
   const playerStats = createPlayerStats(1);
   const session = new HackSession({ playerStats, rng: () => 0 });

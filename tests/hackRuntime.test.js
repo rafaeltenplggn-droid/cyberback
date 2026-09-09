@@ -411,6 +411,30 @@ test('o buff do drink afeta o hack seguinte (breach/fence), mas nunca o playerSt
   assert.equal(runtime.playerStats.breachSpeed, breachSpeedBefore, 'stat persistido nao ganha o bonus do drink depois do hack');
 });
 
+test('triggerHack aceita um taskBuff opcional (bonus da task de sincronizacao), somado ao do drink se houver', async () => {
+  const mapManager = makeFakeMapManager({ mapId: 'nullpoint_interior', col: 10, row: 4 });
+  const controller = makeFakeController();
+  const runtime = new HackRuntime({ mapManager, controller, playerStats: createPlayerStats(3), rng: () => 0, hackDelayMs: 0 });
+
+  const plain = await runtime.triggerHack();
+
+  mapManager.playerCol = 10;
+  mapManager.playerRow = 4;
+  const buffed = await runtime.triggerHack({ stat: 'breachSpeed', amount: 8 });
+
+  assert.ok(buffed.breach.chance > plain.breach.chance, 'taskBuff deve aumentar a chance de breach');
+  assert.equal(runtime.playerStats.breachSpeed, createPlayerStats(3).breachSpeed, 'stat persistido nao ganha o bonus da task');
+});
+
+test('triggerRemoteHack tambem aceita um taskBuff opcional', async () => {
+  const mapManager = makeFakeMapManager({ mapId: 'player_home', col: 6, row: 2 });
+  const controller = makeFakeController();
+  const runtime = new HackRuntime({ mapManager, controller, playerStats: createPlayerStats(5), rng: () => 0, hackDelayMs: 0 });
+
+  const result = await runtime.triggerRemoteHack('gridcorp_tower', { stat: 'breachSpeed', amount: 8 });
+  assert.ok(result.breach, 'o hack remoto rodou com o taskBuff');
+});
+
 test('parado no laptop dentro do nullpoint_interior, nearbyHackableBuilding aponta pro nullpoint_bar', async () => {
   const mapManager = makeFakeMapManager({ mapId: 'nullpoint_interior', col: 10, row: 4 }); // na frente do laptop (origem 10,3)
   const controller = makeFakeController();

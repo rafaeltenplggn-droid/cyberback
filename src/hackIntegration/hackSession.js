@@ -51,12 +51,18 @@ export class HackSession {
       throw new Error('target e obrigatorio');
     }
 
-    // statBuff (ver drinkMenu.js) e um bonus temporario de drink, so afeta
-    // os calculos deste hack (breach/fence) - nunca o playerStats
-    // persistido/nivelado, que continua intocado aqui.
+    // statBuff (ver drinkMenu.js e breachTask.js) e um ou mais bonus
+    // temporarios (drink + task de sincronizacao podem estar ativos ao
+    // mesmo tempo), so afetam os calculos deste hack (breach/fence) - nunca
+    // o playerStats persistido/nivelado, que continua intocado aqui. Aceita
+    // um objeto unico (compat com chamadas antigas) ou uma lista.
+    const buffList = statBuff ? (Array.isArray(statBuff) ? statBuff.filter(Boolean) : [statBuff]) : [];
     const effectiveStats =
-      statBuff && this.playerStats
-        ? { ...this.playerStats, [statBuff.stat]: this.playerStats[statBuff.stat] + statBuff.amount }
+      buffList.length > 0 && this.playerStats
+        ? buffList.reduce(
+            (stats, buff) => ({ ...stats, [buff.stat]: stats[buff.stat] + buff.amount }),
+            this.playerStats,
+          )
         : this.playerStats;
 
     this.result = null;
