@@ -27,7 +27,7 @@ rollback, mas nao e mais usada por nenhum consumidor ativo.
 4 direcoes, sem diagonal. Um passo equivale a uma celula, a posicao logica so atualiza no fim do tween. Tween visual de 150 a 180ms por passo. Input novo entra em fila e nao interrompe o tween em andamento. Colisao checada por lookup numa matriz binaria separada da camada visual.
 
 ## Sprite do personagem
-12 frames por arquetipo: 4 direcoes vezes parado, passo 1, passo 2. O frame de direita e derivado espelhando o frame de esquerda em tempo de render, nunca depende de asset separado pra essa direcao.
+12 poses logicas por arquetipo: 4 direcoes vezes parado, passo 1, passo 2. A arte de perfil olha para a direita; a esquerda e derivada por espelhamento em tempo de render. Poses paradas podem reutilizar frames de caminhada conforme characterRoster.js.
 
 ## Entrada de sala
 Sala e troca completa de mapa, nunca camada ou zoom. Door e um trigger invisivel numa unica celula: ao ser pisado, troca o mapa.json carregado inteiro e reposiciona o personagem no spawn definido pelo destino. Nao existe teleporte livre fora de door.

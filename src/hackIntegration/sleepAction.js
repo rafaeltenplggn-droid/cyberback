@@ -14,6 +14,10 @@ export class SleepTracker {
     return this.cooldownRemainingMs() <= 0;
   }
 
+  restore(remainingMs) {
+    this._lastSleepAt = remainingMs > 0 ? this._now() - SLEEP_COOLDOWN_MS + remainingMs : null;
+  }
+
   /** Quanto tempo falta pra poder dormir de novo, em ms (0 se ja pode). */
   cooldownRemainingMs() {
     if (this._lastSleepAt === null) return 0;

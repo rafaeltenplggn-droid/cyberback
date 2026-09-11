@@ -26,6 +26,10 @@ export class PetCollection {
     return this._owned.has(petId);
   }
 
+  restore(ids) {
+    this._owned = new Set(ids);
+  }
+
   /** Lista completa dos pets, com `owned` marcado pra cada um - pronta pra UI. */
   list() {
     return PETS.map((pet) => ({ ...pet, owned: this._owned.has(pet.id) }));

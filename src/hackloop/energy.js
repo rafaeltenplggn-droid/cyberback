@@ -19,6 +19,11 @@ export class EnergyMeter {
     return this._max;
   }
 
+  restore(value) {
+    this._value = value;
+    this._lastUpdateAt = this._now();
+  }
+
   /** Valor atual, aplicando a regeneracao acumulada ate agora. */
   get value() {
     this._settle();

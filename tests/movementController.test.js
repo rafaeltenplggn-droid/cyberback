@@ -40,6 +40,68 @@ function makeFakeMapManager({ blockedCells = new Set(), doorAt = new Map(), map 
   return manager;
 }
 
+test('falha de porta preserva posicao, limpa fila e permite tentar novamente', async () => {
+  const manager = makeFakeMapManager();
+  const move = manager.tryMove;
+  const failure = new Error('mapa indisponivel');
+  manager.tryMove = async () => { throw failure; };
+  const errors = [];
+  const controller = new MovementController(manager, { onMoveError: e => errors.push(e) });
+  controller.enqueueInput('right');
+  controller.tick(0);
+  controller.enqueueInput('down');
+  controller.tick(DEFAULT_STEP_DURATION_MS);
+  await flushMicrotasks();
+  assert.deepEqual(errors, [failure]);
+  assert.deepEqual(controller.visualPosition, { col: 0, row: 0 });
+  assert.equal(controller.isMoving, false);
+  assert.equal(controller.queueLength, 0);
+  manager.tryMove = move;
+  controller.enqueueInput('right');
+  controller.tick(0);
+  controller.tick(DEFAULT_STEP_DURATION_MS);
+  await flushMicrotasks();
+  assert.equal(manager.playerCol, 1);
+});
+
+test('modal descarta fila e input mantido; movimento so volta com nova entrada', async () => {
+  const manager = makeFakeMapManager();
+  let blocked = false;
+  const controller = new MovementController(manager, { isInputBlocked: () => blocked });
+  controller.enqueueInput('right');
+  blocked = true;
+  controller.enqueueInput('down');
+  controller.tick(1000);
+  assert.equal(manager.playerCol, 0);
+  assert.equal(controller.queueLength, 0);
+  blocked = false;
+  controller.tick(1000);
+  assert.equal(controller.isMoving, false);
+  controller.enqueueInput('down');
+  controller.tick(0);
+  controller.tick(DEFAULT_STEP_DURATION_MS);
+  await flushMicrotasks();
+  assert.equal(manager.playerRow, 1);
+});
+
+test('modal suspende interpolacao de um passo ja iniciado', async () => {
+  const manager = makeFakeMapManager();
+  let blocked = false;
+  const controller = new MovementController(manager, { isInputBlocked: () => blocked });
+  controller.enqueueInput('right');
+  controller.tick(0);
+  controller.tick(50);
+  const before = controller.visualPosition;
+  blocked = true;
+  controller.tick(1000);
+  assert.deepEqual(controller.visualPosition, before);
+  assert.equal(manager.playerCol, 0);
+  blocked = false;
+  controller.tick(DEFAULT_STEP_DURATION_MS);
+  await flushMicrotasks();
+  assert.equal(manager.playerCol, 1);
+});
+
 test('constructor rejeita stepDurationMs fora de 150-180ms', () => {
   const mapManager = makeFakeMapManager();
   assert.throws(() => new MovementController(mapManager, { stepDurationMs: 100 }));

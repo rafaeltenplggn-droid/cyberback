@@ -33,6 +33,10 @@ export class CorpGymProgress {
     return this._defeated.has(stageId);
   }
 
+  restore(ids) {
+    this._defeated = new Set(ids);
+  }
+
   /** O id do proximo estagio a desafiar (o primeiro ainda nao vencido), ou null se o ginasio inteiro ja foi vencido. */
   get currentStageId() {
     const next = CORP_GYM_STAGES.find((stage) => !this._defeated.has(stage.id));

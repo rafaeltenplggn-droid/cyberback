@@ -1,4 +1,5 @@
 import { MapManager } from './maps/mapManager.js';
+import { SaveStore, captureSave, restoreSave } from './persistence/gameSave.js';
 import { Renderer } from './render/renderer.js';
 import { centerMapOrigin, gridToScreen, screenToGrid, TILE_SIZE } from './core/topdown.js';
 import { MovementController } from './character/movementController.js';
@@ -34,6 +35,9 @@ import { CORP_GYM_MAP_ID, CORP_GYM_DESKS, corpGymDeskLocation } from './hackInte
 
 const STARTING_BYTE_BALANCE = 100;
 const BAR_OWNER_NAME = 'Rook';
+const debugSession = ['char', 'map', 'x', 'y'].some(key => new URLSearchParams(window.location.search).has(key));
+const saveStore = new SaveStore();
+const savedGame = debugSession ? null : saveStore.read();
 
 // Corpo (sprite 320x320 inteira, com uma orelha apagada) + orelha em
 // sprites separados pra so ela balancar sozinha, sem depender de
@@ -176,7 +180,7 @@ function drawHintBubble(ctx, anchorX, anchorY, text) {
 }
 
 // Roda o jogo de verdade com o personagem escolhido na tela de selecao.
-function startGame(characterId) {
+function startGame(characterId, saved = null) {
   // Preenchido sob demanda (ver ensurePropImagesLoaded) conforme cada mapa
   // e carregado. Renderer guarda a MESMA referencia, entao um asset que
   // termina de carregar depois passa a aparecer sozinho no proximo frame.
@@ -227,8 +231,15 @@ function startGame(characterId) {
   let barEntranceHintUntil = 0;
 
   const mapManager = new MapManager({ loadMapJson });
+  let movementError = '';
   const controller = new MovementController(mapManager, {
+    isInputBlocked: () => breachTaskOpen || !pcScreenEl.hidden || !drinkMenuEl.hidden,
+    onMoveError: () => {
+      heldDirections.clear();
+      movementError = 'Nao foi possivel entrar na sala. Tente novamente.';
+    },
     onMapChanged: (map) => {
+      movementError = '';
       fixCameraForMap(map);
       ensurePropImagesLoaded(map);
       ensureBackgroundImageLoaded(map);
@@ -245,6 +256,21 @@ function startGame(characterId) {
   const ledger = new ByteLedger();
   ledger.record({ type: 'gain', amount: STARTING_BYTE_BALANCE, meta: { source: 'saldo_inicial' } });
   const hackRuntime = new HackRuntime({ mapManager, controller, playerStats, traceMeter, energyMeter, ledger });
+  if (saved) restoreSave(saved, hackRuntime);
+  const saveStatusEl = document.getElementById('save-status');
+  let mapReady = false;
+  function saveProgress() {
+    if (debugSession || !mapReady) return;
+    if (!hackRuntime.isMovementBlocked && !breachTaskOpen) {
+      saveStore.write(captureSave(characterId, hackRuntime, mapManager));
+    }
+    saveStatusEl.textContent = saveStore.error || 'Progresso salvo neste navegador';
+  }
+  setInterval(saveProgress, 1000);
+  window.addEventListener('pagehide', saveProgress);
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) saveProgress();
+  });
 
   const statusEl = document.getElementById('status');
   const hackStatusEl = document.getElementById('hack-status');
@@ -368,6 +394,7 @@ function startGame(characterId) {
   }
 
   function pcScreenClose() {
+    if (breachTaskOpen) return;
     pcScreenEl.hidden = true;
   }
 
@@ -468,7 +495,6 @@ function startGame(characterId) {
         clearTimeout(missTimeoutId);
         pcTaskBtn.removeEventListener('click', onAttempt);
         window.removeEventListener('keydown', onKeydown);
-        breachTaskOpen = false;
 
         if (attempt) {
           pcTaskResultEl.textContent = attempt.perfect ? `PERFEITO! +${attempt.amount}%` : `BOM +${attempt.amount}%`;
@@ -478,7 +504,10 @@ function startGame(characterId) {
           pcTaskResultEl.className = 'pc-task-result errou';
         }
 
-        setTimeout(() => resolve(attempt ? { stat: attempt.stat, amount: attempt.amount } : null), BREACH_TASK_VERDICT_HOLD_MS);
+        setTimeout(() => {
+          breachTaskOpen = false;
+          resolve(attempt ? { stat: attempt.stat, amount: attempt.amount } : null);
+        }, BREACH_TASK_VERDICT_HOLD_MS);
       }
 
       function onAttempt() {
@@ -544,7 +573,6 @@ function startGame(characterId) {
         clearTimeout(revealTimeoutId);
         clearTimeout(missTimeoutId);
         window.removeEventListener('keydown', onKeydown);
-        breachTaskOpen = false;
 
         if (attempt) {
           pcSeqResultEl.textContent = `SEQUENCIA CERTA! +${attempt.amount}%`;
@@ -554,7 +582,10 @@ function startGame(characterId) {
           pcSeqResultEl.className = 'pc-task-result errou';
         }
 
-        setTimeout(() => resolve(attempt), SEQUENCE_TASK_VERDICT_HOLD_MS);
+        setTimeout(() => {
+          breachTaskOpen = false;
+          resolve(attempt);
+        }, SEQUENCE_TASK_VERDICT_HOLD_MS);
       }
 
       function startInputPhase() {
@@ -1097,6 +1128,7 @@ function startGame(characterId) {
   function updateStatus() {
     const sittingText = hackRuntime.isSitting ? ' | sentado no banco' : '';
     statusEl.textContent = `mapa: ${mapManager.currentMap.id} | posicao: (${mapManager.playerCol}, ${mapManager.playerRow}) | direcao: ${controller.direction} | pose: ${controller.pose}${sittingText}`;
+    if (movementError) statusEl.textContent = movementError;
 
     const stats = hackRuntime.playerStats;
     const xpNeeded = xpRequiredForLevel(stats.level);
@@ -1779,7 +1811,10 @@ function startGame(characterId) {
   const heldDirections = new Set();
 
   function feedHeldMovement() {
-    if (hackRuntime.isMovementBlocked) return;
+    if (hackRuntime.isMovementBlocked || controller.isInputBlocked()) {
+      heldDirections.clear();
+      return;
+    }
     // So decide o proximo passo quando o passo atual ja terminou de vez -
     // enfileirar durante o tween em andamento adiantava um passo mesmo
     // depois da tecla ja ter sido solta, dando aquele deslize/atraso ao
@@ -1797,6 +1832,8 @@ function startGame(characterId) {
     const direction = MOVE_KEYS[event.key];
     if (direction) {
       event.preventDefault();
+      if (controller.isInputBlocked() || hackRuntime.isMovementBlocked) return;
+      movementError = '';
       heldDirections.add(direction);
       // So enfileira aqui no primeiro toque (nao no repeat do SO); o
       // reforco continuo enquanto segura vem de feedHeldMovement() no loop.
@@ -1805,6 +1842,7 @@ function startGame(characterId) {
       }
       return;
     }
+    if (event.key !== 'Escape' && controller.isInputBlocked()) return;
     if (event.key === ' ' || event.key === 'Enter') {
       event.preventDefault();
       handleAction();
@@ -1941,8 +1979,8 @@ function startGame(characterId) {
   }
 
   const params = new URLSearchParams(window.location.search);
-  const startMap = params.get('map') || 'district_07';
-  const startCol = Number(params.get('x') ?? 5);
+  const startMap = params.get('map') || saved?.position.mapId || 'district_07';
+  const startCol = Number(params.get('x') ?? saved?.position.col ?? 5);
   // row5 e a propria fileira das portas do BAR/BLACKNET/CORP (ver
   // district_07.json) - nascer ali em cima da porta e o que fazia
   // qualquer door.approach quebrar (nao tem como "aproximar de cima" de
@@ -1950,14 +1988,26 @@ function startGame(characterId) {
   // sempre livre - de la sim da pra aproximar as portas andando pra cima,
   // igual toda vez que volta de dentro de um predio (ver os spawn_y de
   // volta em cada maps/*_interior.json, todos na fileira 6).
-  const startRow = Number(params.get('y') ?? 6);
+  const startRow = Number(params.get('y') ?? saved?.position.row ?? 6);
 
-  mapManager.loadMap(startMap, startCol, startRow).then(
+  async function loadStartingMap() {
+    try {
+      await mapManager.loadMap(startMap, startCol, startRow);
+      if (!mapManager.canEnter(startCol, startRow)) throw new Error('Posicao indisponivel');
+    } catch (error) {
+      if (!saved) throw error;
+      // Atualizacoes podem remover a posicao antiga; preserva os bens.
+      await mapManager.loadMap('district_07', 5, 6);
+    }
+  }
+  loadStartingMap().then(
     () => {
+      mapReady = true;
       fixCameraForMap(mapManager.currentMap);
       ensurePropImagesLoaded(mapManager.currentMap);
       ensureBackgroundImageLoaded(mapManager.currentMap);
       render(performance.now());
+      saveProgress();
       requestAnimationFrame(loop);
     },
     (error) => {
@@ -2144,6 +2194,9 @@ if (forcedEntry) {
 
   walletGateContinueBtn.addEventListener('click', () => {
     walletGateEl.hidden = true;
-    beginCharacterSelect();
+    if (savedGame) startGame(savedGame.characterId, savedGame);
+    else beginCharacterSelect();
   });
+  if (savedGame) walletGateContinueBtn.textContent = 'Continuar partida salva';
+  document.getElementById('save-status').textContent = saveStore.error || 'Salvamento automatico neste navegador';
 }

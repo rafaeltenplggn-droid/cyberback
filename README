@@ -1,24 +1,54 @@
 # CYBER
 
-Jogo pixel art isometrico. Especificacao tecnica compartilhada entre as
-branches em [CYBER_SPEC.md](./CYBER_SPEC.md).
+Jogo pixel art 2D visto de cima, em JavaScript e Canvas, sem dependencias
+externas de pacote. Repositorio: rafaeltenplggn-droid/cyberback; principal: main.
+Especificacao em [CYBER_SPEC.md](./CYBER_SPEC.md).
 
 ## Estrutura
 
 - `src/core/` - grid<->tela, matriz de colisao binaria.
 - `src/maps/` - parser do formato `mapa.json` (tiles, colisao, doors, props) e o `MapManager` que troca de mapa ao pisar em uma door.
-- `src/render/` - render de validacao (tiles genericos e retangulos cinza no lugar de props/predios reais).
-- `src/debug/` - marcador minimo de teclado usado so para validar colisao/doors nesta branch. Nao e o character controller.
-- `maps/` - mapas de teste (`test_map_a.json`, `test_map_b.json`) ligados por uma door.
+- `src/render/` e `assets/` - desenho, fundos e imagens do jogo.
+- `src/character/` - personagens e movimento; `src/debug/` e legado.
+- `src/hackloop/` e `src/hackIntegration/` - hack, economia, equipe, pets e ginasio.
+- `src/persistence/` - salvamento local versionado e validado.
+- `maps/` - distrito, interiores e mapas de teste.
 - `tests/` - testes unitarios (`node --test`).
 
 ## Rodando
+
+Use Node.js 24 ou superior.
 
 ```
 npm test          # roda os testes unitarios
 npm run serve      # sobe um servidor estatico em http://localhost:4173
 ```
 
-Com o servidor rodando, abra `http://localhost:4173/index.html` e use as
-setas do teclado para mover o marcador de debug, validar colisao contra os
-retangulos cinza e a troca de mapa ao pisar no ponto ciano (door).
+Sem npm, use `node --test tests/*.test.js` e `node scripts/serve.js`.
+Abra `http://localhost:4173/index.html`. Conectar wallet e opcional.
+Escolha personagem com as setas e confirme com Enter. Ande com WASD ou setas.
+Os objetos mostram atalhos quando voce se aproxima: B abre o PC, Z dorme,
+M abre bebidas, E compra energetico, C senta, T abre trade e Espaco interage.
+Escape fecha menus; desafios mantem a tela aberta ate terminar.
+As sequencias do ginasio usam as setas.
+
+## Progresso
+
+O jogo salva automaticamente neste navegador e oferece continuar a partida
+na entrada. Guarda personagem, nivel/XP, BYTE, informacoes, trabalhadores,
+pets, ginasio, energia, trace, cooldown de sono, buff e posicao.
+O save pertence ao navegador/site, nao a wallet, e nao sincroniza dispositivos.
+Limpar os dados do site apaga o save. Falhas de armazenamento aparecem na tela;
+um save invalido e preservado, sem ser substituido pela sessao nova.
+
+O checkpoint e atualizado a cada segundo e ao sair da pagina, fora de hacks
+ou desafios em andamento. Essas acoes nao sao retomadas: recarregar volta ao
+ultimo checkpoint. O mercado BITE reinicia o grafico, mantendo o saldo salvo.
+Nao ha mineracao offline; os temporizadores retomam do ponto guardado.
+URLs de debug com `char`, `map`, `x` ou `y` nao leem nem sobrescrevem o save.
+
+## Publicacao
+
+Pull requests executam os testes. Pushes na main so publicam no GitHub Pages
+depois que os testes passam. Nao ha build: o site e estatico.
+A wallet apenas conecta uma conta; contratos NFT e compras on-chain nao estao implementados.

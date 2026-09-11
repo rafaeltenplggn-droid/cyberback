@@ -71,6 +71,23 @@ export class WorkerRoster {
     return this._hired.has(workerId);
   }
 
+  snapshot() {
+    return [...this._hired].map(id => ({ id, energy: this._energyMeters.get(id).value, elapsedMs: this._accumulatedMs.get(id) }));
+  }
+
+  restore(workers) {
+    this._hired = new Set();
+    this._accumulatedMs = new Map();
+    this._energyMeters = new Map();
+    for (const worker of workers) {
+      this._hired.add(worker.id);
+      this._accumulatedMs.set(worker.id, worker.elapsedMs);
+      const meter = new EnergyMeter({ max: WORKER_ENERGY_MAX, regenPerSecond: WORKER_ENERGY_REGEN_PER_SECOND, ...(this._now ? { now: this._now } : {}) });
+      meter.restore(worker.energy);
+      this._energyMeters.set(worker.id, meter);
+    }
+  }
+
   /** Lista completa dos contrataveis, com `hired`, a passiva e a energia atual (se contratado) marcados - pronta pra UI. */
   list() {
     return HIRABLE_WORKERS.map((worker) => {
