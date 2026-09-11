@@ -5,12 +5,14 @@ import { centerMapOrigin, gridToScreen, screenToGrid } from '../core/topdown.js'
 import { SAVE_KEY, fresh, valid, upgradeSave, migrate, regenerate, transact, WHEEL, colorOf, SPIN_MS, INFORMATION_PRICE } from './economy.js';
 import { prepareMap, casinoMap, LOCKS } from './maps.js';
 import { drawAvatar } from './avatar.js';
+import { BLACKNET_NPC as broker, canTalkToBroker } from './blacknetNpc.js';
 
 const $=id=>document.getElementById(id), canvas=$('game'),ctx=canvas.getContext('2d');
 const dialog=$('activity'),content=$('dialog-content');
 const names={district_07:'A cidade é sua.',player_home:'Seu esconderijo.',neon_royale:'Neon Royale',ghost_row_interior:'BLACKNET'};
 const petNames=['Gato Laranja','Gato Cinza','Gato Sphynx'],petIds=['gato_laranja','gato_cinza','gato_sphynx'];
 let state=fresh(), storageBlocked=false, busy=false, loading=false, ready=false, hack=null, lastFrame=0, wheelAngle=0;
+let approachingBroker=false;
 let origin={originX:0,originY:0};
 const keys=new Set(), images={};
 function message(text){$('message').textContent=text;}
@@ -43,6 +45,7 @@ const mm=new MapManager({loadMapJson:async id=>{
 const renderer=new Renderer(ctx,origin,{backgroundImages:images});
 const controller=new MovementController(mm,{isInputBlocked:()=>loading||dialog.open||busy,onMapChanged:()=>{keys.clear();controller.queue.length=0;mapChanged();},onMoveError:()=>message('Não consegui abrir esse local. Tente novamente.')});
 function mapChanged(){
+  approachingBroker=false;
   origin=centerMapOrigin(mm.currentMap,canvas.width,canvas.height);Object.assign(renderer,origin);loadImage(mm.currentMap.background);
   $('place').textContent=names[mm.currentMap.id];$('district').textContent=mm.currentMap.id==='neon_royale'?'♠ CASSINO · PLAY / TRADE / WIN':'SECTOR 7';
   document.querySelectorAll('[data-go]').forEach(b=>b.classList.toggle('active',b.dataset.go===mm.currentMap.id));
@@ -50,7 +53,7 @@ function mapChanged(){
 }
 async function go(id){
   if(busy||loading||dialog.open||controller.isMoving||controller._finishing)return;
-  loading=true;keys.clear();controller.queue.length=0;$('map-loading').hidden=false;
+  loading=true;approachingBroker=false;keys.clear();controller.queue.length=0;$('map-loading').hidden=false;
   try{const pos=id==='neon_royale'?[11,13]:id==='player_home'?[5,7]:id==='ghost_row_interior'?[8,8]:[12,8];await mm.loadMap(id,...pos);mapChanged();ready=true;}
   catch{message('Não consegui carregar o local. Tente novamente.');}
   finally{loading=false;$('map-loading').hidden=true;}
@@ -61,19 +64,25 @@ function activities(){
   let html=`<div class="energy"><span>⚡ Energia <strong id="energy-value">${state.energy}/100</strong></span><progress id="energy-bar" value="${state.energy}" max="100"></progress><small>Hack: 10 de energia · recupera 1 a cada 30 s</small></div>`;
   html+=`<div class="energy"><span>▤ Informações <strong id="information-count">${state.information}</strong></span><small>Venda na BLACKNET · ${INFORMATION_PRICE} BYTE cada</small></div>`;
   if(id==='player_home')html+=card('⌘','Conecte. Invada. Lucre.','Colete informações no terminal e venda na BLACKNET.',`<button id="hack-open" class="primary">Hackear · +${state.pcLevel} ${state.pcLevel===1?'informação':'informações'}</button><button id="trade-open">Trade BITE / BYTE</button><button id="upgrade">${state.pcLevel===1?'Melhorar PC · 150 BYTE':'PC melhorado · nível 2'}</button>`)+card('♧','Seus companheiros','Pets decorativos para deixar sua casa com a sua cara.','<button id="pets-open">Comprar pets · 100 BYTE</button>');
-  else if(id==='ghost_row_interior')html+=card('▤','Informação vale dinheiro.',`Venda suas informações por ${INFORMATION_PRICE} BYTE cada. Seu estoque fica salvo até você vender.`,`<button id="sell-open" class="primary">Vender informações</button><button data-go="player_home">Voltar para casa</button>`);
+  else if(id==='ghost_row_interior')html+=card('▤','Cipher · Corretor de dados',`Cipher compra suas informações por ${INFORMATION_PRICE} BYTE cada. Clique nele ou aproxime-se e aperte E.`,`<button id="sell-open" class="primary">Falar com Cipher</button><button data-go="player_home">Voltar para casa</button>`);
   else if(id==='neon_royale')html+=card('♠','Faça sua jogada.','Uma rodada, uma escolha. O próximo número pode ser o seu.','<button id="roulette-open" class="gold">Jogar roleta</button>','casino')+`<p class="dialog-note">♔ Área VIP fechada por enquanto.</p>`;
   else html+=card('⌂','Comece em casa.','Hackeie para obter informações. Venda na BLACKNET para ganhar BYTE.','<button data-go="player_home" class="primary">Ir para casa</button><button data-go="ghost_row_interior">Vender na BLACKNET</button>')+card('♠','NEON ROYALE','Roleta sob as luzes de Sector 7.','<button data-go="neon_royale" class="gold">Entrar no cassino</button>','casino')+`<p class="dialog-note">🔒 Bar e CORP estão fechados.</p>`;
   $('activities').innerHTML=html;
   $('hack-open')?.addEventListener('click',openHack);$('pets-open')?.addEventListener('click',openPets);
   $('roulette-open')?.addEventListener('click',openRoulette);$('trade-open')?.addEventListener('click',openTrade);
-  $('sell-open')?.addEventListener('click',openSell);
+  $('sell-open')?.addEventListener('click',visitBroker);
   if($('upgrade')){$('upgrade').disabled=state.pcLevel===2;$('upgrade').onclick=()=>{if(act({type:'upgrade'})){message('PC melhorado: cada hack correto rende 2 informações.');activities();}};}
 }
+function visitBroker(){
+  if(busy||loading||dialog.open||controller.isMoving||mm.currentMap.id!==broker.mapId)return;
+  if(canTalkToBroker(mm.currentMap.id,mm.playerCol,mm.playerRow)){openSell();return;}
+  keys.clear();pathTo(broker.approachCol,broker.approachRow);approachingBroker=true;message('Indo conversar com Cipher…');
+}
 function openSell(){
-  if(mm.currentMap.id!=='ghost_row_interior'||!openDialog('BLACKNET · MERCADO DE INFORMAÇÕES'))return;
-  content.innerHTML=`<h2>Venda suas informações.</h2><p>Seu estoque: <strong id="sale-stock">${state.information}</strong></p><p class="dialog-note">Cada informação vale ${INFORMATION_PRICE} BYTE.</p><button id="sell-all" class="primary" ${state.information===0?'disabled':''}>Vender tudo · ${state.information*INFORMATION_PRICE} BYTE</button><div id="sale-result" class="result" role="status"></div>`;
-  $('sell-all').onclick=()=>{const amount=state.information*INFORMATION_PRICE;if(act({type:'sellInformation',mapId:mm.currentMap.id})){$('sell-all').disabled=true;$('sell-all').textContent='Estoque vendido';$('sale-stock').textContent='0';$('sale-result').textContent=`Vendido! +${amount} BYTE`;message(`Informações vendidas na BLACKNET: +${amount} BYTE.`);}};
+  if(!canTalkToBroker(mm.currentMap.id,mm.playerCol,mm.playerRow)){message('Aproxime-se de Cipher para conversar.');return;}
+  if(!openDialog('CIPHER · CORRETOR DA BLACKNET'))return;
+  content.innerHTML=`<h2>Tem informações para mim?</h2><p class="dialog-note">Cipher: “Dados bons têm seu preço. Eu pago em BYTE.”</p><p>Seu estoque: <strong id="sale-stock">${state.information}</strong></p><p class="dialog-note">Cada informação vale ${INFORMATION_PRICE} BYTE.</p><button id="sell-all" class="primary" ${state.information===0?'disabled':''}>Vender tudo · ${state.information*INFORMATION_PRICE} BYTE</button><div id="sale-result" class="result" role="status"></div>`;
+  $('sell-all').onclick=()=>{const amount=state.information*INFORMATION_PRICE;if(act({type:'sellInformation',mapId:mm.currentMap.id,col:mm.playerCol,row:mm.playerRow})){$('sell-all').disabled=true;$('sell-all').textContent='Estoque vendido';$('sale-stock').textContent='0';$('sale-result').textContent=`Vendido! +${amount} BYTE`;message(`Informações vendidas na BLACKNET: +${amount} BYTE.`);}};
 }
 function openDialog(kicker){if(busy||loading||controller.isMoving)return false;keys.clear();controller.queue.length=0;$('dialog-kicker').textContent=kicker;dialog.showModal();return true;}
 function closeDialog(){if(busy)return;if(hack)act({type:'hackCancel'});hack=null;dialog.close();canvas.focus();activities();}
@@ -129,7 +138,7 @@ async function trade(choice){
 document.addEventListener('click',e=>{const goButton=e.target.closest('[data-go]');if(goButton)go(goButton.dataset.go);});
 $('character').onchange=()=>{state={...state,characterId:$('character').value};save();};
 const moves={ArrowUp:'up',w:'up',ArrowDown:'down',s:'down',ArrowLeft:'left',a:'left',ArrowRight:'right',d:'right'};
-window.addEventListener('keydown',e=>{if(e.target.matches('select,input,textarea'))return;if(dialog.open){if(hack&&['a','b','c'].includes(e.key.toLowerCase())){e.preventDefault();hackLetter(e.key.toUpperCase());}return;}const d=moves[e.key];if(d){e.preventDefault();keys.add(d);}if(e.key.toLowerCase()==='e')interact();});
+window.addEventListener('keydown',e=>{if(e.target.matches('select,input,textarea'))return;if(dialog.open){if(hack&&['a','b','c'].includes(e.key.toLowerCase())){e.preventDefault();hackLetter(e.key.toUpperCase());}return;}const d=moves[e.key];if(d){e.preventDefault();approachingBroker=false;controller.queue.length=0;keys.add(d);}if(e.key.toLowerCase()==='e')interact();});
 window.addEventListener('keyup',e=>keys.delete(moves[e.key]));window.addEventListener('blur',()=>keys.clear());
 document.querySelectorAll('[data-move]').forEach(b=>b.onclick=()=>controller.enqueueInput(b.dataset.move));$('interact').onclick=()=>interact();
 function interact(){if(!ready||busy||dialog.open)return;if(mm.currentMap.id==='player_home')openHack();else if(mm.currentMap.id==='neon_royale')openRoulette();else if(mm.currentMap.id==='ghost_row_interior')openSell();else message('Casa: hack e trade. BLACKNET: venda informações. NEON ROYALE: roleta.');}
@@ -151,7 +160,8 @@ canvas.onclick=e=>{
     if(grid.col>=5&&grid.col<=8&&grid.row>=7&&grid.row<=9){openRoulette();return;}
     if(grid.col>=9&&grid.col<=14&&grid.row>=3&&grid.row<=5){message('Bem-vindo ao NEON ROYALE. Escolha a roleta para jogar.');return;}
   }else if(mm.currentMap.id==='player_home'&&grid.col>=6&&grid.col<=9&&grid.row<=3){openHack();return;}
-  pathTo(grid.col,grid.row);
+  if(mm.currentMap.id===broker.mapId&&grid.col===broker.col&&grid.row>=broker.row-1&&grid.row<=broker.row){visitBroker();return;}
+  approachingBroker=false;pathTo(grid.col,grid.row);
 };
 function label(col,row,text,color='#ffd688'){
   const {x,y}=gridToScreen(col,row,origin.originX,origin.originY);ctx.save();ctx.font='bold 9px monospace';ctx.textAlign='center';const w=ctx.measureText(text).width+14;ctx.fillStyle='#07111ee8';ctx.fillRect(x-w/2,y-10,w,19);ctx.strokeStyle=color;ctx.strokeRect(x-w/2,y-10,w,19);ctx.fillStyle=color;ctx.fillText(text,x,y+3);ctx.restore();
@@ -163,7 +173,13 @@ function render(now){
   if(keys.size&&!controller.isMoving&&!controller.queueLength)controller.enqueueInput([...keys].at(-1));controller.tick(dt);
   ctx.clearRect(0,0,canvas.width,canvas.height);ctx.imageSmoothingEnabled=false;renderer.drawMap(mm.currentMap);renderer.drawReflections(mm.currentMap,now);
   const {col,row}=controller.visualPosition;const pos=gridToScreen(col,row,origin.originX,origin.originY);
+  const drawBroker=()=>{const p=gridToScreen(broker.col,broker.row,origin.originX,origin.originY);ctx.save();ctx.filter='hue-rotate(150deg)';drawAvatar(ctx,p.x,p.y+16,'character4','down','idle');ctx.restore();};
+  const hasBroker=mm.currentMap.id===broker.mapId;
+  if(hasBroker&&row>=broker.row)drawBroker();
   renderer.drawPropsAndCharacter(mm.currentMap.props,row,()=>drawAvatar(ctx,pos.x,pos.y+16,state.characterId,controller.direction,controller.pose));
+  if(hasBroker&&row<broker.row)drawBroker();
+  if(hasBroker){label(broker.col,broker.row-1.7,'CIPHER · VENDER');if(canTalkToBroker(mm.currentMap.id,mm.playerCol,mm.playerRow))label(broker.col,broker.row+.8,'E · CONVERSAR','#52efff');}
+  if(approachingBroker&&!controller.isMoving&&!controller.queueLength&&!controller._finishing){approachingBroker=false;openSell();}
   if(mm.currentMap.id==='district_07'){LOCKS.forEach(l=>lock(l.x,l.y));label(18,11.5,'♠ CASSINO ♠');}
   if(mm.currentMap.id==='neon_royale'){lock(19.8,3.5);label(6.4,9.8,'ROLETA', '#ffd688');label(11.5,5.7,'NEON ROYALE','#52efff');}
   if(mm.currentMap.id==='player_home'){state.pets.forEach((id,i)=>{const im=petImages[petIds.indexOf(id)];if(im.complete&&im.naturalWidth){ctx.drawImage(im,origin.originX+360+i*18,origin.originY+137,42,42);}});}

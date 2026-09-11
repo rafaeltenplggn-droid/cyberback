@@ -21,3 +21,7 @@ Novo armazenamento `cyberback.neon.v2`; o `cyberback.save.v1` original nao e alt
 ## Validacao
 
 `node --test tests/*.test.js` executa os testes existentes e `tests/neon.test.js`, que cobre energia, premios, compras, migracao, apostas, recarga durante rodada, caminhos do cassino e preservacao dos efeitos do mapa.
+
+## Corretor da BLACKNET
+
+Cipher fica na mesa direita da BLACKNET. Clique no NPC ou use Falar com Cipher para caminhar ate ele; adjacente, E abre o dialogo. Vendas exigem proximidade, preservam o valor de 30 BYTE por informacao e nao podem ser repetidas sem estoque. A celula do NPC bloqueia passagem.

@@ -1,3 +1,4 @@
+import { canTalkToBroker } from './blacknetNpc.js';
 export const SAVE_KEY = 'cyberback.neon.v2';
 export const PET_IDS = ['gato_laranja', 'gato_cinza', 'gato_sphynx'];
 export const WHEEL = [0,32,15,19,4,21,2,25,17,34,6,27,13,36,11,30,8,23,10,5,24,16,33,1,20,14,31,9,22,18,29,7,28,12,35,3,26];
@@ -62,7 +63,7 @@ export function transact(s, action) {
     next.information += next.pcLevel; next.hackActive = false;
   }
   else if (action.type === 'sellInformation') {
-    if(action.mapId !== 'ghost_row_interior') throw new Error('Venda suas informações na BLACKNET.');
+    if(!canTalkToBroker(action.mapId, action.col, action.row)) throw new Error('Aproxime-se de Cipher na BLACKNET para vender.');
     if(next.hackActive) throw new Error('Termine o hack atual.');
     if(next.information === 0) throw new Error('Você ainda não tem informações para vender.');
     next.byteBalance += next.information * INFORMATION_PRICE;

@@ -1,6 +1,8 @@
+import { BLACKNET_NPC } from './blacknetNpc.js';
 export const LOCKS = [{x:3.5,y:4.3,name:'BAR'}, {x:18.5,y:4.3,name:'CORP'}];
 export function prepareMap(raw) {
   const map = structuredClone(raw);
+  if(map.id === BLACKNET_NPC.mapId) map.collision[BLACKNET_NPC.row][BLACKNET_NPC.col] = 1;
   if (map.id === 'district_07') {
     map.background = 'sector7_neon_royale.png';
     map.doors = map.doors.filter(d => ['player_home','data_terminal_interior','ghost_row_interior'].includes(d.target_map)).map(d => d.target_map === 'data_terminal_interior' ? {...d,target_map:'neon_royale',spawn_x:11,spawn_y:13} : d);
