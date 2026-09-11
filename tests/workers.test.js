@@ -158,7 +158,7 @@ test('hackNow() e recusado pra um trabalhador nao contratado', () => {
 });
 
 test('hackNow() gasta WORKER_ENERGY_COST da energia PROPRIA do trabalhador (nunca a do jogador) e credita informacao no sucesso', () => {
-  const roster = new WorkerRoster({ rng: () => 0 });
+  const roster = new WorkerRoster({ rng: () => 0, now: () => 0 });
   const ledger = fundedLedger();
   const informationLedger = new InformationLedger();
   const workerId = HIRABLE_WORKERS[0].id;
@@ -175,7 +175,7 @@ test('hackNow() gasta WORKER_ENERGY_COST da energia PROPRIA do trabalhador (nunc
 });
 
 test('hackNow() pode falhar (rng alto) sem creditar informacao, mas ainda gasta a energia', () => {
-  const roster = new WorkerRoster({ rng: () => 0.999999 });
+  const roster = new WorkerRoster({ rng: () => 0.999999, now: () => 0 });
   const ledger = fundedLedger();
   const informationLedger = new InformationLedger();
   const workerId = HIRABLE_WORKERS[0].id;
