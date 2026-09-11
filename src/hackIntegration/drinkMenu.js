@@ -31,6 +31,11 @@ export class DrinkBuffTracker {
     return this._active;
   }
 
+  restore(buff) {
+    const drink = buff && DRINKS.find(d => d.id === buff.drinkId);
+    this._active = drink ? { drinkId: drink.id, stat: drink.stat, amount: DRINK_BUFF_AMOUNT, expiresAt: this._now() + buff.remainingMs } : null;
+  }
+
   /** Pede um drink do cardapio: cobra na hora, substitui qualquer buff anterior. Nao mexe em energia. */
   order(drinkId, { ledger }) {
     const drink = DRINKS.find((d) => d.id === drinkId);

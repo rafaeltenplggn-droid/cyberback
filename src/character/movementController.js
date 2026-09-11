@@ -19,7 +19,7 @@ function lerp(from, to, t) {
 }
 
 export class MovementController {
-  constructor(mapManager, { stepDurationMs = DEFAULT_STEP_DURATION_MS, onMapChanged } = {}) {
+  constructor(mapManager, { stepDurationMs = DEFAULT_STEP_DURATION_MS, onMapChanged, onMoveError, isInputBlocked = () => false } = {}) {
     if (stepDurationMs < MIN_STEP_DURATION_MS || stepDurationMs > MAX_STEP_DURATION_MS) {
       throw new Error(
         `stepDurationMs deve estar entre ${MIN_STEP_DURATION_MS} e ${MAX_STEP_DURATION_MS}ms`
@@ -29,6 +29,8 @@ export class MovementController {
     this.mapManager = mapManager;
     this.stepDurationMs = stepDurationMs;
     this.onMapChanged = onMapChanged ?? (() => {});
+    this.onMoveError = onMoveError ?? (() => {});
+    this.isInputBlocked = isInputBlocked;
 
     this.queue = [];
     this.direction = 'down';
@@ -47,6 +49,7 @@ export class MovementController {
 
   /** Enfileira um input novo. Nao interrompe o tween em andamento. */
   enqueueInput(direction) {
+    if (this.isInputBlocked()) return;
     if (!isDirection(direction)) return;
     this.queue.push(direction);
   }
@@ -65,6 +68,10 @@ export class MovementController {
 
   /** Avanca a maquina de estado em deltaMs. Nao precisa ser aguardado pelo loop de render. */
   tick(deltaMs) {
+    if (this.isInputBlocked()) {
+      this.queue.length = 0;
+      return;
+    }
     if (this.tween) {
       this.tween.elapsed += deltaMs;
       if (this.tween.elapsed >= this.tween.duration && !this._finishing) {
@@ -98,10 +105,22 @@ export class MovementController {
         this.onMapChanged(this.mapManager.currentMap);
       }
       this._tryStartNext();
+    }).catch((error) => {
+      // O mapa anterior continua ativo quando o carregamento falha.
+      // Descarta entradas antigas e permite um novo passo/tentativa.
+      this.tween = null;
+      this.pose = 'idle';
+      this._finishing = false;
+      this.queue.length = 0;
+      this.onMoveError(error);
     });
   }
 
   _tryStartNext() {
+    if (this.isInputBlocked()) {
+      this.queue.length = 0;
+      return;
+    }
     while (this.queue.length > 0) {
       const direction = this.queue.shift();
       const { dCol, dRow } = DIRECTIONS[direction];

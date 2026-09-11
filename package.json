@@ -1,9 +1,10 @@
 {
-  "name": "cyberfront",
+  "name": "cyberback",
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "CYBER - jogo pixel art isometrico",
+  "description": "CYBER - jogo pixel art 2D visto de cima",
+  "engines": { "node": ">=24" },
   "scripts": {
     "test": "node --test tests/*.test.js",
     "serve": "node scripts/serve.js"
