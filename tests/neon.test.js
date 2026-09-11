@@ -1,12 +1,36 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {fresh,valid,migrate,regenerate,transact,REGEN_MS,WHEEL,colorOf,SPIN_MS} from '../src/neon/economy.js';
+import {fresh,valid,migrate,regenerate,transact,REGEN_MS,WHEEL,colorOf,SPIN_MS,upgradeSave} from '../src/neon/economy.js';
 import {prepareMap,casinoMap} from '../src/neon/maps.js';
 import {parseMap} from '../src/maps/mapParser.js';
+import {MapManager} from '../src/maps/mapManager.js';
+test('informacoes persistem e so pagam BYTE quando vendidas na BLACKNET',()=>{
+  let s=transact(transact(fresh(0),{type:'hackStart'}),{type:'hack'});
+  s=JSON.parse(JSON.stringify(s));assert.ok(valid(s));assert.equal(s.information,1);assert.equal(s.byteBalance,100);
+  assert.throws(()=>transact(s,{type:'sellInformation',mapId:'player_home'}));
+  const sold=transact(s,{type:'sellInformation',mapId:'ghost_row_interior'});
+  assert.equal(sold.byteBalance,130);assert.equal(sold.information,0);
+  assert.throws(()=>transact(sold,{type:'sellInformation',mapId:'ghost_row_interior'}));
+});
+test('estoque antigo Neon recebe campo novo sem perder saldo, pets ou rodada pendente',()=>{
+  const old=transact({...fresh(0),pets:['gato_cinza']},{type:'roulette',result:1,choice:'red'});delete old.information;
+  const before=structuredClone(old),updated=upgradeSave(old);assert.ok(valid(updated));assert.equal(updated.information,0);assert.deepEqual(old,before);
+  assert.deepEqual(updated.pending,old.pending);assert.deepEqual(updated.pets,old.pets);assert.equal(updated.byteBalance,old.byteBalance);
+  assert.equal(upgradeSave({...updated,information:7}).information,7);
+});
+test('estoque invalido ou venda acima do limite nao altera partida',()=>{
+  for(const information of [-1,1.5,NaN,'2'])assert.equal(valid({...fresh(0),information}),false);
+  const s={...fresh(0),information:999999999999};assert.throws(()=>transact(s,{type:'sellInformation',mapId:'ghost_row_interior'}));assert.equal(s.information,999999999999);
+});
+test('BLACKNET abre pela porta da cidade e permite voltar',async()=>{
+  const mm=new MapManager({loadMapJson:async id=>prepareMap(JSON.parse(readFileSync(new URL(`../maps/${id}.json`,import.meta.url))))});
+  await mm.loadMap('district_07',11,6);const entered=await mm.tryMove(11,5,'up');assert.equal(entered.targetMap,'ghost_row_interior');assert.ok(mm.canEnter(mm.playerCol,mm.playerRow));
+  const exit=await mm.tryMove(8,9,'down');assert.equal(exit.targetMap,'district_07');assert.ok(mm.canEnter(mm.playerCol,mm.playerRow));
+});
 test('energia limita a 10 tentativas e nao aceita premio duplicado',()=>{
   let s=fresh(0); for(let i=0;i<10;i++){s=transact(s,{type:'hackStart'});s=transact(s,{type:'hack'});}
-  assert.equal(s.energy,0);assert.equal(s.byteBalance,400);
+  assert.equal(s.energy,0);assert.equal(s.byteBalance,100);assert.equal(s.information,10);
   assert.throws(()=>transact(s,{type:'hackStart'}));assert.throws(()=>transact(s,{type:'hack'}));
 });
 test('cancelar ou errar hack consome energia sem pagar BYTE',()=>{
@@ -29,10 +53,10 @@ test('compra de pet custa 100 e nao repete ou aceita pet inexistente',()=>{
 });
 test('melhoria do PC custa 150 e dobra premio',()=>{
   const s=transact({...fresh(0),byteBalance:200},{type:'upgrade'});assert.equal(s.byteBalance,50);assert.throws(()=>transact(s,{type:'upgrade'}));
-  assert.equal(transact(transact(s,{type:'hackStart'}),{type:'hack'}).byteBalance,110);
+  const hacked=transact(transact(s,{type:'hackStart'}),{type:'hack'});assert.equal(hacked.byteBalance,50);assert.equal(hacked.information,2);
 });
-test('roleta tem todos 37 numeros, 18 de cada cor e giro de 10 segundos',()=>{
-  assert.equal(new Set(WHEEL).size,37);assert.equal(WHEEL.filter(n=>colorOf(n)==='red').length,18);assert.equal(WHEEL.filter(n=>colorOf(n)==='black').length,18);assert.equal(SPIN_MS,10000);
+test('roleta tem todos 37 numeros, 18 de cada cor e giro de 4 segundos',()=>{
+  assert.equal(new Set(WHEEL).size,37);assert.equal(WHEEL.filter(n=>colorOf(n)==='red').length,18);assert.equal(WHEEL.filter(n=>colorOf(n)==='black').length,18);assert.equal(SPIN_MS,4000);
 });
 test('todos os resultados da roleta pagam a cor correta e zero perde',()=>{
   for(let result=0;result<=36;result++)for(const choice of ['red','black']){
@@ -58,7 +82,7 @@ test('efeitos do mapa e casa permanecem intactos e so portas permitidas ficam ab
   for(const id of ['district_07','player_home']){
     const raw=JSON.parse(readFileSync(new URL(`../maps/${id}.json`,import.meta.url)));const original=structuredClone(raw),next=prepareMap(raw);
     assert.deepEqual(next.reflections,raw.reflections);assert.deepEqual(next.dustMotes,raw.dustMotes);assert.deepEqual(next.collision,raw.collision);assert.deepEqual(raw,original);
-    if(id==='district_07')assert.deepEqual([...new Set(next.doors.map(d=>d.target_map))],['player_home','neon_royale']);
+    if(id==='district_07')assert.deepEqual([...new Set(next.doors.map(d=>d.target_map))],['ghost_row_interior','player_home','neon_royale']);
   }
 });
 test('cassino tem caminhos para roleta, trade e saida; VIP e mesas bloqueados',()=>{

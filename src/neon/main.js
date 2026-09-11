@@ -2,13 +2,13 @@ import { MapManager } from '../maps/mapManager.js';
 import { Renderer } from '../render/renderer.js';
 import { MovementController } from '../character/movementController.js';
 import { centerMapOrigin, gridToScreen, screenToGrid } from '../core/topdown.js';
-import { SAVE_KEY, fresh, valid, migrate, regenerate, transact, WHEEL, colorOf, SPIN_MS } from './economy.js';
+import { SAVE_KEY, fresh, valid, upgradeSave, migrate, regenerate, transact, WHEEL, colorOf, SPIN_MS, INFORMATION_PRICE } from './economy.js';
 import { prepareMap, casinoMap, LOCKS } from './maps.js';
 import { drawAvatar } from './avatar.js';
 
 const $=id=>document.getElementById(id), canvas=$('game'),ctx=canvas.getContext('2d');
 const dialog=$('activity'),content=$('dialog-content');
-const names={district_07:'A cidade é sua.',player_home:'Seu esconderijo.',neon_royale:'Neon Royale'};
+const names={district_07:'A cidade é sua.',player_home:'Seu esconderijo.',neon_royale:'Neon Royale',ghost_row_interior:'BLACKNET'};
 const petNames=['Gato Laranja','Gato Cinza','Gato Sphynx'],petIds=['gato_laranja','gato_cinza','gato_sphynx'];
 let state=fresh(), storageBlocked=false, busy=false, loading=false, ready=false, hack=null, lastFrame=0, wheelAngle=0;
 let origin={originX:0,originY:0};
@@ -16,7 +16,7 @@ const keys=new Set(), images={};
 function message(text){$('message').textContent=text;}
 try {
   const raw=localStorage.getItem(SAVE_KEY);
-  if(raw!==null){const parsed=JSON.parse(raw);if(parsed.version===2&&parsed.hackActive===undefined)parsed.hackActive=false;if(!valid(parsed))throw Error();state=parsed;state.hackActive=false;}
+  if(raw!==null){const parsed=upgradeSave(JSON.parse(raw));if(!valid(parsed))throw Error();state=parsed;state.hackActive=false;}
   else {const old=localStorage.getItem('cyberback.save.v1');if(old){const imported=migrate(JSON.parse(old));if(!imported)throw Error();state=imported;message('Saldo, energia e pets da partida anterior foram recuperados.');}}
   state=regenerate(state);
   if(state.pending){state=transact(state,{type:'settle'});message('Sua rodada anterior foi concluída. O saldo já está atualizado.');}
@@ -29,6 +29,7 @@ function update(){
   $('balance').innerHTML=`${state.byteBalance.toLocaleString('pt-BR')} <span>BYTE</span>`;
   const energy=$('energy-value');if(energy)energy.textContent=`${state.energy}/100`;
   const bar=$('energy-bar');if(bar)bar.value=state.energy;
+  const inventory=$('information-count');if(inventory)inventory.textContent=state.information;
   $('character').value=state.characterId;
 }
 function act(action){try{const next=transact(regenerate(state),action);save(next);state=next;update();return true;}catch(e){message(e.message);return false;}}
@@ -36,7 +37,7 @@ function randomInt(n){const a=new Uint32Array(1);let v;const limit=Math.floor(42
 function loadImage(file){if(!images[file]){const im=new Image();im.src=`assets/backgrounds/${file}`;images[file]=im;}return images[file];}
 const mm=new MapManager({loadMapJson:async id=>{
   if(id==='neon_royale')return casinoMap();
-  if(!['district_07','player_home'].includes(id))throw Error('Local fechado.');
+  if(!['district_07','player_home','ghost_row_interior'].includes(id))throw Error('Local fechado.');
   const response=await fetch(`maps/${id}.json`);if(!response.ok)throw Error('Falha ao carregar o mapa.');return prepareMap(await response.json());
 }});
 const renderer=new Renderer(ctx,origin,{backgroundImages:images});
@@ -50,7 +51,7 @@ function mapChanged(){
 async function go(id){
   if(busy||loading||dialog.open||controller.isMoving||controller._finishing)return;
   loading=true;keys.clear();controller.queue.length=0;$('map-loading').hidden=false;
-  try{const pos=id==='neon_royale'?[11,13]:id==='player_home'?[5,7]:[12,8];await mm.loadMap(id,...pos);mapChanged();ready=true;}
+  try{const pos=id==='neon_royale'?[11,13]:id==='player_home'?[5,7]:id==='ghost_row_interior'?[8,8]:[12,8];await mm.loadMap(id,...pos);mapChanged();ready=true;}
   catch{message('Não consegui carregar o local. Tente novamente.');}
   finally{loading=false;$('map-loading').hidden=true;}
 }
@@ -58,13 +59,21 @@ const card=(symbol,title,desc,buttons,extra='')=>`<section class="card ${extra}"
 function activities(){
   const id=mm.currentMap.id;
   let html=`<div class="energy"><span>⚡ Energia <strong id="energy-value">${state.energy}/100</strong></span><progress id="energy-bar" value="${state.energy}" max="100"></progress><small>Hack: 10 de energia · recupera 1 a cada 30 s</small></div>`;
-  if(id==='player_home')html+=card('⌘','Conecte. Invada. Lucre.','Acerte a sequência do terminal e receba BYTE direto.',`<button id="hack-open" class="primary">Hackear · +${state.pcLevel===1?30:60} BYTE</button><button id="trade-open">Trade BITE / BYTE</button><button id="upgrade">${state.pcLevel===1?'Melhorar PC · 150 BYTE':'PC melhorado · nível 2'}</button>`)+card('♧','Seus companheiros','Pets decorativos para deixar sua casa com a sua cara.','<button id="pets-open">Comprar pets · 100 BYTE</button>');
+  html+=`<div class="energy"><span>▤ Informações <strong id="information-count">${state.information}</strong></span><small>Venda na BLACKNET · ${INFORMATION_PRICE} BYTE cada</small></div>`;
+  if(id==='player_home')html+=card('⌘','Conecte. Invada. Lucre.','Colete informações no terminal e venda na BLACKNET.',`<button id="hack-open" class="primary">Hackear · +${state.pcLevel} ${state.pcLevel===1?'informação':'informações'}</button><button id="trade-open">Trade BITE / BYTE</button><button id="upgrade">${state.pcLevel===1?'Melhorar PC · 150 BYTE':'PC melhorado · nível 2'}</button>`)+card('♧','Seus companheiros','Pets decorativos para deixar sua casa com a sua cara.','<button id="pets-open">Comprar pets · 100 BYTE</button>');
+  else if(id==='ghost_row_interior')html+=card('▤','Informação vale dinheiro.',`Venda suas informações por ${INFORMATION_PRICE} BYTE cada. Seu estoque fica salvo até você vender.`,`<button id="sell-open" class="primary">Vender informações</button><button data-go="player_home">Voltar para casa</button>`);
   else if(id==='neon_royale')html+=card('♠','Faça sua jogada.','Uma rodada, uma escolha. O próximo número pode ser o seu.','<button id="roulette-open" class="gold">Jogar roleta</button>','casino')+`<p class="dialog-note">♔ Área VIP fechada por enquanto.</p>`;
-  else html+=card('⌂','Comece em casa.','Use seu PC para hackear, juntar BYTE e comprar seus pets.','<button data-go="player_home" class="primary">Ir para casa</button>')+card('♠','NEON ROYALE','Roleta sob as luzes de Sector 7.','<button data-go="neon_royale" class="gold">Entrar no cassino</button>','casino')+`<p class="dialog-note">🔒 Bar, BLACKNET e CORP estão fechados.</p>`;
+  else html+=card('⌂','Comece em casa.','Hackeie para obter informações. Venda na BLACKNET para ganhar BYTE.','<button data-go="player_home" class="primary">Ir para casa</button><button data-go="ghost_row_interior">Vender na BLACKNET</button>')+card('♠','NEON ROYALE','Roleta sob as luzes de Sector 7.','<button data-go="neon_royale" class="gold">Entrar no cassino</button>','casino')+`<p class="dialog-note">🔒 Bar e CORP estão fechados.</p>`;
   $('activities').innerHTML=html;
   $('hack-open')?.addEventListener('click',openHack);$('pets-open')?.addEventListener('click',openPets);
   $('roulette-open')?.addEventListener('click',openRoulette);$('trade-open')?.addEventListener('click',openTrade);
-  if($('upgrade')){$('upgrade').disabled=state.pcLevel===2;$('upgrade').onclick=()=>{if(act({type:'upgrade'})){message('PC melhorado: cada hack correto rende 60 BYTE.');activities();}};}
+  $('sell-open')?.addEventListener('click',openSell);
+  if($('upgrade')){$('upgrade').disabled=state.pcLevel===2;$('upgrade').onclick=()=>{if(act({type:'upgrade'})){message('PC melhorado: cada hack correto rende 2 informações.');activities();}};}
+}
+function openSell(){
+  if(mm.currentMap.id!=='ghost_row_interior'||!openDialog('BLACKNET · MERCADO DE INFORMAÇÕES'))return;
+  content.innerHTML=`<h2>Venda suas informações.</h2><p>Seu estoque: <strong id="sale-stock">${state.information}</strong></p><p class="dialog-note">Cada informação vale ${INFORMATION_PRICE} BYTE.</p><button id="sell-all" class="primary" ${state.information===0?'disabled':''}>Vender tudo · ${state.information*INFORMATION_PRICE} BYTE</button><div id="sale-result" class="result" role="status"></div>`;
+  $('sell-all').onclick=()=>{const amount=state.information*INFORMATION_PRICE;if(act({type:'sellInformation',mapId:mm.currentMap.id})){$('sell-all').disabled=true;$('sell-all').textContent='Estoque vendido';$('sale-stock').textContent='0';$('sale-result').textContent=`Vendido! +${amount} BYTE`;message(`Informações vendidas na BLACKNET: +${amount} BYTE.`);}};
 }
 function openDialog(kicker){if(busy||loading||controller.isMoving)return false;keys.clear();controller.queue.length=0;$('dialog-kicker').textContent=kicker;dialog.showModal();return true;}
 function closeDialog(){if(busy)return;if(hack)act({type:'hackCancel'});hack=null;dialog.close();canvas.focus();activities();}
@@ -72,14 +81,14 @@ $('close').onclick=closeDialog;dialog.addEventListener('cancel',e=>{e.preventDef
 function setBusy(value){busy=value;$('close').disabled=value;document.querySelectorAll('[data-go],#character').forEach(b=>b.disabled=value);}
 function openHack(){
   if(!openDialog('MINHA CASA · TERMINAL'))return;
-  content.innerHTML=`<h2>Quebre a sequência.</h2><p class="dialog-note">Repita os 3 símbolos na ordem. Cada tentativa usa 10 de energia. Acertou? +${state.pcLevel===1?30:60} BYTE.</p><div class="letters" id="sequence"><span>?</span><span>?</span><span>?</span></div><div class="hack-keys"><button id="start-hack" class="primary">Iniciar hack · 10 de energia</button></div><div class="result" id="hack-result"></div>`;
+  content.innerHTML=`<h2>Quebre a sequência.</h2><p class="dialog-note">Repita os 3 símbolos na ordem. Cada tentativa usa 10 de energia. Acertou? +${state.pcLevel} ${state.pcLevel===1?'informação':'informações'} para vender na BLACKNET.</p><div class="letters" id="sequence"><span>?</span><span>?</span><span>?</span></div><div class="hack-keys"><button id="start-hack" class="primary">Iniciar hack · 10 de energia</button></div><div class="result" id="hack-result"></div>`;
   $('start-hack').onclick=()=>{if(!act({type:'hackStart'}))return;hack={sequence:Array.from({length:3},()=>['A','B','C'][randomInt(3)]),index:0};$('sequence').innerHTML=hack.sequence.map(x=>`<span>${x}</span>`).join('');document.querySelector('.hack-keys').innerHTML=['A','B','C'].map(x=>`<button data-letter="${x}">${x}</button>`).join('');document.querySelectorAll('[data-letter]').forEach(b=>b.onclick=()=>hackLetter(b.dataset.letter));};
 }
 function hackLetter(letter){
   if(!hack)return;
   if(hack.sequence[hack.index]!==letter){act({type:'hackCancel'});hack=null;$('hack-result').textContent='Sequência incorreta.';finishHack();return;}
   $('sequence').children[hack.index].classList.add('done');hack.index++;
-  if(hack.index===3){hack=null;if(act({type:'hack'}))$('hack-result').textContent=`Hack completo! +${state.pcLevel===1?30:60} BYTE`;finishHack();}
+  if(hack.index===3){hack=null;if(act({type:'hack'}))$('hack-result').textContent=`+${state.pcLevel} ${state.pcLevel===1?'informação':'informações'}! Venda na BLACKNET.`;finishHack();}
 }
 function finishHack(){document.querySelector('.hack-keys').innerHTML='<button id="again-hack">Novo hack</button>';$('again-hack').onclick=()=>{dialog.close();openHack();};}
 function openPets(){
@@ -123,7 +132,7 @@ const moves={ArrowUp:'up',w:'up',ArrowDown:'down',s:'down',ArrowLeft:'left',a:'l
 window.addEventListener('keydown',e=>{if(e.target.matches('select,input,textarea'))return;if(dialog.open){if(hack&&['a','b','c'].includes(e.key.toLowerCase())){e.preventDefault();hackLetter(e.key.toUpperCase());}return;}const d=moves[e.key];if(d){e.preventDefault();keys.add(d);}if(e.key.toLowerCase()==='e')interact();});
 window.addEventListener('keyup',e=>keys.delete(moves[e.key]));window.addEventListener('blur',()=>keys.clear());
 document.querySelectorAll('[data-move]').forEach(b=>b.onclick=()=>controller.enqueueInput(b.dataset.move));$('interact').onclick=()=>interact();
-function interact(){if(!ready||busy||dialog.open)return;if(mm.currentMap.id==='player_home')openHack();else if(mm.currentMap.id==='neon_royale')openRoulette();else message('Entre na sua casa ou no NEON ROYALE. Os outros prédios estão fechados.');}
+function interact(){if(!ready||busy||dialog.open)return;if(mm.currentMap.id==='player_home')openHack();else if(mm.currentMap.id==='neon_royale')openRoulette();else if(mm.currentMap.id==='ghost_row_interior')openSell();else message('Casa: hack e trade. BLACKNET: venda informações. NEON ROYALE: roleta.');}
 function pathTo(col,row){
   if(!mm.canEnter(col,row)||controller.isMoving)return;
   const start=[mm.playerCol,mm.playerRow],queue=[[...start,[]]],seen=new Set([start.join(',')]);
@@ -134,6 +143,7 @@ canvas.onclick=e=>{
   if(!ready||busy||dialog.open||loading)return;canvas.focus();const rect=canvas.getBoundingClientRect();const x=(e.clientX-rect.left)*canvas.width/rect.width,y=(e.clientY-rect.top)*canvas.height/rect.height;const grid=screenToGrid(x,y,origin.originX,origin.originY);
   if(mm.currentMap.id==='district_07'){
     if(LOCKS.some(l=>Math.abs(grid.col-l.x)<2&&grid.row<6)){message('🔒 Este prédio está fechado.');return;}
+    if(grid.col>=10&&grid.col<=13&&grid.row>=2&&grid.row<=5){go('ghost_row_interior');return;}
     if(grid.col>=17&&grid.col<=20&&grid.row>=10&&grid.row<=13){go('neon_royale');return;}
     if(grid.col>=5&&grid.col<=8&&grid.row>=11&&grid.row<=13){go('player_home');return;}
   }else if(mm.currentMap.id==='neon_royale'){

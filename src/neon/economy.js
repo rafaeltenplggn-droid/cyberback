@@ -2,14 +2,23 @@ export const SAVE_KEY = 'cyberback.neon.v2';
 export const PET_IDS = ['gato_laranja', 'gato_cinza', 'gato_sphynx'];
 export const WHEEL = [0,32,15,19,4,21,2,25,17,34,6,27,13,36,11,30,8,23,10,5,24,16,33,1,20,14,31,9,22,18,29,7,28,12,35,3,26];
 export const RED = new Set([1,3,5,7,9,12,14,16,18,19,21,23,25,27,30,32,34,36]);
-export const SPIN_MS = 10000;
+export const SPIN_MS = 4000;
+export const INFORMATION_PRICE = 30;
 export const HACK_ENERGY = 10;
 export const REGEN_MS = 30000;
 const money = n => Number.isSafeInteger(n) && n >= 0 && n < 1e12;
 export const colorOf = n => n === 0 ? 'green' : RED.has(n) ? 'red' : 'black';
-export function fresh(now = Date.now()) { return {version:2, byteBalance:100, pcLevel:1, pets:[], characterId:'character1', pending:null, energy:100, energyAt:now, hackActive:false}; }
+export function fresh(now = Date.now()) { return {version:2, byteBalance:100, information:0, pcLevel:1, pets:[], characterId:'character1', pending:null, energy:100, energyAt:now, hackActive:false}; }
+export function upgradeSave(old) {
+  const next = structuredClone(old);
+  if(next?.version === 2) {
+    if(next.information === undefined) next.information = 0;
+    if(next.hackActive === undefined) next.hackActive = false;
+  }
+  return next;
+}
 export function valid(s) {
-  return !!s && s.version === 2 && money(s.byteBalance) && [1,2].includes(s.pcLevel)
+  return !!s && s.version === 2 && money(s.byteBalance) && money(s.information) && [1,2].includes(s.pcLevel)
     && Number.isInteger(s.energy) && s.energy >= 0 && s.energy <= 100 && Number.isSafeInteger(s.energyAt) && s.energyAt >= 0 && typeof s.hackActive === 'boolean'
     && /^character[1-4]$/.test(s.characterId) && Array.isArray(s.pets)
     && s.pets.every(id => PET_IDS.includes(id)) && new Set(s.pets).size === s.pets.length
@@ -20,6 +29,8 @@ export function valid(s) {
 export function migrate(old, now = Date.now()) {
   if (!old || old.version !== 1 || !money(old.byteBalance)) return null;
   const s = fresh(now); s.byteBalance = old.byteBalance;
+  const inventory = ['comum','rara','epica'].map(key => old.information?.[key] ?? 0);
+  if(inventory.every(money) && money(inventory.reduce((a,b)=>a+b,0))) s.information = inventory.reduce((a,b)=>a+b,0);
   if (Number.isFinite(old.energy)) s.energy = Math.max(0, Math.min(100, Math.floor(old.energy)));
   s.pets = [...new Set((Array.isArray(old.pets) ? old.pets : []).filter(id => PET_IDS.includes(id)))];
   if (/^character[1-4]$/.test(old.characterId)) s.characterId = old.characterId;
@@ -48,7 +59,14 @@ export function transact(s, action) {
   }
   else if (action.type === 'hack') {
     if (!next.hackActive) throw new Error('Inicie uma tentativa primeiro.');
-    next.byteBalance += next.pcLevel === 1 ? 30 : 60; next.hackActive = false;
+    next.information += next.pcLevel; next.hackActive = false;
+  }
+  else if (action.type === 'sellInformation') {
+    if(action.mapId !== 'ghost_row_interior') throw new Error('Venda suas informações na BLACKNET.');
+    if(next.hackActive) throw new Error('Termine o hack atual.');
+    if(next.information === 0) throw new Error('Você ainda não tem informações para vender.');
+    next.byteBalance += next.information * INFORMATION_PRICE;
+    next.information = 0;
   }
   else if (action.type === 'hackCancel') next.hackActive = false;
   else if (action.type === 'pet') {
