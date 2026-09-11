@@ -9,9 +9,9 @@ test('informacoes persistem e so pagam BYTE quando vendidas na BLACKNET',()=>{
   let s=transact(transact(fresh(0),{type:'hackStart'}),{type:'hack'});
   s=JSON.parse(JSON.stringify(s));assert.ok(valid(s));assert.equal(s.information,1);assert.equal(s.byteBalance,100);
   assert.throws(()=>transact(s,{type:'sellInformation',mapId:'player_home'}));
-  const sold=transact(s,{type:'sellInformation',mapId:'ghost_row_interior'});
+  const sold=transact(s,{type:'sellInformation',mapId:'ghost_row_interior',col:10,row:8});
   assert.equal(sold.byteBalance,130);assert.equal(sold.information,0);
-  assert.throws(()=>transact(sold,{type:'sellInformation',mapId:'ghost_row_interior'}));
+  assert.throws(()=>transact(sold,{type:'sellInformation',mapId:'ghost_row_interior',col:10,row:8}));
 });
 test('estoque antigo Neon recebe campo novo sem perder saldo, pets ou rodada pendente',()=>{
   const old=transact({...fresh(0),pets:['gato_cinza']},{type:'roulette',result:1,choice:'red'});delete old.information;
@@ -21,7 +21,7 @@ test('estoque antigo Neon recebe campo novo sem perder saldo, pets ou rodada pen
 });
 test('estoque invalido ou venda acima do limite nao altera partida',()=>{
   for(const information of [-1,1.5,NaN,'2'])assert.equal(valid({...fresh(0),information}),false);
-  const s={...fresh(0),information:999999999999};assert.throws(()=>transact(s,{type:'sellInformation',mapId:'ghost_row_interior'}));assert.equal(s.information,999999999999);
+  const s={...fresh(0),information:999999999999};assert.throws(()=>transact(s,{type:'sellInformation',mapId:'ghost_row_interior',col:10,row:8}));assert.equal(s.information,999999999999);
 });
 test('BLACKNET abre pela porta da cidade e permite voltar',async()=>{
   const mm=new MapManager({loadMapJson:async id=>prepareMap(JSON.parse(readFileSync(new URL(`../maps/${id}.json`,import.meta.url))))});
@@ -91,3 +91,4 @@ test('cassino tem caminhos para roleta, trade e saida; VIP e mesas bloqueados',(
   for(const point of ['6,10','11,6','11,15'])assert.ok(visited.has(point),point);
   assert.ok(m.isBlocked(20,3));assert.ok(m.isBlocked(6,8));assert.ok(m.isBlocked(11,8));
 });
+
