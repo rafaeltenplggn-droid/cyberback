@@ -46,51 +46,51 @@ export function regenerate(s, now = Date.now()) {
 }
 // A aposta e seu resultado ficam juntos no save. Recarregar liquida uma unica vez.
 export function transact(s, action) {
-  if (!valid(s)) throw new Error('Partida inválida.');
+  if (!valid(s)) throw new Error('Invalid game state.');
   const next = structuredClone(s);
   if (action.type === 'settle') {
     if (!next.pending) return next;
     next.byteBalance += next.pending.payout; next.pending = null; return next;
   }
-  if (next.pending) throw new Error('Espere a rodada terminar.');
+  if (next.pending) throw new Error('Wait for the round to finish.');
   if (action.type === 'hackStart') {
-    if (next.hackActive) throw new Error('Termine o hack atual.');
-    if (next.energy < HACK_ENERGY) throw new Error('Energia insuficiente. Ela se recupera aos poucos.');
+    if (next.hackActive) throw new Error('Finish the current hack.');
+    if (next.energy < HACK_ENERGY) throw new Error('Not enough energy. It regenerates over time.');
     next.energy -= HACK_ENERGY; next.hackActive = true;
   }
   else if (action.type === 'hack') {
-    if (!next.hackActive) throw new Error('Inicie uma tentativa primeiro.');
+    if (!next.hackActive) throw new Error('Start an attempt first.');
     next.information += next.pcLevel; next.hackActive = false;
   }
   else if (action.type === 'sellInformation') {
-    if(!canTalkToBroker(action.mapId, action.col, action.row)) throw new Error('Aproxime-se de Cipher na BLACKNET para vender.');
-    if(next.hackActive) throw new Error('Termine o hack atual.');
-    if(next.information === 0) throw new Error('Você ainda não tem informações para vender.');
+    if(!canTalkToBroker(action.mapId, action.col, action.row)) throw new Error('Approach Cipher on BLACKNET to sell.');
+    if(next.hackActive) throw new Error('Finish the current hack.');
+    if(next.information === 0) throw new Error('You have no intel to sell yet.');
     next.byteBalance += next.information * INFORMATION_PRICE;
     next.information = 0;
   }
   else if (action.type === 'hackCancel') next.hackActive = false;
   else if (action.type === 'pet') {
-    if (!PET_IDS.includes(action.id) || next.pets.includes(action.id)) throw new Error('Pet indisponível.');
-    if (next.byteBalance < 100) throw new Error('Você precisa de 100 BYTE.');
+    if (!PET_IDS.includes(action.id) || next.pets.includes(action.id)) throw new Error('Pet unavailable.');
+    if (next.byteBalance < 100) throw new Error('You need 100 BYTE.');
     next.byteBalance -= 100; next.pets.push(action.id);
   } else if (action.type === 'upgrade') {
-    if (next.pcLevel !== 1) throw new Error('Seu PC já está no máximo.');
-    if (next.byteBalance < 150) throw new Error('Você precisa de 150 BYTE.');
+    if (next.pcLevel !== 1) throw new Error('Your PC is already fully upgraded.');
+    if (next.byteBalance < 150) throw new Error('You need 150 BYTE.');
     next.byteBalance -= 150; next.pcLevel = 2;
   } else if (action.type === 'roulette' || action.type === 'trade') {
-    if (next.byteBalance < 20) throw new Error('Você precisa de 20 BYTE.');
+    if (next.byteBalance < 20) throw new Error('You need 20 BYTE.');
     let payout;
     if (action.type === 'roulette') {
-      if (!['red','black'].includes(action.choice) || !Number.isInteger(action.result) || action.result < 0 || action.result > 36) throw new Error('Aposta inválida.');
+      if (!['red','black'].includes(action.choice) || !Number.isInteger(action.result) || action.result < 0 || action.result > 36) throw new Error('Invalid bet.');
       payout = colorOf(action.result) === action.choice ? 40 : 0;
     } else {
-      if (!['up','down'].includes(action.choice) || ![0,1].includes(action.result)) throw new Error('Trade inválido.');
+      if (!['up','down'].includes(action.choice) || ![0,1].includes(action.result)) throw new Error('Invalid trade.');
       payout = action.choice === (action.result ? 'up' : 'down') ? 38 : 0;
     }
     next.byteBalance -= 20;
     next.pending = {type:action.type, result:action.result, payout};
-  } else throw new Error('Ação inválida.');
-  if (!valid(next)) throw new Error('Limite de saldo atingido.');
+  } else throw new Error('Invalid action.');
+  if (!valid(next)) throw new Error('Balance limit reached.');
   return next;
 }
