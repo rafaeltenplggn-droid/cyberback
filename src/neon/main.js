@@ -36,6 +36,9 @@ function update(){
   const bar=$('energy-bar');if(bar)bar.value=state.energy;
   const inventory=$('information-count');if(inventory)inventory.textContent=state.information;
   $('character').value=state.characterId;
+  if($('pc-energy'))$('pc-energy').textContent=state.energy+'/100';
+  if($('pc-files'))$('pc-files').textContent=state.information+' arquivos';
+  if($('pc-balance'))$('pc-balance').textContent=state.byteBalance+' BYTE';
 }
 function act(action){try{const next=transact(regenerate(state),action);save(next);state=next;update();return true;}catch(e){message(e.message);return false;}}
 function randomInt(n){const a=new Uint32Array(1);let v;const limit=Math.floor(4294967296/n)*n;do{crypto.getRandomValues(a);v=a[0];}while(v>=limit);return v%n;}
@@ -87,24 +90,32 @@ function openSell(){
   content.innerHTML=`<h2>Tem informações para mim?</h2><p class="dialog-note">Cipher: “Dados bons têm seu preço. Eu pago em BYTE.”</p><p>Seu estoque: <strong id="sale-stock">${state.information}</strong></p><p class="dialog-note">Cada informação vale ${INFORMATION_PRICE} BYTE.</p><button id="sell-all" class="primary" ${state.information===0?'disabled':''}>Vender tudo · ${state.information*INFORMATION_PRICE} BYTE</button><div id="sale-result" class="result" role="status"></div>`;
   $('sell-all').onclick=()=>{const amount=state.information*INFORMATION_PRICE;if(act({type:'sellInformation',mapId:mm.currentMap.id,col:mm.playerCol,row:mm.playerRow})){$('sell-all').disabled=true;$('sell-all').textContent='Estoque vendido';$('sale-stock').textContent='0';$('sale-result').textContent=`Vendido! +${amount} BYTE`;message(`Informações vendidas na BLACKNET: +${amount} BYTE.`);}};
 }
-function openDialog(kicker){if(busy||loading||controller.isMoving)return false;keys.clear();controller.queue.length=0;$('dialog-kicker').textContent=kicker;dialog.showModal();window.scrollTo({top:0,behavior:"instant"});return true;}
+function openDialog(kicker){if(busy||loading||controller.isMoving)return false;keys.clear();controller.queue.length=0;dialog.classList.remove('pc-monitor');$('close').textContent='✕';$('dialog-kicker').textContent=kicker;dialog.showModal();window.scrollTo({top:0,behavior:"instant"});return true;}
 function closeDialog(){if(busy)return;clearInterval(hackTimer);hackTimer=null;seatedPC=false;if(hack)act({type:'hackCancel'});hack=null;dialog.close();canvas.focus();activities();}
 $('close').onclick=closeDialog;dialog.addEventListener('cancel',e=>{e.preventDefault();closeDialog();});
-function setBusy(value){busy=value;$('close').disabled=value;document.querySelectorAll('[data-go],#character').forEach(b=>b.disabled=value);}
+function setBusy(value){busy=value;lockPCApps(value);$('close').disabled=value;document.querySelectorAll('[data-go],#character').forEach(b=>b.disabled=value);}
 function visitPC(mode){
   if(mm.currentMap.id!==HOME_PC.mapId||busy||loading||dialog.open||controller.isMoving)return;
   if(atHomePC(mm.currentMap.id,mm.playerCol,mm.playerRow)){mode==='trade'?openTrade():openHack();return;}
   keys.clear();approachingBroker=false;pathTo(HOME_PC.col,HOME_PC.row);pendingPC=mode;message('Indo até a cadeira do PC…');
 }
+function mountPC(mode){
+  dialog.classList.add('pc-monitor');$('dialog-kicker').textContent='SECTOR OS / TERMINAL PESSOAL';$('close').textContent='Sair do PC ×';
+  const app=content.innerHTML;
+  content.innerHTML=`<div class="pc-desktop"><div class="pc-system"><span>● CONEXÃO LOCAL</span><span>PC LVL ${state.pcLevel} / SECTOR 7</span></div><div class="pc-layout"><section class="pc-sidebar" aria-label="Aplicativos do computador"><div class="pc-logo">S_</div><small>SECTOR OS</small><button data-pc="hack" class="${mode==='hack'?'selected':''}">⌘ Invasão</button><button data-pc="trade" class="${mode==='trade'?'selected':''}">↗ Trade</button><div class="pc-storage"><small>ARQUIVOS COLETADOS</small><strong id="pc-files">${state.information} arquivos</strong><p>Venda seus dados para Cipher na BLACKNET.</p></div></section><section class="pc-app"><div class="pc-window-title"><span>${mode==='hack'?'intrusion.exe':'market.exe'}</span><span>− □</span></div><div class="pc-command">guest@sector7:~$ ${mode==='hack'?'connect --target encrypted':'open BITE/BYTE'} ▌</div><div class="pc-app-body">${app}</div></section></div><div class="pc-status"><span>⚡ <b id="pc-energy">${state.energy}/100</b></span><span id="pc-balance">${state.byteBalance} BYTE</span><span>SESSÃO PRIVADA</span></div></div>`;
+  content.querySelectorAll('[data-pc]').forEach(button=>button.onclick=()=>{if(busy||hack)return;dialog.close();button.dataset.pc==='hack'?openHack():openTrade();});
+}
+function lockPCApps(value){content.querySelectorAll('[data-pc]').forEach(button=>button.disabled=value);}
 function openHack(){
   if(!atHomePC(mm.currentMap.id,mm.playerCol,mm.playerRow)){visitPC('hack');return;}
   if(!openDialog('MINHA CASA · TERMINAL'))return;
   seatedPC=true;
   content.innerHTML='<h2>Memorize. Invada.</h2><p class="dialog-note">Memorize 5 símbolos em 1,8 segundo. Depois eles somem: você tem 7 segundos para repetir. Cada tentativa custa 10 de energia.</p><div class="letters" id="sequence"></div><div id="hack-clock" role="status">Prepare-se para memorizar.</div><div class="hack-keys"><button id="start-hack" class="primary">Iniciar hack · 10 de energia</button></div><div class="result" id="hack-result"></div>';
+  mountPC('hack');
   $('sequence').innerHTML=Array(SEQUENCE_LENGTH).fill('<span>?</span>').join('');
   $('start-hack').onclick=()=>{
     if(!act({type:'hackStart'}))return;
-    hack=createChallenge(randomInt,performance.now());
+    hack=createChallenge(randomInt,performance.now());lockPCApps(true);
     document.querySelector('.hack-keys').innerHTML=HACK_SYMBOLS.map(x=>'<button data-letter="'+x+'">'+x+'</button>').join('');
     document.querySelectorAll('[data-letter]').forEach(b=>b.onclick=()=>hackLetter(b.dataset.letter));
     refreshHack();clearInterval(hackTimer);hackTimer=setInterval(refreshHack,50);
@@ -128,7 +139,7 @@ function hackLetter(letter){
 function finishChallenge(success,result){
   clearInterval(hackTimer);hackTimer=null;
   if(success){if(!act({type:'hack'}))result='Não foi possível concluir o hack.';}else act({type:'hackCancel'});
-  hack=null;$('hack-result').textContent=result;$('hack-clock').textContent=success?'ACESSO CONCEDIDO':'ACESSO NEGADO';
+  hack=null;lockPCApps(false);$('hack-result').textContent=result;$('hack-clock').textContent=success?'ACESSO CONCEDIDO':'ACESSO NEGADO';
   if(success)[...$('sequence').children].forEach(cell=>{cell.textContent='✓';cell.classList.add('done');});
   document.querySelector('.hack-keys').innerHTML='<button id="again-hack">Novo hack</button>';
   $('again-hack').onclick=()=>{dialog.close();openHack();};
@@ -161,6 +172,7 @@ function openTrade(){
   if(!openDialog('MINHA CASA · BITE / BYTE'))return;
   seatedPC=true;
   content.innerHTML=`<h2>Qual o próximo movimento?</h2><div class="ticker"><span>BITE / BYTE</span><span>Rodada virtual · 4 s</span></div><svg class="chart" viewBox="0 0 400 140" role="img" aria-label="Gráfico ilustrativo do trade"><path class="baseline" d="M0 70H400"/><polyline id="trade-line" points="0,93 25,80 50,87 75,65 100,77 125,51 150,60 175,47 200,70"/></svg><div class="result" id="trade-result">Alta ou baixa?</div><p class="dialog-note">Cada rodada custa 20 BYTE. Acerto retorna 38 (lucro de 18). Chance de 50%; o gráfico é ilustrativo.</p><div class="bets"><button data-trade="up" class="primary">↑ Alta · 20 BYTE</button><button data-trade="down" class="red">↓ Baixa · 20 BYTE</button></div>`;
+  mountPC('trade');
   content.querySelectorAll('[data-trade]').forEach(b=>b.onclick=()=>trade(b.dataset.trade));
 }
 async function trade(choice){
