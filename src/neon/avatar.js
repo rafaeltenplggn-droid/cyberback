@@ -18,7 +18,7 @@ sheet.onload = () => {
     return {x:left,y:top,w:right-left+1,h:bottom-top+1};
   }));
 };
-export function drawAvatar(ctx,x,feet,id,direction,pose,height=48) {
+export function drawAvatar(ctx,x,feet,id,direction,pose,height=48,seated=false) {
   if(!frames)return;
   const row=Math.max(0,Math.min(3,Number(id.slice(-1))-1));
   const view=direction==='up'?2:direction==='left'||direction==='right'?1:0;
@@ -27,6 +27,14 @@ export function drawAvatar(ctx,x,feet,id,direction,pose,height=48) {
   ctx.fillStyle='#0007';ctx.beginPath();ctx.ellipse(0,-1,w*.37,3,0,0,Math.PI*2);ctx.fill();
   if(direction==='left')ctx.scale(-1,1);
   ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';
+  if(seated){
+    // Tronco de costas, pernas recolhidas e bracos junto ao teclado.
+    const bodyHeight=height*.76;
+    ctx.drawImage(sheet,f.x,f.y,f.w,f.h*.77,-w/2,-bodyHeight,w,bodyHeight);
+    ctx.fillStyle='#58cad9';const tap=Math.sin(performance.now()/130)>0?1:0;
+    ctx.fillRect(-w*.5,-bodyHeight*.29+tap,3,3);ctx.fillRect(w*.5-3,-bodyHeight*.29+1-tap,3,3);
+    ctx.restore();return;
+  }
   const step=pose==='step1'?1:pose==='step2'?-1:0;
   const legStart=Math.round(f.h*.77),bodyH=Math.round(height*.77),legH=height-bodyH;
   ctx.drawImage(sheet,f.x,f.y,f.w,legStart,-w/2,-height,w,bodyH);

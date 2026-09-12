@@ -2,6 +2,8 @@ import { BLACKNET_NPC } from './blacknetNpc.js';
 export const LOCKS = [{x:3.5,y:4.3,name:'BAR'}, {x:18.5,y:4.3,name:'CORP'}];
 export function prepareMap(raw) {
   const map = structuredClone(raw);
+  // A divisoria do banheiro ocupa esta coluna na arte, embora o mapa antigo a deixasse aberta.
+  if(map.id === 'player_home') for(let row=1;row<=4;row++) map.collision[row][4]=1;
   if(map.id === BLACKNET_NPC.mapId) map.collision[BLACKNET_NPC.row][BLACKNET_NPC.col] = 1;
   if (map.id === 'district_07') {
     map.background = 'sector7_neon_royale.png';
