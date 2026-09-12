@@ -5,6 +5,9 @@ import { centerMapOrigin, gridToScreen, screenToGrid } from '../core/topdown.js'
 import { SAVE_KEY, fresh, valid, upgradeSave, migrate, regenerate, transact, WHEEL, colorOf, SPIN_MS, INFORMATION_PRICE } from './economy.js';
 import { prepareMap, casinoMap, LOCKS } from './maps.js';
 import { drawAvatar } from './avatar.js';
+import {findPath} from './navigation.js';
+import {HOME_PC,atHomePC,drawInteriorForeground,drawPCChair} from './interiorLayers.js';
+import {HACK_SYMBOLS,createChallenge,challengePhase,enterSymbol,SEQUENCE_LENGTH,ANSWER_MS} from './memoryHack.js';
 import { BLACKNET_NPC as broker, canTalkToBroker } from './blacknetNpc.js';
 
 const $=id=>document.getElementById(id), canvas=$('game'),ctx=canvas.getContext('2d');
@@ -12,7 +15,7 @@ const dialog=$('activity'),content=$('dialog-content');
 const names={district_07:'A cidade é sua.',player_home:'Seu esconderijo.',neon_royale:'Neon Royale',ghost_row_interior:'BLACKNET'};
 const petNames=['Gato Laranja','Gato Cinza','Gato Sphynx'],petIds=['gato_laranja','gato_cinza','gato_sphynx'];
 let state=fresh(), storageBlocked=false, busy=false, loading=false, ready=false, hack=null, lastFrame=0, wheelAngle=0;
-let approachingBroker=false;
+let approachingBroker=false,pendingPC=null,seatedPC=false,hackTimer=null;
 let origin={originX:0,originY:0};
 const keys=new Set(), images={};
 function message(text){$('message').textContent=text;}
@@ -45,7 +48,7 @@ const mm=new MapManager({loadMapJson:async id=>{
 const renderer=new Renderer(ctx,origin,{backgroundImages:images});
 const controller=new MovementController(mm,{isInputBlocked:()=>loading||dialog.open||busy,onMapChanged:()=>{keys.clear();controller.queue.length=0;mapChanged();},onMoveError:()=>message('Não consegui abrir esse local. Tente novamente.')});
 function mapChanged(){
-  approachingBroker=false;
+  approachingBroker=false;pendingPC=null;seatedPC=false;
   origin=centerMapOrigin(mm.currentMap,canvas.width,canvas.height);Object.assign(renderer,origin);loadImage(mm.currentMap.background);
   $('place').textContent=names[mm.currentMap.id];$('district').textContent=mm.currentMap.id==='neon_royale'?'♠ CASSINO · PLAY / TRADE / WIN':'SECTOR 7';
   document.querySelectorAll('[data-go]').forEach(b=>b.classList.toggle('active',b.dataset.go===mm.currentMap.id));
@@ -53,7 +56,7 @@ function mapChanged(){
 }
 async function go(id){
   if(busy||loading||dialog.open||controller.isMoving||controller._finishing)return;
-  loading=true;approachingBroker=false;keys.clear();controller.queue.length=0;$('map-loading').hidden=false;
+  loading=true;approachingBroker=false;pendingPC=null;seatedPC=false;keys.clear();controller.queue.length=0;$('map-loading').hidden=false;
   try{const pos=id==='neon_royale'?[11,13]:id==='player_home'?[5,7]:id==='ghost_row_interior'?[8,8]:[12,8];await mm.loadMap(id,...pos);mapChanged();ready=true;}
   catch{message('Não consegui carregar o local. Tente novamente.');}
   finally{loading=false;$('map-loading').hidden=true;}
@@ -84,22 +87,52 @@ function openSell(){
   content.innerHTML=`<h2>Tem informações para mim?</h2><p class="dialog-note">Cipher: “Dados bons têm seu preço. Eu pago em BYTE.”</p><p>Seu estoque: <strong id="sale-stock">${state.information}</strong></p><p class="dialog-note">Cada informação vale ${INFORMATION_PRICE} BYTE.</p><button id="sell-all" class="primary" ${state.information===0?'disabled':''}>Vender tudo · ${state.information*INFORMATION_PRICE} BYTE</button><div id="sale-result" class="result" role="status"></div>`;
   $('sell-all').onclick=()=>{const amount=state.information*INFORMATION_PRICE;if(act({type:'sellInformation',mapId:mm.currentMap.id,col:mm.playerCol,row:mm.playerRow})){$('sell-all').disabled=true;$('sell-all').textContent='Estoque vendido';$('sale-stock').textContent='0';$('sale-result').textContent=`Vendido! +${amount} BYTE`;message(`Informações vendidas na BLACKNET: +${amount} BYTE.`);}};
 }
-function openDialog(kicker){if(busy||loading||controller.isMoving)return false;keys.clear();controller.queue.length=0;$('dialog-kicker').textContent=kicker;dialog.showModal();return true;}
-function closeDialog(){if(busy)return;if(hack)act({type:'hackCancel'});hack=null;dialog.close();canvas.focus();activities();}
+function openDialog(kicker){if(busy||loading||controller.isMoving)return false;keys.clear();controller.queue.length=0;$('dialog-kicker').textContent=kicker;dialog.showModal();window.scrollTo({top:0,behavior:"instant"});return true;}
+function closeDialog(){if(busy)return;clearInterval(hackTimer);hackTimer=null;seatedPC=false;if(hack)act({type:'hackCancel'});hack=null;dialog.close();canvas.focus();activities();}
 $('close').onclick=closeDialog;dialog.addEventListener('cancel',e=>{e.preventDefault();closeDialog();});
 function setBusy(value){busy=value;$('close').disabled=value;document.querySelectorAll('[data-go],#character').forEach(b=>b.disabled=value);}
+function visitPC(mode){
+  if(mm.currentMap.id!==HOME_PC.mapId||busy||loading||dialog.open||controller.isMoving)return;
+  if(atHomePC(mm.currentMap.id,mm.playerCol,mm.playerRow)){mode==='trade'?openTrade():openHack();return;}
+  keys.clear();approachingBroker=false;pathTo(HOME_PC.col,HOME_PC.row);pendingPC=mode;message('Indo até a cadeira do PC…');
+}
 function openHack(){
+  if(!atHomePC(mm.currentMap.id,mm.playerCol,mm.playerRow)){visitPC('hack');return;}
   if(!openDialog('MINHA CASA · TERMINAL'))return;
-  content.innerHTML=`<h2>Quebre a sequência.</h2><p class="dialog-note">Repita os 3 símbolos na ordem. Cada tentativa usa 10 de energia. Acertou? +${state.pcLevel} ${state.pcLevel===1?'informação':'informações'} para vender na BLACKNET.</p><div class="letters" id="sequence"><span>?</span><span>?</span><span>?</span></div><div class="hack-keys"><button id="start-hack" class="primary">Iniciar hack · 10 de energia</button></div><div class="result" id="hack-result"></div>`;
-  $('start-hack').onclick=()=>{if(!act({type:'hackStart'}))return;hack={sequence:Array.from({length:3},()=>['A','B','C'][randomInt(3)]),index:0};$('sequence').innerHTML=hack.sequence.map(x=>`<span>${x}</span>`).join('');document.querySelector('.hack-keys').innerHTML=['A','B','C'].map(x=>`<button data-letter="${x}">${x}</button>`).join('');document.querySelectorAll('[data-letter]').forEach(b=>b.onclick=()=>hackLetter(b.dataset.letter));};
+  seatedPC=true;
+  content.innerHTML='<h2>Memorize. Invada.</h2><p class="dialog-note">Memorize 5 símbolos em 1,8 segundo. Depois eles somem: você tem 7 segundos para repetir. Cada tentativa custa 10 de energia.</p><div class="letters" id="sequence"></div><div id="hack-clock" role="status">Prepare-se para memorizar.</div><div class="hack-keys"><button id="start-hack" class="primary">Iniciar hack · 10 de energia</button></div><div class="result" id="hack-result"></div>';
+  $('sequence').innerHTML=Array(SEQUENCE_LENGTH).fill('<span>?</span>').join('');
+  $('start-hack').onclick=()=>{
+    if(!act({type:'hackStart'}))return;
+    hack=createChallenge(randomInt,performance.now());
+    document.querySelector('.hack-keys').innerHTML=HACK_SYMBOLS.map(x=>'<button data-letter="'+x+'">'+x+'</button>').join('');
+    document.querySelectorAll('[data-letter]').forEach(b=>b.onclick=()=>hackLetter(b.dataset.letter));
+    refreshHack();clearInterval(hackTimer);hackTimer=setInterval(refreshHack,50);
+  };
+}
+function refreshHack(){
+  if(!hack)return;
+  const phase=challengePhase(hack,performance.now());
+  if(phase==='timeout'){finishChallenge(false,'Tempo esgotado. Tente memorizar novamente.');return;}
+  [...$('sequence').children].forEach((cell,i)=>{cell.textContent=phase==='memorize'?hack.sequence[i]:i<hack.index?'✓':'?';cell.classList.toggle('done',phase==='answer'&&i<hack.index);});
+  document.querySelectorAll('[data-letter]').forEach(b=>b.disabled=phase!=='answer');
+  $('hack-clock').textContent=phase==='memorize'?'MEMORIZE — os símbolos vão sumir.':'Sua vez · '+Math.max(0,(hack.deadline-performance.now())/1000).toFixed(1)+' s';
 }
 function hackLetter(letter){
   if(!hack)return;
-  if(hack.sequence[hack.index]!==letter){act({type:'hackCancel'});hack=null;$('hack-result').textContent='Sequência incorreta.';finishHack();return;}
-  $('sequence').children[hack.index].classList.add('done');hack.index++;
-  if(hack.index===3){hack=null;if(act({type:'hack'}))$('hack-result').textContent=`+${state.pcLevel} ${state.pcLevel===1?'informação':'informações'}! Venda na BLACKNET.`;finishHack();}
+  hack=enterSymbol(hack,letter,performance.now());
+  if(hack.status==='success'){finishChallenge(true,'Informações obtidas! Venda na BLACKNET.');return;}
+  if(hack.status==='failed'||hack.status==='timeout'){finishChallenge(false,hack.status==='timeout'?'Tempo esgotado.':'Sequência incorreta.');return;}
+  refreshHack();
 }
-function finishHack(){document.querySelector('.hack-keys').innerHTML='<button id="again-hack">Novo hack</button>';$('again-hack').onclick=()=>{dialog.close();openHack();};}
+function finishChallenge(success,result){
+  clearInterval(hackTimer);hackTimer=null;
+  if(success){if(!act({type:'hack'}))result='Não foi possível concluir o hack.';}else act({type:'hackCancel'});
+  hack=null;$('hack-result').textContent=result;$('hack-clock').textContent=success?'ACESSO CONCEDIDO':'ACESSO NEGADO';
+  if(success)[...$('sequence').children].forEach(cell=>{cell.textContent='✓';cell.classList.add('done');});
+  document.querySelector('.hack-keys').innerHTML='<button id="again-hack">Novo hack</button>';
+  $('again-hack').onclick=()=>{dialog.close();openHack();};
+}
 function openPets(){
   if(!openDialog('MINHA CASA · PETS'))return;
   content.innerHTML='<h2>Um lar com companhia.</h2><p class="dialog-note">Cada pet custa 100 BYTE. Eles aparecem na sua casa.</p>'+petIds.map((id,i)=>`<div class="pet-row"><img src="assets/props/pet_${id}.png" alt="${petNames[i]}"><div><strong>${petNames[i]}</strong><small>Companheiro decorativo</small></div><button data-pet="${id}" ${state.pets.includes(id)?'disabled':''}>${state.pets.includes(id)?'Já é seu':'100 BYTE'}</button></div>`).join('');
@@ -124,7 +157,9 @@ async function spin(choice){
   }
 }
 function openTrade(){
+  if(!atHomePC(mm.currentMap.id,mm.playerCol,mm.playerRow)){visitPC('trade');return;}
   if(!openDialog('MINHA CASA · BITE / BYTE'))return;
+  seatedPC=true;
   content.innerHTML=`<h2>Qual o próximo movimento?</h2><div class="ticker"><span>BITE / BYTE</span><span>Rodada virtual · 4 s</span></div><svg class="chart" viewBox="0 0 400 140" role="img" aria-label="Gráfico ilustrativo do trade"><path class="baseline" d="M0 70H400"/><polyline id="trade-line" points="0,93 25,80 50,87 75,65 100,77 125,51 150,60 175,47 200,70"/></svg><div class="result" id="trade-result">Alta ou baixa?</div><p class="dialog-note">Cada rodada custa 20 BYTE. Acerto retorna 38 (lucro de 18). Chance de 50%; o gráfico é ilustrativo.</p><div class="bets"><button data-trade="up" class="primary">↑ Alta · 20 BYTE</button><button data-trade="down" class="red">↓ Baixa · 20 BYTE</button></div>`;
   content.querySelectorAll('[data-trade]').forEach(b=>b.onclick=()=>trade(b.dataset.trade));
 }
@@ -138,15 +173,14 @@ async function trade(choice){
 document.addEventListener('click',e=>{const goButton=e.target.closest('[data-go]');if(goButton)go(goButton.dataset.go);});
 $('character').onchange=()=>{state={...state,characterId:$('character').value};save();};
 const moves={ArrowUp:'up',w:'up',ArrowDown:'down',s:'down',ArrowLeft:'left',a:'left',ArrowRight:'right',d:'right'};
-window.addEventListener('keydown',e=>{if(e.target.matches('select,input,textarea'))return;if(dialog.open){if(hack&&['a','b','c'].includes(e.key.toLowerCase())){e.preventDefault();hackLetter(e.key.toUpperCase());}return;}const d=moves[e.key];if(d){e.preventDefault();approachingBroker=false;controller.queue.length=0;keys.add(d);}if(e.key.toLowerCase()==='e')interact();});
+window.addEventListener('keydown',e=>{if(e.target.matches('select,input,textarea'))return;if(dialog.open){if(hack&&['a','b','c','d'].includes(e.key.toLowerCase())&&!e.repeat){e.preventDefault();hackLetter(e.key.toUpperCase());}return;}const d=moves[e.key];if(d){e.preventDefault();approachingBroker=false;pendingPC=null;controller.queue.length=0;keys.add(d);}if(e.key.toLowerCase()==='e')interact();});
 window.addEventListener('keyup',e=>keys.delete(moves[e.key]));window.addEventListener('blur',()=>keys.clear());
 document.querySelectorAll('[data-move]').forEach(b=>b.onclick=()=>controller.enqueueInput(b.dataset.move));$('interact').onclick=()=>interact();
 function interact(){if(!ready||busy||dialog.open)return;if(mm.currentMap.id==='player_home')openHack();else if(mm.currentMap.id==='neon_royale')openRoulette();else if(mm.currentMap.id==='ghost_row_interior')openSell();else message('Casa: hack e trade. BLACKNET: venda informações. NEON ROYALE: roleta.');}
 function pathTo(col,row){
-  if(!mm.canEnter(col,row)||controller.isMoving)return;
-  const start=[mm.playerCol,mm.playerRow],queue=[[...start,[]]],seen=new Set([start.join(',')]);
-  for(let i=0;i<queue.length;i++){const [x,y,path]=queue[i];if(x===col&&y===row){controller.queue.length=0;path.forEach(d=>controller.enqueueInput(d));return;}
-    for(const [d,dx,dy] of [['up',0,-1],['down',0,1],['left',-1,0],['right',1,0]]){const nx=x+dx,ny=y+dy,k=`${nx},${ny}`;if(seen.has(k)||!mm.canEnter(nx,ny))continue;const door=mm.currentMap.getDoorAt(nx,ny);if(door&&(nx!==col||ny!==row))continue;seen.add(k);queue.push([nx,ny,[...path,d]]);}}
+  if(controller.isMoving)return;
+  const path=findPath(mm.currentMap,{col:mm.playerCol,row:mm.playerRow},{col,row});
+  if(!path)return;controller.queue.length=0;path.forEach(step=>controller.enqueueInput(step.direction));
 }
 canvas.onclick=e=>{
   if(!ready||busy||dialog.open||loading)return;canvas.focus();const rect=canvas.getBoundingClientRect();const x=(e.clientX-rect.left)*canvas.width/rect.width,y=(e.clientY-rect.top)*canvas.height/rect.height;const grid=screenToGrid(x,y,origin.originX,origin.originY);
@@ -161,7 +195,7 @@ canvas.onclick=e=>{
     if(grid.col>=9&&grid.col<=14&&grid.row>=3&&grid.row<=5){message('Bem-vindo ao NEON ROYALE. Escolha a roleta para jogar.');return;}
   }else if(mm.currentMap.id==='player_home'&&grid.col>=6&&grid.col<=9&&grid.row<=3){openHack();return;}
   if(mm.currentMap.id===broker.mapId&&grid.col===broker.col&&grid.row>=broker.row-1&&grid.row<=broker.row){visitBroker();return;}
-  approachingBroker=false;pathTo(grid.col,grid.row);
+  approachingBroker=false;pendingPC=null;pathTo(grid.col,grid.row);
 };
 function label(col,row,text,color='#ffd688'){
   const {x,y}=gridToScreen(col,row,origin.originX,origin.originY);ctx.save();ctx.font='bold 9px monospace';ctx.textAlign='center';const w=ctx.measureText(text).width+14;ctx.fillStyle='#07111ee8';ctx.fillRect(x-w/2,y-10,w,19);ctx.strokeStyle=color;ctx.strokeRect(x-w/2,y-10,w,19);ctx.fillStyle=color;ctx.fillText(text,x,y+3);ctx.restore();
@@ -176,9 +210,11 @@ function render(now){
   const drawBroker=()=>{const p=gridToScreen(broker.col,broker.row,origin.originX,origin.originY);ctx.save();ctx.filter='hue-rotate(150deg)';drawAvatar(ctx,p.x,p.y+16,'character4','down','idle');ctx.restore();};
   const hasBroker=mm.currentMap.id===broker.mapId;
   if(hasBroker&&row>=broker.row)drawBroker();
-  renderer.drawPropsAndCharacter(mm.currentMap.props,row,()=>drawAvatar(ctx,pos.x,pos.y+16,state.characterId,controller.direction,controller.pose));
+  renderer.drawPropsAndCharacter(mm.currentMap.props,row,()=>{if(seatedPC&&mm.currentMap.id==='player_home'){drawAvatar(ctx,origin.originX+mm.currentMap.width*32*.504,origin.originY+mm.currentMap.height*32*.34,state.characterId,'up','idle',48,true);drawPCChair(ctx,mm.currentMap,images[mm.currentMap.background],origin.originX,origin.originY);}else drawAvatar(ctx,pos.x,pos.y+16,state.characterId,controller.direction,controller.pose);});
   if(hasBroker&&row<broker.row)drawBroker();
+  drawInteriorForeground(ctx,mm.currentMap,images[mm.currentMap.background],origin.originX,origin.originY);
   if(hasBroker){label(broker.col,broker.row-1.7,'CIPHER · VENDER');if(canTalkToBroker(mm.currentMap.id,mm.playerCol,mm.playerRow))label(broker.col,broker.row+.8,'E · CONVERSAR','#52efff');}
+  if(pendingPC&&!controller.isMoving&&!controller.queueLength&&!controller._finishing){const mode=pendingPC;pendingPC=null;if(atHomePC(mm.currentMap.id,mm.playerCol,mm.playerRow)){mode==='trade'?openTrade():openHack();}}
   if(approachingBroker&&!controller.isMoving&&!controller.queueLength&&!controller._finishing){approachingBroker=false;openSell();}
   if(mm.currentMap.id==='district_07'){LOCKS.forEach(l=>lock(l.x,l.y));label(18,11.5,'♠ CASSINO ♠');}
   if(mm.currentMap.id==='neon_royale'){lock(19.8,3.5);label(6.4,9.8,'ROLETA', '#ffd688');label(11.5,5.7,'NEON ROYALE','#52efff');}

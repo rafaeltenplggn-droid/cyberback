@@ -11,7 +11,7 @@ Os modulos antigos continuam no repositorio como referencia e para preservar a c
 - Bar, CORP e VIP fechados com cadeados visiveis.
 - Novos sprites frontais, laterais e traseiros fieis aos quatro retratos originais. Esquerda espelha a direita; passos usam uma alternancia sutil dos pes.
 - WASD, setas, clique para caminhar e botoes de movimento. Atalhos de locais para casa/cidade/cassino.
-- Os dados de reflexos, particulas e colisoes da cidade e da casa, assim como o Renderer original, foram preservados.
+- Os reflexos e particulas foram preservados. As salas agora redesenham paredes em primeiro plano; a colisao da divisoria do banheiro da casa foi corrigida.
 - Sem trabalhadores, ginasio, bebidas ou acao de dormir na interface ativa.
 
 ## Salvamento
@@ -25,3 +25,9 @@ Novo armazenamento `cyberback.neon.v2`; o `cyberback.save.v1` original nao e alt
 ## Corretor da BLACKNET
 
 Cipher fica na mesa direita da BLACKNET. Clique no NPC ou use Falar com Cipher para caminhar ate ele; adjacente, E abre o dialogo. Vendas exigem proximidade, preservam o valor de 30 BYTE por informacao e nao podem ser repetidas sem estoque. A celula do NPC bloqueia passagem.
+
+## Paredes, cadeira e hack de memoria
+
+Todas as salas ativas desenham a parede na frente do personagem. Hack e trade exigem caminhar ate o PC; o personagem aparece sentado de costas, com o encosto original da cadeira a frente do corpo. Ao fechar o PC ele volta a ficar em pe.
+
+O hack mostra 5 simbolos (A/B/C/D) por 1,8 segundo, esconde a sequencia e aceita respostas durante 7 segundos. Resposta errada ou prazo esgotado falham, sem devolver os 10 de energia. Rota de caminhada e trailer usam o mesmo calculo de caminho, respeitando as celulas bloqueadas.
