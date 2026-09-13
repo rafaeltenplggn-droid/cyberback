@@ -36,6 +36,9 @@ function update(){
   const bar=$('energy-bar');if(bar)bar.value=state.energy;
   const inventory=$('information-count');if(inventory)inventory.textContent=state.information;
   $('character').value=state.characterId;
+  const portrait='assets/'+state.characterId+'/portrait.png';
+  if($('profile-thumb').getAttribute('src')!==portrait)$('profile-thumb').src=portrait;
+  if($('profile-energy'))$('profile-energy').textContent=state.energy+'/100';
   if($('pc-energy'))$('pc-energy').textContent=state.energy+'/100';
   if($('pc-files'))$('pc-files').textContent=state.information+' files';
   if($('pc-balance'))$('pc-balance').textContent=state.byteBalance+' BYTE';
@@ -94,7 +97,7 @@ function openSell(){
 function openDialog(kicker){if(busy||loading||controller.isMoving)return false;keys.clear();controller.queue.length=0;dialog.classList.remove('pc-monitor');$('close').textContent='✕';$('dialog-kicker').textContent=kicker;dialog.showModal();window.scrollTo({top:0,behavior:"instant"});return true;}
 function closeDialog(){if(busy)return;clearInterval(hackTimer);hackTimer=null;seatedPC=false;if(hack)act({type:'hackCancel'});hack=null;dialog.close();canvas.focus();activities();}
 $('close').onclick=closeDialog;dialog.addEventListener('cancel',e=>{e.preventDefault();closeDialog();});
-function setBusy(value){busy=value;lockPCApps(value);$('close').disabled=value;document.querySelectorAll('[data-go],#character').forEach(b=>b.disabled=value);}
+function setBusy(value){busy=value;lockPCApps(value);$('close').disabled=value;document.querySelectorAll('[data-go],#character,#profile-open').forEach(b=>b.disabled=value);}
 function visitPC(mode){
   if(mm.currentMap.id!==HOME_PC.mapId||busy||loading||dialog.open||controller.isMoving)return;
   if(atHomePC(mm.currentMap.id,mm.playerCol,mm.playerRow)){mode==='trade'?openTrade():openHack();return;}
@@ -145,6 +148,12 @@ function finishChallenge(success,result){
   document.querySelector('.hack-keys').innerHTML='<button id="again-hack">New hack</button>';
   $('again-hack').onclick=()=>{dialog.close();openHack();};
 }
+function openProfile(){
+  if(dialog.open||!openDialog('SECTOR 7 · CHARACTER PROFILE'))return;
+  const name=$('character').selectedOptions[0].textContent;
+  content.innerHTML=`<div class="character-profile"><img class="profile-portrait" src="assets/${state.characterId}/portrait.png" alt="${name} portrait"><div class="profile-identity"><small>YOUR SELECTED CHARACTER</small><h2>${name}</h2><p>SECTOR 7 RESIDENT</p></div><dl class="profile-stats"><div><dt>BYTE BALANCE</dt><dd>${state.byteBalance.toLocaleString('en')}</dd></div><div><dt>ENERGY</dt><dd id="profile-energy">${state.energy}/100</dd></div><div><dt>INTEL FILES</dt><dd>${state.information}</dd></div><div><dt>PC LEVEL</dt><dd>${state.pcLevel}</dd></div><div><dt>COMPANIONS</dt><dd>${state.pets.length}</dd></div></dl></div>`;
+}
+$('profile-open').onclick=openProfile;
 function openPets(){
   if(!openDialog('MY HOME · PETS'))return;
   content.innerHTML='<h2>A home with company.</h2><p class="dialog-note">Each pet costs 100 BYTE and appears in your home.</p>'+petIds.map((id,i)=>`<div class="pet-row"><img src="assets/props/pet_${id}.png" alt="${petNames[i]}"><div><strong>${petNames[i]}</strong><small>Cosmetic companion</small></div><button data-pet="${id}" ${state.pets.includes(id)?'disabled':''}>${state.pets.includes(id)?'Owned':'100 BYTE'}</button></div>`).join('');
@@ -199,7 +208,7 @@ async function trade(choice){
   const payout=state.pending.payout;act({type:'settle'});$('trade-result').textContent=`${result?'Up ↑':'Down ↓'} · ${payout?'+18':'−20'} BYTE`;message(payout?'Correct trade! Profit: 18 BYTE.':'The market went the other way. −20 BYTE.');setBusy(false);content.querySelectorAll('[data-trade]').forEach(b=>b.disabled=false);
 }
 document.addEventListener('click',e=>{const goButton=e.target.closest('[data-go]');if(goButton)go(goButton.dataset.go);});
-$('character').onchange=()=>{state={...state,characterId:$('character').value};save();};
+$('character').onchange=()=>{state={...state,characterId:$('character').value};save();update();};
 const moves={ArrowUp:'up',w:'up',ArrowDown:'down',s:'down',ArrowLeft:'left',a:'left',ArrowRight:'right',d:'right'};
 window.addEventListener('keydown',e=>{if(e.target.matches('select,input,textarea'))return;if(dialog.open){if(hack&&['a','b','c','d'].includes(e.key.toLowerCase())&&!e.repeat){e.preventDefault();hackLetter(e.key.toUpperCase());}return;}const d=moves[e.key];if(d){e.preventDefault();approachingBroker=false;pendingPC=null;controller.queue.length=0;keys.add(d);}if(e.key.toLowerCase()==='e')interact();});
 window.addEventListener('keyup',e=>keys.delete(moves[e.key]));window.addEventListener('blur',()=>keys.clear());
