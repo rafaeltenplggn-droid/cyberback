@@ -264,3 +264,14 @@ function render(now){
 document.addEventListener('visibilitychange',()=>{if(document.hidden){keys.clear();save();}});window.addEventListener('pagehide',()=>save());
 setInterval(()=>{const next=regenerate(state);if(next.energy!==state.energy){state=next;save();update();}},1000);
 save();update();await go('district_07');requestAnimationFrame(render);
+
+function updateFullscreenButton(){
+  const active=!!document.fullscreenElement,button=$('fullscreen-toggle');
+  button.setAttribute('aria-pressed',String(active));button.setAttribute('aria-label',active?'Exit fullscreen':'Enter fullscreen');button.title=active?'Exit fullscreen (Esc)':'Enter fullscreen';button.querySelector('span').textContent=active?'EXIT FULLSCREEN':'FULLSCREEN';
+}
+$('fullscreen-toggle').onclick=async()=>{
+  try{if(document.fullscreenElement)await document.exitFullscreen();else if(document.documentElement.requestFullscreen)await document.documentElement.requestFullscreen();else message('Fullscreen is not supported in this browser.');}
+  catch{message('Could not enter fullscreen. Try opening the game in a browser tab.');}
+};
+document.addEventListener('fullscreenchange',updateFullscreenButton);
+updateFullscreenButton();
