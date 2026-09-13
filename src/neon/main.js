@@ -18,7 +18,8 @@ let state=fresh(), storageBlocked=false, busy=false, loading=false, ready=false,
 let approachingBroker=false,pendingPC=null,seatedPC=false,hackTimer=null;
 let origin={originX:0,originY:0};
 const keys=new Set(), images={};
-function message(text){$('message').textContent=text;}
+let messageTimer;
+function message(text){$('message').textContent=text;$('message').hidden=false;clearTimeout(messageTimer);messageTimer=setTimeout(()=>{$('message').hidden=true;},7000);}
 try {
   const raw=localStorage.getItem(SAVE_KEY);
   if(raw!==null){const parsed=upgradeSave(JSON.parse(raw));if(!valid(parsed))throw Error();state=parsed;state.hackActive=false;}
@@ -53,9 +54,16 @@ const mm=new MapManager({loadMapJson:async id=>{
 }});
 const renderer=new Renderer(ctx,origin,{backgroundImages:images});
 const controller=new MovementController(mm,{isInputBlocked:()=>loading||dialog.open||busy,onMapChanged:()=>{keys.clear();controller.queue.length=0;mapChanged();},onMoveError:()=>message('Could not open this location. Please try again.')});
+function fitWorld(){
+  if(!mm.currentMap)return;
+  const map=mm.currentMap,scale=Math.min(innerWidth/(map.width*32+32),innerHeight/(map.height*32+112));
+  canvas.width=Math.round(innerWidth/scale);canvas.height=Math.round(innerHeight/scale);
+  origin=centerMapOrigin(map,canvas.width,canvas.height);Object.assign(renderer,origin);
+}
+window.addEventListener('resize',fitWorld);
 function mapChanged(){
   approachingBroker=false;pendingPC=null;seatedPC=false;
-  origin=centerMapOrigin(mm.currentMap,canvas.width,canvas.height);Object.assign(renderer,origin);loadImage(mm.currentMap.background);
+  fitWorld();loadImage(mm.currentMap.background);$('game-actions').hidden=true;$('actions-toggle').setAttribute('aria-expanded','false');
   $('place').textContent=names[mm.currentMap.id];$('district').textContent=mm.currentMap.id==='neon_royale'?'♠ CASINO · PLAY / TRADE / WIN':'SECTOR 7';
   document.querySelectorAll('[data-go]').forEach(b=>b.classList.toggle('active',b.dataset.go===mm.currentMap.id));
   activities();
@@ -77,6 +85,7 @@ function activities(){
   else if(id==='neon_royale')html+=card('♠','Make your move.','One round, one choice. The next number could be yours.','<button id="roulette-open" class="gold">Play roulette</button><button id="slots-open">Play 777 slots</button>','casino')+`<p class="dialog-note">♔ VIP area currently closed.</p>`;
   else html+=card('⌂','Start at home.','Hack to collect intel. Sell it on BLACKNET to earn BYTE.','<button data-go="player_home" class="primary">Go home</button><button data-go="ghost_row_interior">Sell on BLACKNET</button>')+card('♠','NEON ROYALE','Roulette under the lights of Sector 7.','<button data-go="neon_royale" class="gold">Enter the casino</button>','casino')+`<p class="dialog-note">🔒 The bar and CORP are closed.</p>`;
   $('activities').innerHTML=html;
+  $('hud-status').replaceChildren(...$('activities').querySelectorAll('.energy')); 
   $('hack-open')?.addEventListener('click',openHack);$('pets-open')?.addEventListener('click',openPets);
   $('roulette-open')?.addEventListener('click',openRoulette);$('trade-open')?.addEventListener('click',openTrade);
   $('slots-open')?.addEventListener('click',openSlots);
@@ -94,7 +103,7 @@ function openSell(){
   content.innerHTML=`<h2>Got any intel for me?</h2><p class="dialog-note">Cipher: “Good data has a price. I pay in BYTE.”</p><p>Your stock: <strong id="sale-stock">${state.information}</strong></p><p class="dialog-note">Each intel file is worth ${INFORMATION_PRICE} BYTE.</p><button id="sell-all" class="primary" ${state.information===0?'disabled':''}>Sell all · ${state.information*INFORMATION_PRICE} BYTE</button><div id="sale-result" class="result" role="status"></div>`;
   $('sell-all').onclick=()=>{const amount=state.information*INFORMATION_PRICE;if(act({type:'sellInformation',mapId:mm.currentMap.id,col:mm.playerCol,row:mm.playerRow})){$('sell-all').disabled=true;$('sell-all').textContent='Stock sold';$('sale-stock').textContent='0';$('sale-result').textContent=`Sold! +${amount} BYTE`;message(`Intel sold on BLACKNET: +${amount} BYTE.`);}};
 }
-function openDialog(kicker){if(busy||loading||controller.isMoving)return false;keys.clear();controller.queue.length=0;dialog.classList.remove('pc-monitor');$('close').textContent='✕';$('dialog-kicker').textContent=kicker;dialog.showModal();window.scrollTo({top:0,behavior:"instant"});return true;}
+function openDialog(kicker){if(busy||loading||controller.isMoving)return false;keys.clear();controller.queue.length=0;dialog.classList.remove('pc-monitor');$('close').textContent='✕';$('dialog-kicker').textContent=kicker;$('game-actions').hidden=true;$('actions-toggle').setAttribute('aria-expanded','false');dialog.showModal();window.scrollTo({top:0,behavior:"instant"});return true;}
 function closeDialog(){if(busy)return;clearInterval(hackTimer);hackTimer=null;seatedPC=false;if(hack)act({type:'hackCancel'});hack=null;dialog.close();canvas.focus();activities();}
 $('close').onclick=closeDialog;dialog.addEventListener('cancel',e=>{e.preventDefault();closeDialog();});
 function setBusy(value){busy=value;lockPCApps(value);$('close').disabled=value;document.querySelectorAll('[data-go],#character,#profile-open').forEach(b=>b.disabled=value);}
@@ -275,3 +284,6 @@ $('fullscreen-toggle').onclick=async()=>{
 };
 document.addEventListener('fullscreenchange',updateFullscreenButton);
 updateFullscreenButton();
+
+$('actions-toggle').onclick=()=>{const panel=$('game-actions');panel.hidden=!panel.hidden;$('actions-toggle').setAttribute('aria-expanded',String(!panel.hidden));};
+$('actions-close').onclick=()=>{$('game-actions').hidden=true;$('actions-toggle').setAttribute('aria-expanded','false');canvas.focus();};
