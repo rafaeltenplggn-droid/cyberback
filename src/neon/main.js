@@ -2,7 +2,7 @@ import { MapManager } from '../maps/mapManager.js';
 import { Renderer } from '../render/renderer.js';
 import { MovementController } from '../character/movementController.js';
 import { centerMapOrigin, gridToScreen, screenToGrid } from '../core/topdown.js';
-import { SAVE_KEY, fresh, valid, upgradeSave, migrate, regenerate, transact, WHEEL, colorOf, SPIN_MS, INFORMATION_PRICE } from './economy.js';
+import { SAVE_KEY, fresh, valid, upgradeSave, migrate, regenerate, transact, WHEEL, colorOf, SPIN_MS, INFORMATION_PRICE, SLOT_SYMBOLS, slotReels } from './economy.js';
 import { prepareMap, casinoMap, LOCKS } from './maps.js';
 import { drawAvatar } from './avatar.js';
 import {findPath} from './navigation.js';
@@ -71,11 +71,12 @@ function activities(){
   html+=`<div class="energy"><span>▤ Intel <strong id="information-count">${state.information}</strong></span><small>Sell on BLACKNET · ${INFORMATION_PRICE} BYTE each</small></div>`;
   if(id==='player_home')html+=card('⌘','Connect. Hack. Profit.','Collect intel at the terminal and sell it on BLACKNET.',`<button id="hack-open" class="primary">Hack · +${state.pcLevel} ${state.pcLevel===1?'intel file':'intel files'}</button><button id="trade-open">Trade BITE / BYTE</button><button id="upgrade">${state.pcLevel===1?'Upgrade PC · 150 BYTE':'PC upgraded · level 2'}</button>`)+card('♧','Your companions','Cosmetic pets to make your hideout feel like home.','<button id="pets-open">Buy pets · 100 BYTE</button>');
   else if(id==='ghost_row_interior')html+=card('▤','Cipher · Data broker',`Cipher buys your intel for ${INFORMATION_PRICE} BYTE each. Click him or approach and press E.`,`<button id="sell-open" class="primary">Talk to Cipher</button><button data-go="player_home">Return home</button>`);
-  else if(id==='neon_royale')html+=card('♠','Make your move.','One round, one choice. The next number could be yours.','<button id="roulette-open" class="gold">Play roulette</button>','casino')+`<p class="dialog-note">♔ VIP area currently closed.</p>`;
+  else if(id==='neon_royale')html+=card('♠','Make your move.','One round, one choice. The next number could be yours.','<button id="roulette-open" class="gold">Play roulette</button><button id="slots-open">Play 777 slots</button>','casino')+`<p class="dialog-note">♔ VIP area currently closed.</p>`;
   else html+=card('⌂','Start at home.','Hack to collect intel. Sell it on BLACKNET to earn BYTE.','<button data-go="player_home" class="primary">Go home</button><button data-go="ghost_row_interior">Sell on BLACKNET</button>')+card('♠','NEON ROYALE','Roulette under the lights of Sector 7.','<button data-go="neon_royale" class="gold">Enter the casino</button>','casino')+`<p class="dialog-note">🔒 The bar and CORP are closed.</p>`;
   $('activities').innerHTML=html;
   $('hack-open')?.addEventListener('click',openHack);$('pets-open')?.addEventListener('click',openPets);
   $('roulette-open')?.addEventListener('click',openRoulette);$('trade-open')?.addEventListener('click',openTrade);
+  $('slots-open')?.addEventListener('click',openSlots);
   $('sell-open')?.addEventListener('click',visitBroker);
   if($('upgrade')){$('upgrade').disabled=state.pcLevel===2;$('upgrade').onclick=()=>{if(act({type:'upgrade'})){message('PC upgraded: each successful hack yields 2 intel files.');activities();}};}
 }
@@ -149,10 +150,25 @@ function openPets(){
   content.innerHTML='<h2>A home with company.</h2><p class="dialog-note">Each pet costs 100 BYTE and appears in your home.</p>'+petIds.map((id,i)=>`<div class="pet-row"><img src="assets/props/pet_${id}.png" alt="${petNames[i]}"><div><strong>${petNames[i]}</strong><small>Cosmetic companion</small></div><button data-pet="${id}" ${state.pets.includes(id)?'disabled':''}>${state.pets.includes(id)?'Owned':'100 BYTE'}</button></div>`).join('');
   content.querySelectorAll('[data-pet]').forEach(b=>b.onclick=()=>{if(act({type:'pet',id:b.dataset.pet})){b.textContent='Owned';b.disabled=true;message('Your new pet is waiting at home.');}});
 }
+function openSlots(){
+  if(!openDialog('NEON ROYALE · 777 SLOTS'))return;
+  content.innerHTML='<h2>Three reels. One chance.</h2><div class="slot-marquee">777 <span>NEON JACKPOT</span></div><div class="slot-reels" aria-label="Slot reels"><span>7</span><span>7</span><span>7</span></div><div id="slot-result" class="result" role="status">Match all three symbols</div><p class="dialog-note">Bet: 20 BYTE. 777 returns 1,000 BYTE (980 profit). Any other triple returns 300 BYTE (280 profit). Other combinations return 0. Five equally likely symbols per reel; each triple has a 1/125 chance.</p><button id="slot-spin" class="gold">Spin · 20 BYTE</button>';
+  $('slot-spin').onclick=spinSlots;
+}
+async function spinSlots(){
+  if(busy)return;const result=randomInt(125);if(!act({type:'slots',result}))return;
+  setBusy(true);$('slot-spin').disabled=true;$('slot-result').textContent='Spinning…';
+  const cells=[...content.querySelectorAll('.slot-reels span')],reels=slotReels(result),start=performance.now();
+  const timer=setInterval(()=>{const elapsed=performance.now()-start;cells.forEach((cell,i)=>{const stopped=elapsed>2600+i*700;cell.textContent=SLOT_SYMBOLS[stopped?reels[i]:(Math.floor(elapsed/85)+i*2)%5];cell.classList.toggle('spinning',!stopped);});},70);
+  try{await new Promise(resolve=>setTimeout(resolve,SPIN_MS));}finally{
+    clearInterval(timer);cells.forEach((cell,i)=>{cell.textContent=SLOT_SYMBOLS[reels[i]];cell.classList.remove('spinning');});
+    const payout=state.pending?.payout??0;act({type:'settle'});$('slot-result').textContent=payout?(result===0?'777 JACKPOT! ':'TRIPLE MATCH! ')+'+'+(payout-20)+' BYTE':'No match · −20 BYTE';message($('slot-result').textContent);setBusy(false);$('slot-spin').disabled=false;
+  }
+}
 function openRoulette(){
   if(!openDialog('NEON ROYALE · EUROPEAN ROULETTE'))return;
   const step=360/37;const gradient=WHEEL.map((n,i)=>`${n===0?'#078a72':colorOf(n)==='red'?'#b22c52':'#172333'} ${i*step}deg ${(i+1)*step}deg`).join(',');
-  content.innerHTML=`<h2>Let luck take its time.</h2><div class="wheel-shell"><div class="wheel" id="wheel" style="background:conic-gradient(from ${-step/2}deg,${gradient})">${WHEEL.map((n,i)=>`<span class="wheel-number" style="transform:rotate(${i*step}deg) translateY(-94px)">${n}</span>`).join('')}</div><div class="ball-track" id="ball-track"><span class="ball"></span></div></div><div id="round-result" class="result">Choose a color</div><p class="dialog-note">Bet: 20 BYTE. A win returns 40 BYTE (20 profit). Green zero loses. Odds per color: 18 in 37.</p><div class="bets"><button class="red" data-bet="red">Red · 20 BYTE</button><button class="black" data-bet="black">Black · 20 BYTE</button></div>`;
+  content.innerHTML=`<h2>Let luck take its time.</h2><div class="wheel-shell"><div class="wheel" id="wheel" style="background:conic-gradient(from ${-step/2}deg,${gradient})">${WHEEL.map((n,i)=>`<span class="wheel-number" style="transform:rotate(${i*step}deg) translateY(-94px)">${n}</span>`).join('')}</div><div class="ball-track" id="ball-track"><span class="ball"></span></div></div><div id="round-result" class="result">Choose a color</div><p class="dialog-note">Bet: 20 BYTE. Red or black returns 40 BYTE (20 profit); odds: 18/37. Green wins only on zero and returns 720 BYTE (700 profit); odds: 1/37.</p><div class="bets"><button class="red" data-bet="red">Red · 20 BYTE</button><button class="black" data-bet="black">Black · 20 BYTE</button><button class="green" data-bet="green">Green 0 · 20 BYTE</button></div>`;
   wheelAngle=0;content.querySelectorAll('[data-bet]').forEach(b=>b.onclick=()=>spin(b.dataset.bet));
 }
 async function animate(el,frames,duration){await el.animate(frames,{duration,easing:'linear',fill:'forwards'}).finished;}
@@ -163,8 +179,8 @@ async function spin(choice){
   const duration=SPIN_MS;
   const turnFrames=(from,to)=>[{transform:`rotate(${from}deg)`,offset:0},{transform:`rotate(${from+(to-from)*.78}deg)`,offset:.7},{transform:`rotate(${from+(to-from)*.96}deg)`,offset:.9,easing:'ease-out'},{transform:`rotate(${to}deg)`,offset:1}];
   try{await Promise.all([animate($('wheel'),turnFrames(wheelAngle,end),duration),animate($('ball-track'),turnFrames(0,-3600),duration)]);}finally{
-    wheelAngle=end;const payout=state.pending?.payout??0;act({type:'settle'});$('round-result').textContent=`${result} · ${colorOf(result)==='red'?'Red':result===0?'Zero':'Black'} · ${payout?'+20':'−20'} BYTE`;
-    message(payout?'You picked the winning color! Profit: 20 BYTE.':'No luck this time. You lost 20 BYTE.');setBusy(false);content.querySelectorAll('[data-bet]').forEach(b=>b.disabled=false);
+    wheelAngle=end;const payout=state.pending?.payout??0;act({type:'settle'});$('round-result').textContent=`${result} · ${colorOf(result)==='red'?'Red':result===0?'Green 0':'Black'} · ${payout?'+'+(payout-20):'−20'} BYTE`;
+    message(payout?'Winning color! Profit: '+(payout-20)+' BYTE.':'No luck this time. You lost 20 BYTE.');setBusy(false);content.querySelectorAll('[data-bet]').forEach(b=>b.disabled=false);
   }
 }
 function openTrade(){
@@ -202,6 +218,7 @@ canvas.onclick=e=>{
     if(grid.col>=17&&grid.col<=20&&grid.row>=10&&grid.row<=13){go('neon_royale');return;}
     if(grid.col>=5&&grid.col<=8&&grid.row>=11&&grid.row<=13){go('player_home');return;}
   }else if(mm.currentMap.id==='neon_royale'){
+    if(grid.col>=4&&grid.col<=9&&grid.row>=2&&grid.row<=5){openSlots();return;}
     if(grid.col>=18&&grid.row<=5){message('🔒 VIP area currently closed.');return;}
     if(grid.col>=5&&grid.col<=8&&grid.row>=7&&grid.row<=9){openRoulette();return;}
     if(grid.col>=9&&grid.col<=14&&grid.row>=3&&grid.row<=5){message('Welcome to NEON ROYALE. Choose roulette to play.');return;}
@@ -229,7 +246,7 @@ function render(now){
   if(pendingPC&&!controller.isMoving&&!controller.queueLength&&!controller._finishing){const mode=pendingPC;pendingPC=null;if(atHomePC(mm.currentMap.id,mm.playerCol,mm.playerRow)){mode==='trade'?openTrade():openHack();}}
   if(approachingBroker&&!controller.isMoving&&!controller.queueLength&&!controller._finishing){approachingBroker=false;openSell();}
   if(mm.currentMap.id==='district_07'){LOCKS.forEach(l=>lock(l.x,l.y));label(18,11.5,'♠ CASINO ♠');}
-  if(mm.currentMap.id==='neon_royale'){lock(19.8,3.5);label(6.4,9.8,'ROULETTE', '#ffd688');label(11.5,5.7,'NEON ROYALE','#52efff');}
+  if(mm.currentMap.id==='neon_royale'){lock(19.8,3.5);label(6.4,5.3,'777 SLOTS','#ffd688');label(6.4,9.8,'ROULETTE', '#ffd688');label(11.5,5.7,'NEON ROYALE','#52efff');}
   if(mm.currentMap.id==='player_home'){state.pets.forEach((id,i)=>{const im=petImages[petIds.indexOf(id)];if(im.complete&&im.naturalWidth){ctx.drawImage(im,origin.originX+360+i*18,origin.originY+137,42,42);}});}
   renderer.drawDustMotes(mm.currentMap,now);
   const roomView=dialog.open&&seatedPC?$('pc-room-view'):null;

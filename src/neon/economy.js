@@ -4,6 +4,16 @@ export const PET_IDS = ['gato_laranja', 'gato_cinza', 'gato_sphynx'];
 export const WHEEL = [0,32,15,19,4,21,2,25,17,34,6,27,13,36,11,30,8,23,10,5,24,16,33,1,20,14,31,9,22,18,29,7,28,12,35,3,26];
 export const RED = new Set([1,3,5,7,9,12,14,16,18,19,21,23,25,27,30,32,34,36]);
 export const SPIN_MS = 4000;
+export const SLOT_SYMBOLS = ['7','🍒','🍋','💎','🔔'];
+export function slotReels(result) { return [Math.floor(result/25),Math.floor(result/5)%5,result%5]; }
+export function slotPayout(result) { const [a,b,c]=slotReels(result);return a===b&&b===c?(a===0?1000:300):0; }
+function validPending(p) {
+  if(p===null)return true;
+  if(!p||!Number.isInteger(p.result)||!money(p.payout))return false;
+  if(p.type==='slots')return p.result>=0&&p.result<125&&p.payout===slotPayout(p.result);
+  if(p.type==='trade')return [0,1].includes(p.result)&&[0,38].includes(p.payout);
+  return p.type==='roulette'&&p.result>=0&&p.result<=36&&([0,40].includes(p.payout)||(p.result===0&&p.payout===720));
+}
 export const INFORMATION_PRICE = 30;
 export const HACK_ENERGY = 10;
 export const REGEN_MS = 30000;
@@ -23,9 +33,7 @@ export function valid(s) {
     && Number.isInteger(s.energy) && s.energy >= 0 && s.energy <= 100 && Number.isSafeInteger(s.energyAt) && s.energyAt >= 0 && typeof s.hackActive === 'boolean'
     && /^character[1-4]$/.test(s.characterId) && Array.isArray(s.pets)
     && s.pets.every(id => PET_IDS.includes(id)) && new Set(s.pets).size === s.pets.length
-    && (s.pending === null || (['roulette','trade'].includes(s.pending?.type)
-      && money(s.pending.payout) && [0,38,40].includes(s.pending.payout)
-      && Number.isInteger(s.pending.result) && s.pending.result >= 0 && s.pending.result <= 36));
+    && validPending(s.pending);
 }
 export function migrate(old, now = Date.now()) {
   if (!old || old.version !== 1 || !money(old.byteBalance)) return null;
@@ -50,7 +58,8 @@ export function transact(s, action) {
   const next = structuredClone(s);
   if (action.type === 'settle') {
     if (!next.pending) return next;
-    next.byteBalance += next.pending.payout; next.pending = null; return next;
+    next.byteBalance += next.pending.payout; next.pending = null;
+    if(!valid(next))throw new Error('Balance limit reached.');return next;
   }
   if (next.pending) throw new Error('Wait for the round to finish.');
   if (action.type === 'hackStart') {
@@ -78,16 +87,20 @@ export function transact(s, action) {
     if (next.pcLevel !== 1) throw new Error('Your PC is already fully upgraded.');
     if (next.byteBalance < 150) throw new Error('You need 150 BYTE.');
     next.byteBalance -= 150; next.pcLevel = 2;
-  } else if (action.type === 'roulette' || action.type === 'trade') {
+  } else if (['roulette','trade','slots'].includes(action.type)) {
     if (next.byteBalance < 20) throw new Error('You need 20 BYTE.');
     let payout;
     if (action.type === 'roulette') {
-      if (!['red','black'].includes(action.choice) || !Number.isInteger(action.result) || action.result < 0 || action.result > 36) throw new Error('Invalid bet.');
-      payout = colorOf(action.result) === action.choice ? 40 : 0;
+      if (!['red','black','green'].includes(action.choice) || !Number.isInteger(action.result) || action.result < 0 || action.result > 36) throw new Error('Invalid bet.');
+      payout = colorOf(action.result) === action.choice ? (action.choice==='green'?720:40) : 0;
+    } else if(action.type==='slots') {
+      if(!Number.isInteger(action.result)||action.result<0||action.result>=125)throw new Error('Invalid slot result.');
+      payout=slotPayout(action.result);
     } else {
       if (!['up','down'].includes(action.choice) || ![0,1].includes(action.result)) throw new Error('Invalid trade.');
       payout = action.choice === (action.result ? 'up' : 'down') ? 38 : 0;
     }
+    if(!money(next.byteBalance-20+payout))throw new Error('Balance limit reached.');
     next.byteBalance -= 20;
     next.pending = {type:action.type, result:action.result, payout};
   } else throw new Error('Invalid action.');
